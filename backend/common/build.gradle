@@ -1,0 +1,16 @@
+plugins {
+    id 'java-library'
+}
+
+// 비즈니스 서비스 5개가 함께 쓰는 기술 코드만 둔다. 도메인 로직·서비스별 DTO 금지 (Notion: 공통 인프라 개발 범위)
+dependencies {
+    api 'org.springframework.boot:spring-boot-starter-web'
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    api 'org.springframework.boot:spring-boot-starter-validation'
+    api 'org.springframework.boot:spring-boot-starter-actuator'
+    api 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    api 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    api 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
+    api "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+    api "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
+}
