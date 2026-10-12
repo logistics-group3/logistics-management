@@ -1,0 +1,207 @@
+# 실행: script/run.sh  (= ./gradlew bootJar → docker compose up -d --build)
+# 비밀값: cp .env.example .env
+#
+# 기본 실행(공통 인프라 범위): user-db + eureka + config-server + gateway + user
+# 도메인 서비스까지 함께:      docker compose --profile domain up -d --build
+name: sparta-logistics
+
+# 설정은 config-server가 config/ 폴더에서 내려줌. compose 실행 = docker 프로파일 (config/application-docker.yml)
+x-service-env: &service-env
+  SPRING_PROFILES_ACTIVE: docker
+  CONFIG_SERVER_URL: http://config-server:8888
+
+x-config-ready: &config-ready
+  config-server:
+    condition: service_healthy
+  eureka-server:
+    condition: service_started
+
+# Database per Service: 서비스마다 PostgreSQL 컨테이너 1개
+# DDL(doc/sql/{NN}-{service}.sql)은 볼륨이 비어 있을 때만 실행 → DDL 변경 시 script/run.sh --reset
+x-postgres-base: &postgres-base
+  image: postgres:16
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+  networks: [logistics-net]
+
+services:
+  # ---- DB ----
+  user-db:
+    <<: *postgres-base
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user_svc
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-user_pw}
+      TZ: Asia/Seoul
+    ports:
+      - "5433:5432"               # IDE 실행·DB 클라이언트 접속용
+    volumes:
+      - ./doc/sql/01-user.sql:/docker-entrypoint-initdb.d/01-user.sql:ro
+      - user-db-data:/var/lib/postgresql/data
+
+  hub-db:
+    <<: *postgres-base
+    profiles: [domain]
+    environment:
+      POSTGRES_DB: hub_db
+      POSTGRES_USER: hub_svc
+      POSTGRES_PASSWORD: ${HUB_DB_PASSWORD:-hub_pw}
+      TZ: Asia/Seoul
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./doc/sql/02-hub.sql:/docker-entrypoint-initdb.d/02-hub.sql:ro
+      - hub-db-data:/var/lib/postgresql/data
+
+  company-db:
+    <<: *postgres-base
+    profiles: [domain]
+    environment:
+      POSTGRES_DB: company_db
+      POSTGRES_USER: company_svc
+      POSTGRES_PASSWORD: ${COMPANY_DB_PASSWORD:-company_pw}
+      TZ: Asia/Seoul
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./doc/sql/03-company.sql:/docker-entrypoint-initdb.d/03-company.sql:ro
+      - company-db-data:/var/lib/postgresql/data
+
+  order-db:
+    <<: *postgres-base
+    profiles: [domain]
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: order_svc
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD:-order_pw}
+      TZ: Asia/Seoul
+    ports:
+      - "5436:5432"
+    volumes:
+      - ./doc/sql/04-order.sql:/docker-entrypoint-initdb.d/04-order.sql:ro
+      - order-db-data:/var/lib/postgresql/data
+
+  delivery-db:
+    <<: *postgres-base
+    profiles: [domain]
+    environment:
+      POSTGRES_DB: delivery_db
+      POSTGRES_USER: delivery_svc
+      POSTGRES_PASSWORD: ${DELIVERY_DB_PASSWORD:-delivery_pw}
+      TZ: Asia/Seoul
+    ports:
+      - "5437:5432"
+    volumes:
+      - ./doc/sql/05-delivery.sql:/docker-entrypoint-initdb.d/05-delivery.sql:ro
+      - delivery-db-data:/var/lib/postgresql/data
+
+  # ---- 인프라 ----
+  eureka-server:
+    build: ./backend/eureka-server
+    ports:
+      - "8761:8761"               # 등록 현황 대시보드
+    networks: [logistics-net]
+
+  config-server:
+    build: ./backend/config-server
+    ports:
+      - "8888:8888"
+    environment:
+      CONFIG_LOCATION: file:/config/       # 볼륨으로 넣은 설정을 읽음 → 설정 수정 시 config-server 재빌드 불필요
+    volumes:
+      - ./config:/config:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8888' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [logistics-net]
+
+  gateway-service:
+    build: ./backend/gateway-service
+    ports:
+      - "8080:8080"               # 유일한 외부 API 진입점
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET를 .env에 설정하세요}
+    depends_on:
+      <<: *config-ready
+    networks: [logistics-net]
+
+  # ---- 비즈니스 서비스 (호스트 포트 미공개 → --scale order-service=2 가능) ----
+  user-service:
+    build: ./backend/user-service
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET를 .env에 설정하세요}
+      DB_PASSWORD: ${USER_DB_PASSWORD:-user_pw}
+      MASTER_USERNAME: ${MASTER_USERNAME:-master01}
+      MASTER_PASSWORD: ${MASTER_PASSWORD:-Master!234}
+    depends_on:
+      <<: *config-ready
+      user-db:
+        condition: service_healthy
+    networks: [logistics-net]
+
+  hub-service:
+    profiles: [domain]
+    build: ./backend/hub-service
+    environment:
+      <<: *service-env
+      DB_PASSWORD: ${HUB_DB_PASSWORD:-hub_pw}
+    depends_on:
+      <<: *config-ready
+      hub-db:
+        condition: service_healthy
+    networks: [logistics-net]
+
+  company-service:
+    profiles: [domain]
+    build: ./backend/company-service
+    environment:
+      <<: *service-env
+      DB_PASSWORD: ${COMPANY_DB_PASSWORD:-company_pw}
+    depends_on:
+      <<: *config-ready
+      company-db:
+        condition: service_healthy
+    networks: [logistics-net]
+
+  order-service:
+    profiles: [domain]
+    build: ./backend/order-service
+    environment:
+      <<: *service-env
+      DB_PASSWORD: ${ORDER_DB_PASSWORD:-order_pw}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    depends_on:
+      <<: *config-ready
+      order-db:
+        condition: service_healthy
+    networks: [logistics-net]
+
+  delivery-service:
+    profiles: [domain]
+    build: ./backend/delivery-service
+    environment:
+      <<: *service-env
+      DB_PASSWORD: ${DELIVERY_DB_PASSWORD:-delivery_pw}
+    depends_on:
+      <<: *config-ready
+      delivery-db:
+        condition: service_healthy
+    networks: [logistics-net]
+
+networks:
+  logistics-net:
+    driver: bridge
+
+volumes:
+  user-db-data:
+  hub-db-data:
+  company-db-data:
+  order-db-data:
+  delivery-db-data:
