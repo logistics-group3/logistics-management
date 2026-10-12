@@ -1,0 +1,8 @@
+dependencies {
+    // BCrypt만 사용 (Spring Security 필터 체인은 쓰지 않음, 인증은 Gateway가 담당)
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+}
