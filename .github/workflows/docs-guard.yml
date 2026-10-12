@@ -1,0 +1,18 @@
+# 코드 변경 PR에 doc/ 문서·CHANGELOG 갱신이 함께 있는지 검사 (script/docs-check.sh, 매핑: doc/etc/doc-map.tsv)
+# 문서 영향이 없으면 PR에 skip-docs 라벨
+name: docs-guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  docs-check:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-docs') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 문서 동기화 점검
+        run: ./script/docs-check.sh "origin/${{ github.base_ref }}"
