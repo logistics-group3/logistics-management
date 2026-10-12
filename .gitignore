@@ -1,0 +1,44 @@
+# ---- 비밀값 (값은 .env, 목록은 .env.example) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# ---- Gradle ----
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+out/
+bin/
+
+# ---- QueryDSL 생성 코드 ----
+**/src/main/generated/
+**/generated/
+
+# ---- IDE ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+*.swp
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- 로그 · 실행 산출물 ----
+logs/
+*.log
+hs_err_pid*
+
+# ---- Claude Code 개인 설정 (팀 공용은 .claude/settings.json, .claude/rules/) ----
+.claude/settings.local.json
+CLAUDE.local.md
