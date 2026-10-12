@@ -1,0 +1,6 @@
+-- =====================================================================
+-- 05-delivery.sql — delivery_db 테이블 (delivery-service 담당자 작성)
+-- SA 5.6: p_deliveries, p_delivery_routes
+-- delivery-db 컨테이너가 처음 뜰 때 실행된다. 형식은 01-user.sql 참고 (.claude/rules/erd.md)
+-- 변경 후 반영: script/run.sh --profile domain --reset
+-- =====================================================================

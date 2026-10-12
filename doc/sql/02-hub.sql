@@ -1,0 +1,6 @@
+-- =====================================================================
+-- 02-hub.sql — hub_db 테이블 (hub-service 담당자 작성)
+-- SA 5.3: p_hubs, p_hub_routes, p_hub_stocks, p_hub_stock_histories (+ 허브 17개·경로 272개 시드는 SA 10.1)
+-- hub-db 컨테이너가 처음 뜰 때 실행된다. 형식은 01-user.sql 참고 (.claude/rules/erd.md)
+-- 변경 후 반영: script/run.sh --profile domain --reset
+-- =====================================================================

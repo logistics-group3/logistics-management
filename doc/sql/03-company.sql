@@ -1,0 +1,6 @@
+-- =====================================================================
+-- 03-company.sql — company_db 테이블 (company-service 담당자 작성)
+-- SA 5.4: p_companies, p_products
+-- company-db 컨테이너가 처음 뜰 때 실행된다. 형식은 01-user.sql 참고 (.claude/rules/erd.md)
+-- 변경 후 반영: script/run.sh --profile domain --reset
+-- =====================================================================

@@ -1,0 +1,4 @@
+// 공통 의존성(common, PostgreSQL, QueryDSL)은 루트 build.gradle에서 주입한다.
+// 이 서비스에만 필요한 의존성이 생기면 여기에 추가한다.
+dependencies {
+}
