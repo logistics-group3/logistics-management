@@ -1,0 +1,13 @@
+rootProject.name = 'sparta-logistics'
+
+// 백엔드 모듈은 backend/ 아래에 있다. 프로젝트 이름은 짧게 유지(:user-service, :common)하고 위치만 지정한다.
+def backendModules = [
+        'common',
+        'eureka-server', 'config-server', 'gateway-service',
+        'user-service', 'hub-service', 'company-service', 'order-service', 'delivery-service'
+]
+
+backendModules.each { name ->
+    include name
+    project(":${name}").projectDir = file("backend/${name}")
+}
