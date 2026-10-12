@@ -1,0 +1,26 @@
+# doc-map: 코드 경로 패턴 → 함께 갱신해야 할 문서
+# 형식: <bash glob 패턴><TAB><문서 경로(쉼표 구분)><TAB><문서 내 위치(선택)>
+# 매칭된 코드가 바뀌면 해당 문서 + doc/etc/07-changelog.md 수정이 필요합니다.
+
+backend/user-service/*/domain/model/*	doc/design/03-erd.md,doc/sql/01-user.sql	user_db 섹션
+backend/hub-service/*/domain/model/*	doc/design/03-erd.md,doc/sql/02-hub.sql	hub_db 섹션
+backend/company-service/*/domain/model/*	doc/design/03-erd.md,doc/sql/03-company.sql	company_db 섹션
+backend/order-service/*/domain/model/*	doc/design/03-erd.md,doc/sql/04-order.sql	order_db 섹션
+backend/delivery-service/*/domain/model/*	doc/design/03-erd.md,doc/sql/05-delivery.sql	delivery_db 섹션
+backend/user-service/*/presentation/*	doc/design/04-api.md	user-service 섹션
+backend/hub-service/*/presentation/*	doc/design/04-api.md	hub-service 섹션
+backend/company-service/*/presentation/*	doc/design/04-api.md	company-service 섹션
+backend/order-service/*/presentation/*	doc/design/04-api.md	order-service 섹션
+backend/delivery-service/*/presentation/*	doc/design/04-api.md	delivery-service 섹션
+*/infrastructure/client/*	doc/design/02-architecture.md	5. 서비스 간 통신
+backend/order-service/*/infrastructure/slack/*	doc/design/02-architecture.md	5. 서비스 간 통신
+backend/gateway-service/*	doc/design/02-architecture.md	4. 인증 / 인가
+backend/common/*	doc/design/02-architecture.md	3. common 모듈
+backend/eureka-server/*	doc/design/02-architecture.md	1. 서비스 구성
+docker-compose*	doc/design/02-architecture.md	6. 인프라·실행
+*Dockerfile	doc/design/02-architecture.md	6. 인프라·실행
+backend/config-server/*	doc/design/02-architecture.md	1. 서비스 구성 / 6. 인프라·실행
+config/*	doc/design/02-architecture.md	1. 서비스 구성 (설정·프로파일)
+*application*.yml	doc/design/02-architecture.md	1. 서비스 구성
+settings.gradle*	doc/design/02-architecture.md	2. 프로젝트 구조
+*build.gradle	doc/design/02-architecture.md	2. 프로젝트 구조
