@@ -1,0 +1,21 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native          # Git 저장소 대신 파일 시스템(같은 레포의 config/)에서 읽음
+  cloud:
+    config:
+      server:
+        native:
+          # 기본(IDE): jar에 포함된 설정 (루트 config/ → classpath:/config/)
+          # docker compose: CONFIG_LOCATION=file:/config/ 로 볼륨 마운트한 폴더를 읽음
+          search-locations: ${CONFIG_LOCATION:classpath:/config/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

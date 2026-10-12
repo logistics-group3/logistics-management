@@ -1,0 +1,25 @@
+server:
+  port: 8081
+
+# Database per Service: user-db 컨테이너. host·port·password는 application-{profile}.yml이 아래 값을 골라 씀
+db:
+  name: user_db
+  username: user_svc
+  local-port: 5433
+  local-password: user_pw              # local 전용 기본값 (docker는 DB_PASSWORD 필수)
+  docker-host: user-db
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${db.host}:${db.port}/${db.name}
+    username: ${db.username}
+    password: ${db.password}
+
+jwt:
+  expiration-minutes: 60
+
+# 최초 MASTER 계정 (MasterAccountInitializer)
+app:
+  master:
+    username: ${MASTER_USERNAME:master01}
+    password: ${MASTER_PASSWORD:Master!234}

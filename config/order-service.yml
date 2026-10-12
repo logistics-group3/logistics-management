@@ -1,0 +1,20 @@
+server:
+  port: 8084
+
+# Database per Service: order-db 컨테이너. host·port·password는 application-{profile}.yml이 아래 값을 골라 씀
+db:
+  name: order_db
+  username: order_svc
+  local-port: 5436
+  local-password: order_pw              # local 전용 기본값 (docker는 DB_PASSWORD 필수)
+  docker-host: order-db
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${db.host}:${db.port}/${db.name}
+    username: ${db.username}
+    password: ${db.password}
+
+# Slack Incoming Webhook (비워두면 알림 생략)
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL:}

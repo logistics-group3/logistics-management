@@ -1,0 +1,16 @@
+server:
+  port: 8083
+
+# Database per Service: company-db 컨테이너. host·port·password는 application-{profile}.yml이 아래 값을 골라 씀
+db:
+  name: company_db
+  username: company_svc
+  local-port: 5435
+  local-password: company_pw              # local 전용 기본값 (docker는 DB_PASSWORD 필수)
+  docker-host: company-db
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${db.host}:${db.port}/${db.name}
+    username: ${db.username}
+    password: ${db.password}

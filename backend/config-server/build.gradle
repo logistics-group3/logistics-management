@@ -1,0 +1,12 @@
+dependencies {
+    implementation 'org.springframework.cloud:spring-cloud-config-server'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+}
+
+// 루트 config/ 폴더를 jar 안(classpath:/config/)에도 넣는다.
+// docker compose는 볼륨(CONFIG_LOCATION=file:/config/)으로 덮어써서 설정 수정 시 재빌드가 필요 없다.
+tasks.named('processResources') {
+    from(rootProject.file('config')) {
+        into 'config'
+    }
+}

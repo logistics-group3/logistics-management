@@ -1,0 +1,16 @@
+server:
+  port: 8082
+
+# Database per Service: hub-db 컨테이너. host·port·password는 application-{profile}.yml이 아래 값을 골라 씀
+db:
+  name: hub_db
+  username: hub_svc
+  local-port: 5434
+  local-password: hub_pw              # local 전용 기본값 (docker는 DB_PASSWORD 필수)
+  docker-host: hub-db
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${db.host}:${db.port}/${db.name}
+    username: ${db.username}
+    password: ${db.password}

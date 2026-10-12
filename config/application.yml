@@ -1,0 +1,36 @@
+# 모든 서비스 공통 (프로파일 무관) — 바꾸면 전 서비스에 적용
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate          # 테이블은 doc/sql/{NN}-{service}.sql DDL로 만들고 Entity가 맞는지만 검증
+    open-in-view: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
+        jdbc:
+          time_zone: Asia/Seoul
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 2000   # SA 3.5: connect 2초 / read 5초
+            read-timeout: 5000
+
+server:
+  forward-headers-strategy: framework   # Gateway 경유 Swagger "Try it out"이 Gateway 주소로 호출되도록
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.uuid}   # SA 3.3: 같은 서비스 여러 인스턴스 구분
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

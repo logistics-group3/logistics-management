@@ -1,0 +1,19 @@
+# local: IDE·bootRun으로 서비스를 PC에서 직접 실행 (기본 프로파일)
+# DB·eureka·config-server는 compose로: docker compose up -d user-db eureka-server config-server
+
+db:
+  host: localhost
+  port: ${db.local-port}               # 서비스별 호스트 포트 5433~5437 ({service}.yml)
+  password: ${DB_PASSWORD:${db.local-password}}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-secret-key-must-be-at-least-32-bytes!!}
+
+logging:
+  level:
+    org.hibernate.SQL: debug

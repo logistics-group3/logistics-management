@@ -1,0 +1,14 @@
+# docker: docker compose로 전체 실행 (compose 네트워크 안의 컨테이너 이름으로 접속)
+
+db:
+  host: ${db.docker-host}              # {service}-db 컨테이너 ({service}.yml)
+  port: 5432
+  password: ${DB_PASSWORD}             # .env의 {SERVICE}_DB_PASSWORD를 compose가 전달
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
+
+jwt:
+  secret: ${JWT_SECRET}

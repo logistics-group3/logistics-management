@@ -1,0 +1,16 @@
+server:
+  port: 8085
+
+# Database per Service: delivery-db 컨테이너. host·port·password는 application-{profile}.yml이 아래 값을 골라 씀
+db:
+  name: delivery_db
+  username: delivery_svc
+  local-port: 5437
+  local-password: delivery_pw              # local 전용 기본값 (docker는 DB_PASSWORD 필수)
+  docker-host: delivery-db
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${db.host}:${db.port}/${db.name}
+    username: ${db.username}
+    password: ${db.password}
