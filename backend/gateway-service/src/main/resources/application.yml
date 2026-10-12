@@ -1,0 +1,9 @@
+# 설정 본문은 config-server(루트 config/ 폴더)에서 받는다 → config/gateway-service.yml, config/application*.yml
+# 프로파일: local(기본, IDE) / docker(docker compose). 자세한 규칙: config/README.md
+spring:
+  application:
+    name: gateway-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  config:
+    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
