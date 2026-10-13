@@ -128,7 +128,7 @@ sequenceDiagram
 | 항목 | 내용 |
 |---|---|
 | 알고리즘 | HS256. user-service 발급, Gateway 검증, `JWT_SECRET` 환경 변수 공유 (32바이트 이상) |
-| 유효시간 | 60분 (`jwt.expiration-minutes`), Refresh Token 없음 |
+| 유효시간 | 60분 (`jwt.expiration-minutes`, `JwtProperties` — 발급마다 읽어 refresh로 재시작 없이 변경), Refresh Token 없음 |
 | Claims | `sub`(userId), `username`, `role`, `iat`, `exp` |
 
 ### 4.4 라우팅 (SA 3.2)
