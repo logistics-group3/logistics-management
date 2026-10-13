@@ -29,6 +29,7 @@
 - eureka-server·config-server는 config를 쓰지 않고 자기 `application.yml`만 사용
 - **설정 자동 반영**: config-server가 `config/`를 2초마다 확인 → 바뀐 파일의 서비스 인스턴스를 Eureka에서 찾아 `POST /actuator/refresh` (재시작 없음, ADR-0006). 반영 가능한 키·한계: `doc/guide/12-config-ops.md` §3
 - actuator 노출: `health`, `refresh`. 비즈니스 서비스는 포트 미공개라 내부망에서만 호출됨. **gateway는 현재 8080에 같이 열려 있음(로컬 전용) → 배포 전 관리 포트 분리 필요** (`doc/guide/12-config-ops.md` §3.3)
+- `config/gateway-service.yml`의 Swagger 목록(`springdoc.swagger-ui.urls`)은 도메인 서비스 개발 전이라 user-service만 남기고 나머지는 주석 처리. 도메인 서비스가 뜨면 주석 해제 후 gateway 재시작 (springdoc은 refresh로 안 바뀜)
 
 ## 2. 프로젝트 구조 (SA 2.4)
 
