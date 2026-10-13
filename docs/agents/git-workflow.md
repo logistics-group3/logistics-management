@@ -8,15 +8,15 @@
 - 하나의 브랜치는 하나의 작업 단위만 다룬다. 끝나면 PR로 main에 합친다.
 
 ## 커밋 메시지
-Conventional Commits 형식을 쓰고, 설명은 한국어로 쓴다.
+Conventional Commits의 type만 쓰고 scope(괄호)는 쓰지 않는다. 설명은 한국어로 쓴다.
 ```
-<type>(<scope>): <요약>
+<type>: <요약>
 
 <본문: 무엇을, 왜. 필요할 때만>
 ```
 - type: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `build`
-- scope: 모듈 이름(`hub`, `gateway`, `common`) 또는 `root`
-- 예: `feat(hub): 허브 간 최단 경로 조회 API 추가`
+- 예: `feat: 허브 간 최단 경로 조회 API 추가`
+- `Co-Authored-By` 같은 AI 공동 작성자 표기를 넣지 않는다.
 - 요약은 50자 안쪽 평서형으로 쓴다. 마침표를 찍지 않는다.
 - 한 커밋에 한 가지 변경만 담는다. 빌드가 깨지는 중간 커밋을 만들지 않는다.
 
