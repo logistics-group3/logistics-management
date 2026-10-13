@@ -18,7 +18,8 @@ doc/
 │   ├── 12-config-ops.md       인프라 담당: config 보안 관리 · 무중단 설정 변경
 │   ├── 13-git-workflow.md     전원: 브랜치 · 커밋 · PR (제안)
 │   ├── 14-review-checklist.md 리뷰어: PR 체크리스트
-│   └── 15-troubleshooting.md  전원: 로컬 실행 문제 해결
+│   ├── 15-troubleshooting.md  전원: 로컬 실행 문제 해결
+│   └── 16-local-run.md        전원: 서버 올리기 · 바꾼 것만 다시 올리기
 ├── etc/
 │   ├── 06-adr.md          결정 기록 (Notion과 다른 점 포함)
 │   ├── 07-changelog.md    문서 변경 이력
@@ -39,7 +40,7 @@ doc/
 | 서비스 담당자 (hub·company·order·delivery·user 관리) | `guide/11-dev-guide.md` → `.claude/rules/` → `design/03·04` |
 | 인프라 담당 (config·compose·gateway) | `design/02-architecture.md` → `guide/12-config-ops.md` |
 | 리뷰어 | `guide/14-review-checklist.md` |
-| 처음 실행하는 사람 | 루트 `README.md` → `guide/15-troubleshooting.md` |
+| 처음 실행하는 사람 | 루트 `README.md` → `guide/16-local-run.md` → `guide/15-troubleshooting.md` |
 
 흐름 문서(05-flow: 주문·배송 호출 순서)는 도메인 구현 시작 후 추가합니다.
 

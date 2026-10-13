@@ -33,13 +33,11 @@ DDL → Entity → Repository → Application(Service) → Controller → 내부
 
 ## 3. 로컬 실행
 
-```bash
-# 내 서비스만 IDE로 (local 프로파일)
-docker compose --profile domain up -d {service}-db eureka-server config-server
-# → IDE에서 {Service}Application 실행 (DB: localhost:543x)
+상세: [16-local-run.md](16-local-run.md) — 전체/일부 서비스 올리기, IDE 실행, 바꾼 것만 다시 올리기, 내리기.
 
-# Gateway 경유로 확인하려면 gateway·user도 함께
-docker compose up -d gateway-service user-service
+```bash
+script/run.sh --profile domain                                   # 전체
+./gradlew :{service}-service:bootJar && docker compose up -d --build {service}-service   # 내 서비스만 다시
 ```
 
 토큰 받기: `POST :8080/api/v1/auth/login` (MASTER 계정은 `.env`) → Swagger 우측 상단 Authorize에 `Bearer` 없이 토큰만.

@@ -243,7 +243,7 @@ curl -s localhost:8080/api/v1/users/me             # → 401 UNAUTHORIZED
 ```
 
 IDE에서 서비스 하나만 실행: `docker compose up -d user-db eureka-server config-server` 후 Application 실행 (`local` 프로파일, DB는 localhost:5433~5437).
-막히면 [문제 해결](doc/guide/15-troubleshooting.md)
+서버 올리는 방법(일부 서비스만, IDE, 바꾼 것만 다시 올리기)은 [로컬 실행 가이드](doc/guide/16-local-run.md), 막히면 [문제 해결](doc/guide/15-troubleshooting.md)
 
 ---
 

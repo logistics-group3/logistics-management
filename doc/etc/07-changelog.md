@@ -3,6 +3,7 @@
 > 최신이 위. 형식: `- [영역/서비스] 내용 (관련 파일) — 작성자`
 
 ## 2026-10-13
+- [가이드] 16-local-run 추가: compose profiles, 전체/일부/IDE 실행, 변경 종류별 재반영, 내리기 주의, 직접 호출, 로그 (doc/README, 11-dev-guide §3, README) — 한얼
 - [user] `jwt.expiration-minutes`를 `JwtProperties`(JavaBean)로 받아 발급마다 읽음 → 재시작 없이 변경. secret은 기존대로 기동 시 1회 (JwtTokenProvider, 02-architecture §4.3) — 한얼
 - [가이드] 12-config-ops §3.2를 동적(A)/재시작(C) 판단 기준·분류표로 재작성, springdoc은 재시작 대상으로 분류 — 한얼
 - [config-server] 설정 파일 변경 감지 → Eureka로 해당 서비스 인스턴스에 `/actuator/refresh` 자동 호출, refresh 엔드포인트 노출·Feign refresh, `GatewayAuthProperties` JavaBean 전환 (gateway 관리 포트 분리는 배포 전 과제로 문서화) (12-config-ops §3, 02-architecture §1·§6, ADR-0006, config/README) — 한얼
