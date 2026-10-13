@@ -25,7 +25,7 @@
 ## 3. MSA와 분산 시스템
 | 주제 | 프로젝트에서 만나는 지점 | 노트 |
 |---|---|---|
-| 서비스 디스커버리, 클라이언트 사이드 로드밸런싱 | Eureka, LoadBalancer (SA 3.3) | |
+| 서비스 디스커버리, 클라이언트 사이드 로드밸런싱 | Eureka, LoadBalancer (SA 3.3) | [Eureka 설정](qna/2026-10-13-eureka-server-setup.md) |
 | API Gateway, 라우팅, 인증 위임 | gateway-service (SA 8.3) | |
 | 서비스 간 동기 통신과 장애 전파 | OpenFeign (SA 2.3) | |
 | DB per service, 스키마 분리 | PostgreSQL 스키마 (SA 3.4) | |
@@ -37,7 +37,7 @@
 ## 4. 운영
 | 주제 | 프로젝트에서 만나는 지점 | 노트 |
 |---|---|---|
-| Docker, docker-compose, 이미지 빌드 | 컨테이너 구성 (SA 3.2) | |
+| Docker, docker-compose, 이미지 빌드 | 컨테이너 구성 (SA 3.2) | [작업 환경 무게](qna/2026-10-13-multimodule-workspace-weight.md) |
 | 설정 분리, 환경 변수, 비밀값 관리 | application.yml, .env | |
 | 헬스 체크, Actuator | 서비스 기동 순서 | |
 | 장애 대응: 타임아웃, 재시도, 서킷 브레이커 | SA 3.5 | |
