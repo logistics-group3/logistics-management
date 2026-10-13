@@ -1,7 +1,7 @@
 # junhyun/base-setting
 
 ## 지금 하는 일
-공통 인프라 스텝 7: 통합 검증 스크립트
+공통 인프라 스텝 8: springdoc, QueryDSL (시간이 남는 범위)
 
 ## 진행 상태
 공통 인프라 범위: [공통 인프라 개발 범위.md](공통%20인프라%20개발%20범위.md). 10/13 오후 구현, 10/14 오전 리뷰 후 한 명의 결과물을 채택한다. 이 브랜치를 main처럼 쓴다.
@@ -17,36 +17,26 @@
 - [x] 4. common 엔티티·사용자 컨텍스트: BaseEntity, AuditorAware, @CurrentUser, @RequireRole, FeignHeaderInterceptor. common 테스트 13개 통과
 - [x] 5. user 인증 (U-01, U-02, I-01, 샘플 API): Gateway 경유 가입·로그인 확인(완료 기준 2), 테스트 7개 통과. 위조 헤더가 아직 통과함을 재현
 - [x] 6. gateway 보안 필터: 완료 기준 3~6 curl 확인, gateway 테스트 9개 통과
-- [ ] 7. 통합 검증 스크립트 (완료 기준 6개)
+- [x] 7. 통합 검증 스크립트: 빈 DB에서 `script/e2e-check.sh --up` PASS 11/0, 64초 (완료 기준 1~6 전체)
 - [ ] 8. 시간이 남으면: springdoc, QueryDSL
 - 면접 포인트: DB per service를 인스턴스 하나에서 스키마·계정으로 나눈 이유와 한계, compose의 depends_on과 healthcheck 차이, Config Server 값과 환경 변수의 우선순위
 
 ## 다음 단계
-1. `script/e2e-check.sh`: 완료 기준 6개를 자동 확인(MASTER 계정 승격 포함)
-2. 전체 compose 재기동 후 PASS 6/6 확인
+1. springdoc: 서비스별 문서 + Gateway Swagger UI에서 서비스 선택
+2. QueryDSL 공통 설정
+3. 전체 리뷰 (사용자)
 
 ## 직접 해보기
-스텝 2(config-server)를 혼자 재현하는 순서다.
+공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `docs/learning/steps/`에 있다.
 
-1. 모듈 추가
-   - `settings.gradle`에 `include 'config-server'`
-   - `config-server/build.gradle`: `spring-cloud-config-server`, `spring-boot-starter-actuator`
-   - 메인 클래스에 `@EnableConfigServer`
-2. 서버 설정 (`config-server/src/main/resources/application.yml`)
-   - `server.port: 8888`, `spring.profiles.active: native`
-   - `spring.cloud.config.server.native.search-locations: classpath:/config-repo`
-   - `build.gradle`의 `processResources`로 루트 `config-repo/`를 jar 안 `config-repo/`에 넣는다.
-3. 설정 저장소 (`config-repo/`)
-   - `application.yml`: 모든 서비스 공통(eureka, jpa, feign 타임아웃)
-   - `{서비스명}.yml`: 서비스 전용(포트, datasource)
-   - 환경마다 다른 값은 `${DB_HOST:localhost}`처럼 자리표시자로 둔다.
-4. 클라이언트 (각 서비스)
-   - 의존성 `spring-cloud-starter-config`
-   - `application.yml`에는 이름과 `spring.config.import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}`만 남긴다.
-5. 확인
-   - `curl localhost:8888/user-service/default`: 공통 설정과 서비스 설정이 함께 내려오면 성공
-   - 서비스 로그에 `Fetching config from server at`과 `Tomcat started on port 8081`이 보이면 성공
-   - IntelliJ에서 실행할 때는 config-server를 먼저 띄운다.
+1. `cp .env.example .env`
+2. `./gradlew bootJar` 후 `docker compose up -d --build`
+3. http://localhost:8761 에서 서비스 6개 UP 확인
+4. 가입: `curl -X POST localhost:8080/api/v1/auth/signup -H 'Content-Type: application/json' -d '{"username":"hong01","password":"Sparta!2026","name":"홍길동","slackId":"U01","affiliationType":"COMPANY","affiliationName":"부산수산도매"}'`
+5. 로그인: 같은 방식으로 `/api/v1/auth/login`에 username, password를 보내고 `data.accessToken`을 복사한다
+6. 호출: `curl localhost:8080/api/v1/users/sample/me -H "Authorization: Bearer <토큰>"`
+7. MASTER 확인: `script/promote-master.sh <username>` 후 다시 로그인하고 `/api/v1/users/sample/admin` 호출
+8. 한 번에 확인: `script/e2e-check.sh`
 
 ## 메모
 - 컨테이너는 `EUREKA_PREFER_IP=true`(config-repo의 `prefer-ip-address` 자리표시자)로 IP 등록한다. 호스트명(컨테이너 ID)으로 등록하면 다른 컨테이너가 찾지 못할 수 있다.
