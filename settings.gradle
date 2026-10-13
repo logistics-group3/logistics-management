@@ -6,6 +6,7 @@ plugins {
 rootProject.name = 'logistics-management'
 
 include 'common'
+include 'config-server'
 include 'eureka-server'
 include 'gateway-service'
 include 'user-service'

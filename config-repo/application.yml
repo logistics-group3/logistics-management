@@ -1,0 +1,29 @@
+# 모든 클라이언트 서비스가 받는 공통 설정. 서비스 전용 값은 {서비스명}.yml에 둔다.
+# Note: Config Server가 내려준 값은 기본적으로 클라이언트의 환경 변수보다 우선한다. 그래서 환경마다 달라지는 값은 여기 고정값으로 두지 않고 ${ENV:기본값} 자리표시자로 둔다. 자리표시자는 클라이언트 쪽 환경 변수로 풀린다.
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance:
+    instance-id: ${spring.application.name}:${random.value}
+    prefer-ip-address: ${EUREKA_PREFER_IP:false}
+
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 5000
+            read-timeout: 20000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

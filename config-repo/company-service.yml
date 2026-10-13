@@ -1,0 +1,12 @@
+server:
+  port: 8083
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/logistics?currentSchema=company_schema
+    username: company_app
+    password: ${COMPANY_DB_PASSWORD:company_local_pw}
+  jpa:
+    properties:
+      hibernate:
+        default_schema: company_schema

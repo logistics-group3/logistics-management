@@ -4,7 +4,8 @@
 
 ## 프로젝트
 - Java 17, Spring Boot 3.5.16, Spring Cloud 2025.0.x, Gradle 8.14 멀티 모듈, PostgreSQL 16
-- 모듈: `common`, `eureka-server`, `gateway-service`, `{user,hub,company,order,delivery}-service`
+- 모듈과 포트: `config-server`(8888), `eureka-server`(8761), `gateway-service`(8080), `{user,hub,company,order,delivery}-service`(8081~8085), `common`(라이브러리)
+- 설정: 서비스 설정은 `config-repo/`(config-server가 제공)에 둔다. 각 모듈의 `application.yml`에는 이름과 `spring.config.import`만 둔다.
 - 패키지: `com.sparta.logistics.{서비스}`, 내부는 `presentation / application / domain / infrastructure`
 - 설계 정본: `docs/SA/Sparta_logistics_SA_Master .md`. 설계와 다르게 구현해야 하면 먼저 사용자에게 확인하고 `docs/decisions/`에 기록한다.
 - 팀 공유 저장소다. 팀 합의(SA 문서, 결정 기록)를 개인 판단으로 덮어쓰지 않는다.
@@ -42,5 +43,6 @@
 
 ## 검증 명령
 - 전체 빌드: `./gradlew build`
-- 단일 모듈 실행: `./gradlew :eureka-server:bootRun`
+- 단일 모듈 실행: `./gradlew :eureka-server:bootRun` (서비스는 config-server를 먼저 띄운다)
+- 전체 실행: `./gradlew bootJar && docker compose up -d --build` (사전에 `cp .env.example .env`)
 - 셸 기본 JDK가 21이어도 Gradle toolchain이 17로 컴파일·실행한다. JAVA_HOME을 바꾸지 않는다.

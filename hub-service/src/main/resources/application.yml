@@ -1,23 +1,5 @@
-server:
-  port: 8082
-
 spring:
   application:
     name: hub-service
-  datasource:
-    url: jdbc:postgresql://localhost:5432/logistics?currentSchema=hub_schema
-    username: hub_app
-    password: hub_local_pw
-  jpa:
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        default_schema: hub_schema
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka
-  instance:
-    instance-id: ${spring.application.name}:${random.value}
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}

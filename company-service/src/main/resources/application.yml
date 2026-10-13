@@ -1,23 +1,5 @@
-server:
-  port: 8083
-
 spring:
   application:
     name: company-service
-  datasource:
-    url: jdbc:postgresql://localhost:5432/logistics?currentSchema=company_schema
-    username: company_app
-    password: company_local_pw
-  jpa:
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        default_schema: company_schema
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka
-  instance:
-    instance-id: ${spring.application.name}:${random.value}
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}

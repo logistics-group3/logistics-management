@@ -1,0 +1,12 @@
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/logistics?currentSchema=order_schema
+    username: order_app
+    password: ${ORDER_DB_PASSWORD:order_local_pw}
+  jpa:
+    properties:
+      hibernate:
+        default_schema: order_schema
