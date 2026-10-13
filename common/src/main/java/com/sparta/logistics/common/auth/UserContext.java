@@ -1,5 +1,6 @@
 package com.sparta.logistics.common.auth;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.UUID;
 
 /**
@@ -7,6 +8,7 @@ import java.util.UUID;
  */
 public record UserContext(UUID userId, String username, Role role, boolean deliveryManager) {
 
+    @JsonIgnore
     public boolean isMaster() {
         return role == Role.MASTER;
     }

@@ -1,0 +1,33 @@
+package com.sparta.logistics.gateway.auth;
+
+import com.github.benmanes.caffeine.cache.AsyncCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import reactor.core.publisher.Mono;
+
+/**
+ * Note: 요청마다 user-service를 부르지 않도록 I-01 결과를 60초 동안 로컬 캐시한다(SA 8.2). 권한 변경과 탈퇴는
+ * 최대 60초 늦게 반영되는 대신 user-service 호출이 사용자당 1분에 한 번으로 줄어든다. AsyncCache는 같은 키를
+ * 동시에 요청해도 조회를 한 번만 하고 결과를 공유한다. 조회 실패(503 등)는 캐시에 남지 않아 다음 요청에서 다시 시도한다.
+ */
+public class CachedUserLookup implements UserLookup {
+
+    private final AsyncCache<UUID, Optional<UserSnapshot>> cache;
+    private final Function<UUID, Mono<Optional<UserSnapshot>>> loader;
+
+    public CachedUserLookup(Function<UUID, Mono<Optional<UserSnapshot>>> loader, Duration ttl) {
+        this.loader = loader;
+        this.cache = Caffeine.newBuilder()
+                .expireAfterWrite(ttl)
+                .maximumSize(10_000)
+                .buildAsync();
+    }
+
+    @Override
+    public Mono<Optional<UserSnapshot>> find(UUID userId) {
+        return Mono.fromFuture(() -> cache.get(userId, (key, executor) -> loader.apply(key).toFuture()));
+    }
+}

@@ -32,3 +32,18 @@ spring:
               uri: lb://delivery-service
               predicates:
                 - Path=/api/v1/deliveries/**
+
+jwt:
+  secret: ${JWT_SECRET}
+
+auth:
+  # 인증 없이 통과시키는 경로(SA 8.3 3단계)
+  whitelist:
+    - /api/v1/auth/signup
+    - /api/v1/auth/login
+    - /actuator/health
+    - /swagger-ui/**
+    - /v3/api-docs/**
+    - /*/v3/api-docs/**
+  # 권한 재확인 결과 캐시 시간(SA 8.2, 팀 결정 60초)
+  user-cache-ttl: 60s
