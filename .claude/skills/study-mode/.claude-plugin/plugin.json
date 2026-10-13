@@ -1,0 +1,9 @@
+{
+  "name": "study-mode",
+  "version": "0.1.0",
+  "description": "학습 모드: 현재 작업, 직접 해보기, 학습 노트를 패널과 상태줄로 보여 준다",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "logistics-management team"
+  }
+}
