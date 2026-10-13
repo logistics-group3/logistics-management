@@ -13,5 +13,11 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
+    // Note: BCrypt만 필요해서 spring-boot-starter-security 대신 crypto 모듈만 쓴다. starter를 넣으면 기본 보안 필터 체인이 모든 API를 막는다. 인증은 Gateway가 맡는다.
+    implementation 'org.springframework.security:spring-security-crypto'
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+
     runtimeOnly 'org.postgresql:postgresql'
 }

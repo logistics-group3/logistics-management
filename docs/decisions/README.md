@@ -4,5 +4,6 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0003 | [인증 관련 라이브러리와 구성](0003-auth-libraries.md) | 채택 | 2026-10-13 |
 | 0002 | [에이전트 중립 작업 규칙 구조](0002-agent-neutral-guidelines.md) | 채택 | 2026-10-13 |
 | 0001 | [Spring Boot 3.5.16 수동 Gradle 멀티 모듈 구성](0001-boot-3-5-manual-gradle-multimodule.md) | 채택 | 2026-10-13 |

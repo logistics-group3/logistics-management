@@ -1,0 +1,35 @@
+package com.sparta.logistics.user.presentation;
+
+import com.sparta.logistics.common.response.ApiResponse;
+import com.sparta.logistics.user.application.AuthService;
+import com.sparta.logistics.user.application.dto.SignupResult;
+import com.sparta.logistics.user.application.dto.TokenResult;
+import com.sparta.logistics.user.presentation.dto.LoginRequest;
+import com.sparta.logistics.user.presentation.dto.SignupRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/auth")
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/signup")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<SignupResult> signup(@Valid @RequestBody SignupRequest request) {
+        return ApiResponse.created("회원가입이 완료되었습니다.", authService.signup(request.toCommand()));
+    }
+
+    @PostMapping("/login")
+    public ApiResponse<TokenResult> login(@Valid @RequestBody LoginRequest request) {
+        return ApiResponse.ok("로그인에 성공했습니다.", authService.login(request.toCommand()));
+    }
+}

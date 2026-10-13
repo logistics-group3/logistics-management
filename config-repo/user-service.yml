@@ -10,3 +10,8 @@ spring:
     properties:
       hibernate:
         default_schema: user_schema
+
+jwt:
+  # 서명 키는 저장소에 두지 않는다. compose는 .env의 JWT_SECRET을 넘기고, 로컬 실행은 환경 변수로 지정한다.
+  secret: ${JWT_SECRET}
+  expiration-seconds: 3600

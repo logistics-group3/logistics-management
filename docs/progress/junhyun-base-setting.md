@@ -1,7 +1,7 @@
 # junhyun/base-setting
 
 ## 지금 하는 일
-공통 인프라 스텝 5: user 인증
+공통 인프라 스텝 6: gateway 보안 필터
 
 ## 진행 상태
 공통 인프라 범위: [공통 인프라 개발 범위.md](공통%20인프라%20개발%20범위.md). 10/13 오후 구현, 10/14 오전 리뷰 후 한 명의 결과물을 채택한다. 이 브랜치를 main처럼 쓴다.
@@ -15,16 +15,15 @@
 - [x] 2. config-server (native, 8888): 서비스 6개가 config에서 설정을 받아 기동, Gateway 라우팅으로 user-service 도달 확인
 - [x] 3. common 응답·예외: ApiResponse, PageResponse, ErrorCode(인터페이스)+CommonErrorCode, GlobalExceptionHandler. 테스트 5개 통과
 - [x] 4. common 엔티티·사용자 컨텍스트: BaseEntity, AuditorAware, @CurrentUser, @RequireRole, FeignHeaderInterceptor. common 테스트 13개 통과
-- [ ] 5. user 인증 (U-01, U-02, I-01, 샘플 API)
+- [x] 5. user 인증 (U-01, U-02, I-01, 샘플 API): Gateway 경유 가입·로그인 확인(완료 기준 2), 테스트 7개 통과. 위조 헤더가 아직 통과함을 재현
 - [ ] 6. gateway 보안 필터
 - [ ] 7. 통합 검증 스크립트 (완료 기준 6개)
 - [ ] 8. 시간이 남으면: springdoc, QueryDSL
 - 면접 포인트: DB per service를 인스턴스 하나에서 스키마·계정으로 나눈 이유와 한계, compose의 depends_on과 healthcheck 차이, Config Server 값과 환경 변수의 우선순위
 
 ## 다음 단계
-1. JJWT, spring-security-crypto 버전 확인 후 ADR 0003
-2. user-service: User 엔티티(p_users), 회원가입 U-01, 로그인 U-02(JWT 발급), I-01
-3. 샘플 API(`/api/v1/users/sample/me`, `/sample/admin`)
+1. gateway: 헤더 제거, `/internal/**` 차단, 화이트리스트, JWT 검증, I-01 재확인(Caffeine 60초), 헤더 주입, 공통 에러 JSON
+2. WebTestClient 필터 테스트, curl로 완료 기준 3~6 확인
 
 ## 직접 해보기
 스텝 2(config-server)를 혼자 재현하는 순서다.
