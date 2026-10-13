@@ -1,0 +1,125 @@
+# 실행: ./gradlew bootJar && docker compose up -d --build
+# 사전 준비: cp .env.example .env
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: on-failure
+  networks: [logistics-net]
+
+x-service-env: &service-env
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka
+  # Note: 컨테이너 호스트명(컨테이너 ID) 대신 IP로 Eureka에 등록해야 Gateway가 다른 컨테이너에서 찾아갈 수 있다.
+  EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+
+x-db-service: &db-service
+  <<: *app
+  depends_on:
+    postgres:
+      condition: service_healthy
+    eureka-server:
+      condition: service_started
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d logistics"]
+      interval: 5s
+      retries: 10
+    networks: [logistics-net]
+
+  eureka-server:
+    <<: *app
+    build:
+      context: .
+      args: { MODULE: eureka-server }
+    ports:
+      - "8761:8761"
+
+  gateway-service:
+    <<: *app
+    build:
+      context: .
+      args: { MODULE: gateway-service }
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - eureka-server
+
+  user-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: user-service }
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=user_schema
+      SPRING_DATASOURCE_USERNAME: user_app
+      SPRING_DATASOURCE_PASSWORD: ${USER_DB_PASSWORD}
+
+  hub-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: hub-service }
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=hub_schema
+      SPRING_DATASOURCE_USERNAME: hub_app
+      SPRING_DATASOURCE_PASSWORD: ${HUB_DB_PASSWORD}
+
+  company-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: company-service }
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=company_schema
+      SPRING_DATASOURCE_USERNAME: company_app
+      SPRING_DATASOURCE_PASSWORD: ${COMPANY_DB_PASSWORD}
+
+  order-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: order-service }
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=order_schema
+      SPRING_DATASOURCE_USERNAME: order_app
+      SPRING_DATASOURCE_PASSWORD: ${ORDER_DB_PASSWORD}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+
+  delivery-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: delivery-service }
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=delivery_schema
+      SPRING_DATASOURCE_USERNAME: delivery_app
+      SPRING_DATASOURCE_PASSWORD: ${DELIVERY_DB_PASSWORD}
+
+networks:
+  logistics-net:
+    driver: bridge
+
+volumes:
+  pgdata:
