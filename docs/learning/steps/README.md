@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 4 | [common 엔티티·사용자 컨텍스트](step-04-common-entity-user-context.md) | feat: common 엔티티 Audit과 사용자 컨텍스트 추가 |
 | 3 | [common 응답·예외](step-03-common-response-exception.md) | feat: common 공통 응답과 전역 예외 처리 추가 |
 | 2 | [config-server로 설정 중앙화](step-02-config-server.md) | feat: config-server로 서비스 설정 중앙화 |
 | 1 | [Docker 기반 로컬 인프라](step-01-docker-infra.md) | feat: Docker 기반 로컬 인프라 구성 |

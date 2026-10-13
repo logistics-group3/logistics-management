@@ -1,7 +1,7 @@
 # junhyun/base-setting
 
 ## 지금 하는 일
-공통 인프라 스텝 4: common 엔티티·사용자 컨텍스트
+공통 인프라 스텝 5: user 인증
 
 ## 진행 상태
 공통 인프라 범위: [공통 인프라 개발 범위.md](공통%20인프라%20개발%20범위.md). 10/13 오후 구현, 10/14 오전 리뷰 후 한 명의 결과물을 채택한다. 이 브랜치를 main처럼 쓴다.
@@ -14,7 +14,7 @@
 - [x] 1. Docker 인프라: compose, Dockerfile 템플릿, init.sql, .env.example. `docker compose up` 후 서비스 6개가 Eureka에 UP으로 등록됨 확인 (완료 기준 1)
 - [x] 2. config-server (native, 8888): 서비스 6개가 config에서 설정을 받아 기동, Gateway 라우팅으로 user-service 도달 확인
 - [x] 3. common 응답·예외: ApiResponse, PageResponse, ErrorCode(인터페이스)+CommonErrorCode, GlobalExceptionHandler. 테스트 5개 통과
-- [ ] 4. common 엔티티·사용자 컨텍스트
+- [x] 4. common 엔티티·사용자 컨텍스트: BaseEntity, AuditorAware, @CurrentUser, @RequireRole, FeignHeaderInterceptor. common 테스트 13개 통과
 - [ ] 5. user 인증 (U-01, U-02, I-01, 샘플 API)
 - [ ] 6. gateway 보안 필터
 - [ ] 7. 통합 검증 스크립트 (완료 기준 6개)
@@ -22,9 +22,9 @@
 - 면접 포인트: DB per service를 인스턴스 하나에서 스키마·계정으로 나눈 이유와 한계, compose의 depends_on과 healthcheck 차이, Config Server 값과 환경 변수의 우선순위
 
 ## 다음 단계
-1. common: BaseEntity(Audit 6개 + softDelete), AuditorAware(X-Username, 없으면 SYSTEM), JPA Auditing 설정
-2. common: UserContext, @CurrentUser ArgumentResolver, @RequireRole 인터셉터, FeignHeaderInterceptor
-3. 단위 테스트
+1. JJWT, spring-security-crypto 버전 확인 후 ADR 0003
+2. user-service: User 엔티티(p_users), 회원가입 U-01, 로그인 U-02(JWT 발급), I-01
+3. 샘플 API(`/api/v1/users/sample/me`, `/sample/admin`)
 
 ## 직접 해보기
 스텝 2(config-server)를 혼자 재현하는 순서다.
