@@ -5,5 +5,6 @@ ARG MODULE
 WORKDIR /app
 COPY ${MODULE}/build/libs/${MODULE}-0.0.1-SNAPSHOT.jar app.jar
 
-ENV JAVA_OPTS="-Xms128m -Xmx384m"
+ENV JAVA_OPTS="-Xms128m -Xmx384m" \
+    TZ=Asia/Seoul
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

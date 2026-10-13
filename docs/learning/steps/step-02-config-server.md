@@ -1,7 +1,7 @@
 # 스텝 2. config-server로 설정 중앙화
 
 - 날짜: 2026-10-13
-- 커밋: `9693c14 feat: config-server로 서비스 설정 중앙화`
+- 커밋: feat: config-server로 서비스 설정 중앙화
 - 결과: 서비스 6개가 config-server에서 설정을 받아 기동(로그 `Fetching config from server at : http://config-server:8888`, 포트 8081 반영). Gateway를 거쳐 user-service까지 라우팅 확인. config-server 테스트 통과
 
 ## 바뀐 구조

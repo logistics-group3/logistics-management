@@ -1,7 +1,7 @@
 # 스텝 1. Docker 기반 로컬 인프라
 
 - 날짜: 2026-10-13
-- 커밋: `b71c0bc feat: Docker 기반 로컬 인프라 구성`
+- 커밋: feat: Docker 기반 로컬 인프라 구성
 - 결과: `docker compose up -d --build` 한 번으로 postgres가 healthy, 서비스 6개(gateway + 비즈니스 5개)가 Eureka에 UP으로 등록 (완료 기준 1)
 
 ## 만든 것
