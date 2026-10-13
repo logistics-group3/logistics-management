@@ -1,0 +1,66 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # SA 3.2 Gateway 라우팅 규칙. /internal/** 은 라우트를 만들지 않는다 (외부 차단)
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/auth/**, /api/v1/users/**
+            - id: hub-service
+              uri: lb://hub-service
+              predicates:
+                - Path=/api/v1/hubs/**, /api/v1/hub-routes/**
+            - id: company-service
+              uri: lb://company-service
+              predicates:
+                - Path=/api/v1/companies/**, /api/v1/products/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/v1/orders/**
+            - id: delivery-service
+              uri: lb://delivery-service
+              predicates:
+                - Path=/api/v1/deliveries/**
+
+gateway:
+  auth:
+    # user-service 와 반드시 같은 값. 운영/도커에서는 .env 의 JWT_SECRET 으로 주입 (32바이트 이상)
+    jwt-secret: ${JWT_SECRET:local-dev-only-secret-key-change-me-0123456789}
+    role-cache-ttl: 60s
+    whitelist:
+      - /api/v1/auth/signup
+      - /api/v1/auth/login
+      - /swagger-ui/**
+      - /v3/api-docs/**
+      - /*/v3/api-docs/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    registry-fetch-interval-seconds: 5        # 로컬 개발용: 새 인스턴스를 빨리 반영
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
+  endpoint:
+    gateway:
+      access: read_only
+
+logging:
+  level:
+    com.sparta.logistics: DEBUG

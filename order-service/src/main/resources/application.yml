@@ -1,0 +1,49 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: order-service
+  # 로컬(IDE) 실행 기본값. Docker 에서는 docker-compose 의 SPRING_DATASOURCE_* 환경 변수가 덮어쓴다.
+  datasource:
+    url: jdbc:postgresql://localhost:5432/logistics?currentSchema=order_schema
+    username: order_app
+    password: ${ORDER_DB_PASSWORD:order_local_pw}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update            # 개발 단계. 스키마가 안정되면 validate 로 변경
+    properties:
+      hibernate:
+        default_schema: order_schema
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Seoul
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:                # SA 3.5 Feign 타임아웃
+            connect-timeout: 2000
+            read-timeout: 5000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    # 같은 서비스를 여러 개 띄워도(--scale) 구분되도록 랜덤 값 사용 (SA 3.3)
+    instance-id: ${spring.application.name}:${random.value}
+    lease-renewal-interval-in-seconds: 10     # 로컬 개발용
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+logging:
+  level:
+    com.sparta.logistics: DEBUG

@@ -1,0 +1,24 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+out/
+.idea/
+*.iml
+*.iws
+.vscode/
+.DS_Store
+logs/
+*.log
+
+# 비밀 정보 — 절대 커밋 금지 (.env.example 만 커밋)
+.env
+
+# VSCode Java 확장이 모듈마다 만드는 빌드 결과물
+bin/
+
+# Windows 탐색기가 만드는 썸네일 캐시
+Thumbs.db
+
+# .env.local 같은 변형도 막고, .env.example 은 커밋되게
+.env.*
+!.env.example

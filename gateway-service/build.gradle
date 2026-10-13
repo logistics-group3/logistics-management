@@ -1,0 +1,15 @@
+dependencies {
+    // 응답 형식·에러 코드·헤더 상수 공유 (MVC 관련 자동 설정은 WebFlux 에서 꺼진다)
+    implementation project(':common')
+
+    // Spring Cloud 2025.0 부터 바뀐 Gateway 스타터 이름 (WebFlux 기반)
+    // 주의: spring-boot-starter-web(MVC) 을 추가하면 안 된다.
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'com.github.ben-manes.caffeine:caffeine'   // 권한 재확인 60초 캐시
+
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+}

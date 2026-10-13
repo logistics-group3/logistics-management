@@ -1,0 +1,61 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  # 로컬(IDE) 실행 기본값. Docker 에서는 docker-compose 의 SPRING_DATASOURCE_* 환경 변수가 덮어쓴다.
+  datasource:
+    url: jdbc:postgresql://localhost:5432/logistics?currentSchema=user_schema
+    username: user_app
+    password: ${USER_DB_PASSWORD:user_local_pw}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update            # 개발 단계. 스키마가 안정되면 validate 로 변경
+    properties:
+      hibernate:
+        default_schema: user_schema
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Seoul
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:                # SA 3.5 Feign 타임아웃
+            connect-timeout: 2000
+            read-timeout: 5000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+    # 같은 서비스를 여러 개 띄워도(--scale) 구분되도록 랜덤 값 사용 (SA 3.3)
+    instance-id: ${spring.application.name}:${random.value}
+    lease-renewal-interval-in-seconds: 10     # 로컬 개발용
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+logging:
+  level:
+    com.sparta.logistics: DEBUG
+
+# Gateway 와 반드시 같은 값. Docker 에서는 .env 의 JWT_SECRET 으로 주입 (32바이트 이상)
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-key-change-me-0123456789}
+  expiration: 60m
+
+app:
+  seed:
+    master:
+      enabled: true
+      username: master
+      password: ${MASTER_PASSWORD:Master!2026}

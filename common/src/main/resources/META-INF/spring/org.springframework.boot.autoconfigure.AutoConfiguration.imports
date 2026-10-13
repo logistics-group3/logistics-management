@@ -1,0 +1,3 @@
+com.sparta.logistics.common.web.CommonWebAutoConfiguration
+com.sparta.logistics.common.jpa.CommonJpaAutoConfiguration
+com.sparta.logistics.common.feign.CommonFeignAutoConfiguration

@@ -1,0 +1,4 @@
+# Windows 에서 clone 해도 Docker(Linux) 안에서 gradlew 가 실행되도록 LF 고정
+gradlew text eol=lf
+*.sh    text eol=lf
+*.bat   text eol=crlf

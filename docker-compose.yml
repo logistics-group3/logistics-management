@@ -1,0 +1,157 @@
+# =====================================================================
+# 전체 실행:   docker compose up -d --build
+# 상태 확인:   docker compose ps   /  Eureka 대시보드 http://localhost:8761
+# 로그:        docker compose logs -f gateway-service user-service
+# 종료:        docker compose down        (DB 데이터 유지)
+#              docker compose down -v     (DB 데이터·init.sql 재실행까지 초기화)
+# 수평 확장:   docker compose up -d --scale order-service=2
+#
+# 외부 공개 포트: gateway 8080, eureka 8761, postgres 5432(개발 편의용)
+# 비즈니스 서비스는 호스트 포트를 공개하지 않는다 → Gateway 를 통해서만 접근 (SA 3.1)
+# =====================================================================
+
+x-service-env: &service-env
+  SPRING_PROFILES_ACTIVE: docker
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+  TZ: Asia/Seoul
+
+x-db-service: &db-service
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    eureka-server:
+      condition: service_healthy
+  networks: [ logistics-net ]
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env 파일이 없습니다. cp .env.example .env 후 다시 실행하세요}
+      TZ: Asia/Seoul
+    ports:
+      - "5432:5432"                 # 개발 편의용 (IDE 에서 서비스 실행 / DB 툴 접속)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d logistics" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [ logistics-net ]
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args: { MODULE: eureka-server }
+    image: sparta-logistics/eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      TZ: Asia/Seoul
+    healthcheck:
+      # temurin JRE 이미지에는 curl 이 없어서 bash 의 /dev/tcp 로 포트만 확인
+      test: [ "CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8761' || exit 1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+    networks: [ logistics-net ]
+
+  gateway-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args: { MODULE: gateway-service }
+    image: sparta-logistics/gateway-service
+    ports:
+      - "8080:8080"                 # 유일한 외부 API 진입점
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET:?.env 의 JWT_SECRET 이 비어 있습니다}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ logistics-net ]
+
+  user-service:
+    <<: *db-service
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args: { MODULE: user-service }
+    image: sparta-logistics/user-service
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET:?.env 의 JWT_SECRET 이 비어 있습니다}
+      MASTER_PASSWORD: ${MASTER_PASSWORD:?.env 의 MASTER_PASSWORD 가 비어 있습니다}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=user_schema
+      SPRING_DATASOURCE_USERNAME: user_app
+      SPRING_DATASOURCE_PASSWORD: ${USER_DB_PASSWORD:?.env 의 USER_DB_PASSWORD 가 비어 있습니다}
+
+  hub-service:
+    <<: *db-service
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args: { MODULE: hub-service }
+    image: sparta-logistics/hub-service
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=hub_schema
+      SPRING_DATASOURCE_USERNAME: hub_app
+      SPRING_DATASOURCE_PASSWORD: ${HUB_DB_PASSWORD:?.env 의 HUB_DB_PASSWORD 가 비어 있습니다}
+
+  company-service:
+    <<: *db-service
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args: { MODULE: company-service }
+    image: sparta-logistics/company-service
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=company_schema
+      SPRING_DATASOURCE_USERNAME: company_app
+      SPRING_DATASOURCE_PASSWORD: ${COMPANY_DB_PASSWORD:?.env 의 COMPANY_DB_PASSWORD 가 비어 있습니다}
+
+  order-service:
+    <<: *db-service
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args: { MODULE: order-service }
+    image: sparta-logistics/order-service
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=order_schema
+      SPRING_DATASOURCE_USERNAME: order_app
+      SPRING_DATASOURCE_PASSWORD: ${ORDER_DB_PASSWORD:?.env 의 ORDER_DB_PASSWORD 가 비어 있습니다}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+
+  delivery-service:
+    <<: *db-service
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args: { MODULE: delivery-service }
+    image: sparta-logistics/delivery-service
+    environment:
+      <<: *service-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics?currentSchema=delivery_schema
+      SPRING_DATASOURCE_USERNAME: delivery_app
+      SPRING_DATASOURCE_PASSWORD: ${DELIVERY_DB_PASSWORD:?.env 의 DELIVERY_DB_PASSWORD 가 비어 있습니다}
+
+networks:
+  logistics-net:
+    driver: bridge
+
+volumes:
+  pgdata:
