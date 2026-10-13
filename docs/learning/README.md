@@ -3,6 +3,7 @@
 작업 중 나온 질문과 답을 날짜별로 남긴다. 블로그 초안과 복습 자료로 쓴다. 작성 방법은 `.agents/skills/learning-note/SKILL.md`, 운영 원칙은 `docs/agents/learning-guide.md`를 따른다.
 
 - 학습 범위: [roadmap.md](roadmap.md)
+- 구현 스텝 기록: [steps/](steps/README.md)
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
