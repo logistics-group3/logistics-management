@@ -2,6 +2,9 @@
 
 > 최신이 위. 형식: `- [영역/서비스] 내용 (관련 파일) — 작성자`
 
+## 2026-10-13
+- [common] QueryDSL APT 추가 → `QBaseEntity` 생성, 서비스 컴파일 오류(`cannot find symbol QBaseEntity`) 해결 (backend/common/build.gradle, 02-architecture §2) — 한얼
+
 ## 2026-10-12
 - [README] 프로젝트 소개 · 아키텍처 · 인증/주문 흐름 · 도메인 개요 · 기술 스택 · 문서 목차 · 팀으로 재구성 (README.md) — 한얼
 - [가이드] 역할별 가이드 `doc/guide/11~15` 추가: 서비스 개발 순서, config 보안·무중단 설정 변경(설계), Git 규칙(제안), 리뷰 체크리스트, 문제 해결 (doc/README, 02-architecture §1·§6, config/README) — 한얼

@@ -51,6 +51,7 @@ sparta-logistics/
 ```
 
 - `settings.gradle`이 `backend/*` 모듈을 `projectDir`로 연결 (프로젝트 이름은 `:user-service`처럼 짧게)
+- common에도 QueryDSL APT가 있어 `QBaseEntity`를 만든다 (서비스의 `QUser` 등이 상속). 없으면 `cannot find symbol QBaseEntity`
 - 비즈니스 서비스는 `implementation project(':common')` + PostgreSQL + QueryDSL APT, gateway·비즈니스 서비스는 `spring-cloud-starter-config`가 루트에서 자동 주입된다
 - Application 클래스: `@SpringBootApplication(scanBasePackages = "com.sparta.logistics")` (common 빈 스캔), 도메인 서비스는 `@EnableFeignClients`
 - `bootJar` 결과물은 `build/libs/app.jar` (Dockerfile 공통)

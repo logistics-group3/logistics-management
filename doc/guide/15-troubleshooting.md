@@ -16,4 +16,5 @@
 | 호출 시 `401 UNAUTHORIZED` (서비스 직접 호출) | X-User-* 헤더 없음 (Gateway 미경유) | `:8080` Gateway로 호출 |
 | `/internal/...` 외부 호출이 404 | 정상 (Gateway가 차단) | 서비스 간 Feign으로만 호출 |
 | 포트 충돌 `5433 already allocated` | 로컬 PostgreSQL 등 | 기존 프로세스 종료 또는 compose 포트 변경 |
+| `cannot find symbol QBaseEntity` | common 모듈에 QueryDSL APT가 없어 `QBaseEntity`가 생성되지 않음 | common `build.gradle`에 `querydsl-apt` annotationProcessor (2026-10-13 반영) → `./gradlew clean build` |
 | `./gradlew` 빌드 시 QueryDSL `Q클래스` 없음 | annotation processing 미실행 | `./gradlew :{service}-service:compileJava`, IDE에서 Gradle로 빌드 위임 |
