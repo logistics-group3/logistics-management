@@ -23,5 +23,7 @@ application-{profile}.yml    환경별 공통 (DB 주소 규칙, eureka 주소, 
 
 - 비밀값(DB 비밀번호, JWT, Slack URL, 관리자 비밀번호)은 `${ENV}`로만 둡니다. 값은 `.env` → compose 환경 변수. local에만 로컬 개발용 기본값이 있습니다.
 - DB 주소는 `{service}.yml`에 `db.local-port`·`db.docker-host`만 적고, 실제 `db.host`·`db.port`는 `application-{profile}.yml`이 정합니다.
-- 설정을 바꾸면 해당 서비스를 재시작합니다 (compose는 볼륨 마운트라 config-server 재빌드 불필요). 재시작 없이 반영하는 방법(refresh)과 보안 규칙은 [`doc/guide/12-config-ops.md`](../doc/guide/12-config-ops.md)
+- **설정을 바꾸고 저장하면 끝입니다.** config-server가 2~4초 안에 변경을 감지해 해당 서비스(공통 파일이면 전체)에 `/actuator/refresh`를 호출합니다. 결과는 `docker compose logs -f config-server`
+- 포트·DB·JWT 키처럼 refresh로 바뀌지 않는 키는 서비스 재시작이 필요합니다 → 목록: [`doc/guide/12-config-ops.md`](../doc/guide/12-config-ops.md) §3.2
+- 서비스 고유 설정을 코드에서 받을 때는 JavaBean `@ConfigurationProperties`로 (record·`@Value`는 refresh 안 됨)
 - 바꾼 내용은 `doc/design/02-architecture.md` §1과 `doc/etc/07-changelog.md`에 반영합니다.

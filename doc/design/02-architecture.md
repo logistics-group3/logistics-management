@@ -7,7 +7,7 @@
 | 서비스 | 포트 | 책임 | DB (컨테이너 :호스트 포트) | 상태 |
 |---|---|---|---|---|
 | eureka-server | 8761 | 서비스 등록·조회 | - | 완료 |
-| config-server | 8888 | 루트 `config/` 설정을 각 서비스에 제공 (native) | - | 완료 |
+| config-server | 8888 | 루트 `config/` 설정을 각 서비스에 제공 (native), 파일 변경 시 해당 서비스 자동 refresh | - | 완료 |
 | gateway-service | 8080 | 단일 진입점, JWT 검증, 권한 재확인, 라우팅, `/internal/**` 차단 | - | 완료 |
 | user-service | 8081 | 회원가입, 로그인(JWT 발급), 사용자 관리 | `user_db` (user-db :5433) | 인증만 완료 |
 | hub-service | 8082 | 허브·경로 조회, 허브별 재고 | `hub_db` (hub-db :5434) | 빈 모듈 |
@@ -27,6 +27,8 @@
 | `config/application-docker.yml` | DB `{db.docker-host}:5432`, Eureka `eureka-server:8761`, `JWT_SECRET`·`DB_PASSWORD` 필수 |
 | `config/{service}-service.yml` | 포트, `db.name`·`db.username`·`db.local-port`·`db.docker-host`, 서비스 고유 설정 (gateway 라우팅·인증, user JWT·MASTER, order Slack) |
 - eureka-server·config-server는 config를 쓰지 않고 자기 `application.yml`만 사용
+- **설정 자동 반영**: config-server가 `config/`를 2초마다 확인 → 바뀐 파일의 서비스 인스턴스를 Eureka에서 찾아 `POST /actuator/refresh` (재시작 없음, ADR-0006). 반영 가능한 키·한계: `doc/guide/12-config-ops.md` §3
+- actuator 노출: `health`, `refresh`. 비즈니스 서비스는 포트 미공개라 내부망에서만 호출됨. **gateway는 현재 8080에 같이 열려 있음(로컬 전용) → 배포 전 관리 포트 분리 필요** (`doc/guide/12-config-ops.md` §3.3)
 
 ## 2. 프로젝트 구조 (SA 2.4)
 
@@ -161,7 +163,7 @@ sequenceDiagram
 | user-db | postgres:16 | 5433 | O | `user_db` / `user_svc`, `doc/sql/01-user.sql` |
 | hub-db · company-db · order-db · delivery-db | postgres:16 | 5434 ~ 5437 | `--profile domain` | `doc/sql/02~05` |
 | eureka-server | 빌드 | 8761 | O | 대시보드 |
-| config-server | 빌드 | 8888 | O | `./config`를 `/config`로 볼륨 마운트 (`CONFIG_LOCATION=file:/config/`) → 설정 수정 시 재빌드 불필요 |
+| config-server | 빌드 | 8888 | O | `./config`를 `/config`로 볼륨 마운트 (`CONFIG_LOCATION=file:/config/`) → 설정 수정 시 재빌드·재시작 불필요, 변경 감지 후 자동 refresh (`EUREKA_URL`로 인스턴스 조회) |
 | gateway-service | 빌드 | 8080 | O | 유일한 외부 API 진입점 |
 | user-service | 빌드 | 미공개 | O | |
 | hub / company / order / delivery-service | 빌드 | 미공개 | `--profile domain` | 수평 확장 가능 (`--scale order-service=2`) |
@@ -190,4 +192,4 @@ docker compose up -d user-db eureka-server config-server
 ```
 
 비밀 정보(JWT secret, DB 비밀번호, Slack Webhook URL)는 `.env` → 환경 변수로만 주입하고 Git에서 제외한다 (`.gitignore`, 변수 목록은 `.env.example`).
-config-server 접근 제한, 재시작 없는 설정 반영(`/actuator/refresh`), 롤링 재시작 절차는 `doc/guide/12-config-ops.md` (설계, 미구현 · ADR-0006).
+재시작 없는 설정 반영(자동 refresh, 구현됨)과 config-server 접근 제한·롤링 재시작(설계)은 `doc/guide/12-config-ops.md`.

@@ -10,7 +10,7 @@
 | `Schema-validation: missing table [p_xxx]` / `wrong column type` | DDL과 Entity 불일치 (`ddl-auto: validate`) | `doc/sql/{NN}-{service}.sql` 수정 → `script/run.sh --profile domain --reset` |
 | DDL을 고쳤는데 DB에 반영 안 됨 | init 스크립트는 볼륨이 비어 있을 때만 실행 | `script/run.sh --reset` (DB 데이터 삭제됨) |
 | `config/` 수정이 반영 안 됨 (IDE로 config-server 실행 시) | IDE 실행은 jar 안 복사본(`classpath:/config/`)을 읽음 | config-server는 compose로 실행 (볼륨 마운트) |
-| `config/` 수정이 반영 안 됨 (compose) | 서비스는 기동 시에만 설정을 받음 | 서비스 재시작 (refresh 도입 후: `script/config-refresh.sh`) — `12-config-ops.md` |
+| `config/` 수정이 반영 안 됨 (compose) | refresh로 바뀌지 않는 키(포트·DB·JWT 등)이거나 refresh 실패 | `docker compose logs config-server`에서 `refresh 완료/실패` 확인, 재시작 필요한 키면 `docker compose restart {서비스}` — `12-config-ops.md` §3.2 |
 | Gateway에서 `503 SERVICE_UNAVAILABLE` (기동 직후) | 서비스가 아직 Eureka에 등록 안 됨 / LoadBalancer 캐시 | 30~60초 후 재시도, `:8761`에서 등록 확인 |
 | 로그인 후 API가 `401 TOKEN_ROLE_MISMATCH` | 권한 변경·탈퇴 후 이전 토큰 사용 | 재로그인 (권한 캐시 최대 60초) |
 | 호출 시 `401 UNAUTHORIZED` (서비스 직접 호출) | X-User-* 헤더 없음 (Gateway 미경유) | `:8080` Gateway로 호출 |

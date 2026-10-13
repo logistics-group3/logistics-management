@@ -13,11 +13,11 @@
 
 ---
 
-## ADR-0006 설정 반영은 `/actuator/refresh` + 스크립트, Spring Cloud Bus 미도입 (2026-10-12, 한얼) — 제안
-- 상황: 서비스는 기동 시에만 config-server에서 설정을 받는다. 배포 중 설정만 바꿀 때 서비스를 재시작하지 않는 방법이 필요
-- 결정: 각 인스턴스의 `POST /actuator/refresh`를 `script/config-refresh.sh {service}`로 일괄 호출한다. 재시작이 필요한 설정(포트, DB, JWT 키)은 롤링 재시작. Spring Cloud Bus는 쓰지 않는다
-- 이유: Bus는 Kafka/RabbitMQ가 추가로 필요하다(컨테이너·학습 비용). 인스턴스 수가 적어 스크립트로 충분하다. refresh는 서비스 포트가 호스트에 공개되지 않아 compose 내부망에서만 호출된다
-- 영향: 서비스 고유 설정은 JavaBean `@ConfigurationProperties`로 받아야 refresh된다. 상세·구현 단계: `doc/guide/12-config-ops.md`. 팀 리뷰(수)에서 확정 필요
+## ADR-0006 설정 변경은 config-server가 감지해 자동 refresh, Spring Cloud Bus 미도입 (2026-10-13, 한얼)
+- 상황: config-server를 둔 목적은 설정을 바꿔도 서비스를 재시작하지 않는 것. 그러나 서비스는 기동 시에만 설정을 받는다
+- 결정: config-server가 native 폴더(`config/`)를 2초마다 폴링(내용 해시)하고, 바뀐 파일에 해당하는 서비스의 모든 인스턴스를 Eureka에서 찾아 `POST /actuator/refresh`를 호출한다. Spring Cloud Bus·config-monitor는 쓰지 않는다
+- 이유: Bus는 Kafka/RabbitMQ가 필요하다(컨테이너·학습 비용). 인스턴스 수가 적고 Eureka가 이미 있어 직접 호출로 충분하다. 파일 이벤트(WatchService)는 Docker Desktop 바인드 마운트에서 전달되지 않을 수 있어 폴링
+- 영향: 서비스 고유 설정은 JavaBean `@ConfigurationProperties`로 받아야 refresh된다. refresh 엔드포인트를 노출하므로 비즈니스 서비스 포트는 호스트에 공개하지 않는다. gateway는 8080에 actuator가 함께 열려 있어 로컬 전용으로 두고, 배포 전 관리 포트를 분리한다. config-server가 Eureka에 의존(조회만). 상세: `doc/guide/12-config-ops.md` §3
 
 ## ADR-0005 내부 API 응답은 래퍼 없이 DTO 그대로 (2026-10-12)
 - 상황: SA 6.1 공통 응답 형식(`{status, message, data}`)이 내부 API(`/internal/**`)에도 적용되는지 명시되지 않음

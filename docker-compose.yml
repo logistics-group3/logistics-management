@@ -111,6 +111,10 @@ services:
       - "8888:8888"
     environment:
       CONFIG_LOCATION: file:/config/       # 볼륨으로 넣은 설정을 읽음 → 설정 수정 시 config-server 재빌드 불필요
+      EUREKA_URL: http://eureka-server:8761/eureka   # 설정 변경 시 refresh할 인스턴스 조회
+    depends_on:
+      eureka-server:
+        condition: service_started
     volumes:
       - ./config:/config:ro
     healthcheck:

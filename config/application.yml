@@ -16,6 +16,7 @@ spring:
           default:
             connect-timeout: 2000   # SA 3.5: connect 2초 / read 5초
             read-timeout: 5000
+        refresh-enabled: true       # 타임아웃 등 Feign 설정도 /actuator/refresh로 반영
 
 server:
   forward-headers-strategy: framework   # Gateway 경유 Swagger "Try it out"이 Gateway 주소로 호출되도록
@@ -29,7 +30,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,refresh   # refresh: config-server가 설정 변경 시 호출 (compose 내부망 전용, 서비스 포트 미공개)
 
 springdoc:
   swagger-ui:

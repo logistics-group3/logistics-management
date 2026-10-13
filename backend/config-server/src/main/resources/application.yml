@@ -10,9 +10,26 @@ spring:
     config:
       server:
         native:
-          # 기본(IDE): jar에 포함된 설정 (루트 config/ → classpath:/config/)
-          # docker compose: CONFIG_LOCATION=file:/config/ 로 볼륨 마운트한 폴더를 읽음
+          # 기본(IDE): jar에 포함된 설정 (루트 config/ → classpath:/config/) — 자동 refresh 안 됨
+          # docker compose: CONFIG_LOCATION=file:/config/ 로 볼륨 마운트한 폴더를 읽음 — 자동 refresh 됨
           search-locations: ${CONFIG_LOCATION:classpath:/config/}
+
+# 설정 파일이 바뀌면 해당 서비스 인스턴스에 POST /actuator/refresh (ConfigFileWatcher → RefreshBroadcaster)
+config:
+  watch:
+    enabled: ${CONFIG_WATCH_ENABLED:true}
+    interval-ms: 2000       # 폴링 주기. 변경 감지 후 한 주기 더 기다렸다가 refresh (연속 저장을 한 번에)
+    connect-timeout: 2s
+    read-timeout: 15s
+
+# refresh 대상 조회용. config-server 자신은 등록하지 않는다
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: true
+    registry-fetch-interval-seconds: 5
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
 
 management:
   endpoints:

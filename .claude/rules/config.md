@@ -24,7 +24,7 @@ paths:
 - 로그에 비밀값 출력 금지
 
 ## 설정을 코드에서 받을 때
-- `@Value` 대신 `@ConfigurationProperties(prefix = "{service}.xxx")` + **JavaBean(`@Getter @Setter` class)** — record·생성자 바인딩은 `/actuator/refresh`로 바뀌지 않는다
+- `@Value` 대신 `@ConfigurationProperties(prefix = "{service}.xxx")` + **JavaBean(`@Getter @Setter` class)** — `config/` 저장 시 config-server가 자동으로 `/actuator/refresh`를 호출하는데, record·생성자 바인딩·일반 빈의 `@Value`는 바뀌지 않는다
 - 위치 `infrastructure/config/{X}Properties.java`, Application에 `@ConfigurationPropertiesScan`
 - 값으로 객체를 만들어 두는 빈(캐시, 클라이언트)은 refresh 대상이면 `@RefreshScope`
 - 기동 후 바뀌면 안 되는 값(JWT 키, DB)은 생성자에서 읽어도 되지만, 바꾸려면 롤링 재시작임을 주석에 남긴다
