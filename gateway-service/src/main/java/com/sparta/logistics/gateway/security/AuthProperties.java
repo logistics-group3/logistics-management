@@ -1,4 +1,4 @@
-package com.sparta.logistics.gateway.auth;
+package com.sparta.logistics.gateway.security;
 
 import java.time.Duration;
 import java.util.List;

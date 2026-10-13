@@ -1,5 +1,7 @@
 # 스텝 6. gateway 보안 필터
 
+> 스텝 9에서 이 필터를 Spring Security(WebFlux) 구성으로 바꿨다. SA 단계와 응답 계약은 같다. 현재 구조는 [스텝 9](step-09-gateway-spring-security.md)를 본다.
+
 - 날짜: 2026-10-13
 - 결과: 완료 기준 3~6을 컨테이너 환경에서 curl로 확인. gateway 테스트 9개 통과
 

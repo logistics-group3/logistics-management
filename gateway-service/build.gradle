@@ -9,7 +9,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation "org.springdoc:springdoc-openapi-starter-webflux-ui:${springdocVersion}"
-    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
-    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
-    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    // JWT 검증(ReactiveJwtDecoder, Nimbus). 발급은 user-service가 JJWT로 한다
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+
+    testImplementation 'org.springframework.security:spring-security-test'
 }

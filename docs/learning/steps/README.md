@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 9 | [Gateway를 Spring Security로 전환](step-09-gateway-spring-security.md) | refactor: Gateway 인증을 Spring Security WebFlux로 전환 |
 | 8 | [springdoc, QueryDSL](step-08-springdoc-querydsl.md) | feat: springdoc 문서 통합과 QueryDSL 공통 설정 추가 |
 | 7 | [통합 검증 스크립트](step-07-e2e-check.md) | feat: 공통 인프라 완료 기준 자동 검증 스크립트 추가 |
 | 6 | [gateway 보안 필터](step-06-gateway-security.md) | feat: gateway 인증 필터와 권한 재확인 캐시 구현 |

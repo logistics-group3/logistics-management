@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # 공통 인프라 완료 기준 6개를 실제 컨테이너 환경에서 확인한다.
-# 사용: script/e2e-check.sh          (이미 compose가 떠 있을 때)
-#      script/e2e-check.sh --up     (bootJar 빌드 후 compose를 올리고 확인)
+# 사용: script/e2e-check.sh                     (이미 compose가 떠 있을 때)
+#      script/e2e-check.sh --up                (bootJar 빌드 후 compose를 올리고 확인)
+#      script/e2e-check.sh --with-cache-ttl    (권한 재확인 60초 캐시와 만료 후 재조회까지 확인, 약 65초 추가)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -32,7 +33,16 @@ login() {
     -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\"}" | json "d['data']['accessToken']"
 }
 
-if [[ "${1:-}" == "--up" ]]; then
+up=false
+cache_ttl=false
+for arg in "$@"; do
+  case "$arg" in
+    --up) up=true ;;
+    --with-cache-ttl) cache_ttl=true ;;
+  esac
+done
+
+if [[ "$up" == true ]]; then
   [[ -f .env ]] || cp .env.example .env
   ./gradlew bootJar -q && docker compose up -d --build
 fi
@@ -78,6 +88,20 @@ check "위조 role 헤더로 MASTER 전용 403" "403" \
   "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token" -H 'X-User-Role: MASTER')"
 forged=$(curl -s "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $user_token" -H 'X-Username: evil' -H 'X-User-Role: MASTER')
 check "위조 헤더가 서비스에 전달되지 않음" "$user USER" "$(json "d['data']['username'] + ' ' + d['data']['role']" <<<"$forged")"
+
+if [[ "$cache_ttl" == true ]]; then
+  echo "[추가] 권한 재확인 캐시(60초)와 만료 후 user-service 재조회"
+  ttl_user="e2et$suffix"
+  signup "$ttl_user" >/dev/null
+  ttl_token=$(login "$ttl_user")
+  check "캐시 적재 200" "200" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")"
+  started=$(date +%s)
+  script/promote-master.sh "$ttl_user" >/dev/null
+  check "DB role 변경 직후에도 캐시된 값으로 200" "200" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")"
+  sleep $(( 63 - ($(date +%s) - started) ))
+  expired=$(curl -s "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")
+  check "만료 후 재조회로 TOKEN_ROLE_MISMATCH" "TOKEN_ROLE_MISMATCH" "$(json "d['code']" <<<"$expired")"
+fi
 
 echo
 echo "결과: PASS $pass / FAIL $fail"

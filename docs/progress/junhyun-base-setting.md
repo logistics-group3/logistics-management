@@ -19,11 +19,12 @@
 - [x] 6. gateway 보안 필터: 완료 기준 3~6 curl 확인, gateway 테스트 9개 통과
 - [x] 7. 통합 검증 스크립트: 빈 DB에서 `script/e2e-check.sh --up` PASS 11/0, 64초 (완료 기준 1~6 전체)
 - [x] 8. springdoc(Gateway Swagger UI 통합), QueryDSL(OpenFeign 7.7) 공통 설정. e2e 회귀 없음
+- [x] 9. Gateway를 Spring Security(WebFlux)로 전환(SA 3.1 일치, ADR 0005). 캐시 만료 후 재조회를 실제로 확인하고 e2e `--with-cache-ttl`에 추가. 빈 DB부터 PASS 14/0
 - 면접 포인트: DB per service를 인스턴스 하나에서 스키마·계정으로 나눈 이유와 한계, compose의 depends_on과 healthcheck 차이, Config Server 값과 환경 변수의 우선순위
 
 ## 다음 단계
 1. 사용자 전체 리뷰: `docs/learning/steps/` 순서대로 읽고, 질문은 학습 노트로 남긴다
-2. 10/14 오전 팀 리뷰 시연: `docker compose down -v && script/e2e-check.sh --up`, Swagger UI(http://localhost:8080/swagger-ui.html)
+2. 10/14 오전 팀 리뷰 시연: `docker compose down -v && script/e2e-check.sh --up` (캐시 시연까지 하려면 `--with-cache-ttl`), Swagger UI(http://localhost:8080/swagger-ui.html)
 3. 채택되면 샘플 API(`user/presentation/sample`)를 지우고 서비스별 작업을 시작한다. 결과물을 main에 올리는 방법은 팀과 정한다
 
 ## 직접 해보기

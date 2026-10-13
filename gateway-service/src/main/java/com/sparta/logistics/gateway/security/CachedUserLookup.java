@@ -1,7 +1,8 @@
-package com.sparta.logistics.gateway.auth;
+package com.sparta.logistics.gateway.security;
 
 import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Ticker;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,8 +20,14 @@ public class CachedUserLookup implements UserLookup {
     private final Function<UUID, Mono<Optional<UserSnapshot>>> loader;
 
     public CachedUserLookup(Function<UUID, Mono<Optional<UserSnapshot>>> loader, Duration ttl) {
+        this(loader, ttl, Ticker.systemTicker());
+    }
+
+    /** 테스트에서 시간을 직접 흘려 만료를 확인할 수 있게 Ticker를 받는다. */
+    CachedUserLookup(Function<UUID, Mono<Optional<UserSnapshot>>> loader, Duration ttl, Ticker ticker) {
         this.loader = loader;
         this.cache = Caffeine.newBuilder()
+                .ticker(ticker)
                 .expireAfterWrite(ttl)
                 .maximumSize(10_000)
                 .buildAsync();

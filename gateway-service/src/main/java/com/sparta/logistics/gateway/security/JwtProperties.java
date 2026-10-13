@@ -1,4 +1,4 @@
-package com.sparta.logistics.gateway.auth;
+package com.sparta.logistics.gateway.security;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

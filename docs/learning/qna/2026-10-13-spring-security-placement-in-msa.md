@@ -41,8 +41,8 @@ Spring Security도 미리 넣어 두면 좋을 것 같다. 원래 Gateway에 두
 - 지금의 `@RequireRole`, `@CurrentUser`와 역할이 겹치므로 둘 중 하나로 정한다.
 
 ## 이 프로젝트에서는
-- 현재 구현(2026-10-13)은 Gateway도 Spring Security 없이 `WebFilter`로 SA 8.3 순서를 직접 구현했다(ADR 0003).
-- SA 기술 스택에 Gateway의 Spring Security가 적혀 있으므로, 이 부분은 SA와 다르다. 팀 확인이 필요하다.
+- 처음 구현은 Gateway도 Spring Security 없이 `WebFilter`로 SA 8.3 순서를 직접 구현했다(ADR 0003). SA와 달랐다.
+- 이 질문 뒤에 Gateway를 Spring Security(WebFlux)로 전환했다(ADR 0005, 스텝 9). user-service는 BCrypt만, 비즈니스 서비스는 `@RequireRole`을 유지한다.
 
 ## 면접 포인트
 - "MSA에서 인증은 어디서 하나": Gateway 집중과 서비스별 검증의 트레이드오프(단순함과 내부망 신뢰 대 제로 트러스트)를 설명한다.

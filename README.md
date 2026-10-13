@@ -6,6 +6,7 @@
 ```bash
 cp .env.example .env
 script/e2e-check.sh --up      # 빌드 → docker compose 기동 → 공통 인프라 완료 기준 6개 자동 확인
+# 권한 재확인 60초 캐시와 만료 후 재조회까지 보려면 --with-cache-ttl 추가 (약 65초)
 ```
 - Eureka 대시보드: http://localhost:8761
 - API 진입점(Gateway): http://localhost:8080
@@ -17,7 +18,7 @@ script/e2e-check.sh --up      # 빌드 → docker compose 기동 → 공통 인�
 |---|---|---|
 | config-server | 8888 | 설정 제공(`config-repo/`) |
 | eureka-server | 8761 | 서비스 디스커버리 |
-| gateway-service | 8080 | 라우팅, JWT 검증, 사용자 헤더 주입, `/internal` 차단 |
+| gateway-service | 8080 | Spring Security(WebFlux): JWT 검증, 권한 재확인(60초 캐시), 사용자 헤더 주입, `/internal` 차단 |
 | user-service | 8081 | 회원가입, 로그인(JWT 발급), 내부 사용자 조회 |
 | hub / company / order / delivery-service | 8082~8085 | 서비스별 담당자가 구현 |
 | common | - | 공통 응답·예외, BaseEntity, `@CurrentUser`, `@RequireRole`, Feign 헤더 전달 |
