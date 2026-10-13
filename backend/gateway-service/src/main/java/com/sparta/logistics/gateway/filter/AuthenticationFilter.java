@@ -79,6 +79,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return errorWriter.write(exchange, GatewayError.UNAUTHORIZED);
         }
 
+        // TODO: 10만명 이상 부터 레디스 사용 고려
         // 5. 권한 재확인 → 6. 헤더 주입
         return userLookupClient.lookup(claims.userId()).flatMap(lookup -> {
             if (lookup.status() == Status.UNAVAILABLE) {
@@ -99,7 +100,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublic(String path) {
-        return properties.publicPaths().stream().anyMatch(pattern -> MATCHER.match(pattern, path));
+        return properties.getPublicPaths().stream().anyMatch(pattern -> MATCHER.match(pattern, path));
     }
 
     /** 라우팅 필터보다 먼저 실행 */

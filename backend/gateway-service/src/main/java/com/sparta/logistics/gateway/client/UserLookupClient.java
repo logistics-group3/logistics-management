@@ -50,7 +50,7 @@ public class UserLookupClient {
         }
         return fetch(userId).doOnNext(result -> {
             if (result.status() != Status.UNAVAILABLE) {
-                cache.put(userId, new CachedLookup(result, clock.instant().plus(properties.roleCacheTtl())));
+                cache.put(userId, new CachedLookup(result, clock.instant().plus(properties.getRoleCacheTtl())));
             }
         });
     }
@@ -60,7 +60,7 @@ public class UserLookupClient {
                 .uri("/internal/users/{userId}", userId)
                 .retrieve()
                 .bodyToMono(InternalUser.class)
-                .timeout(properties.userLookupTimeout())
+                .timeout(properties.getUserLookupTimeout())
                 .map(UserLookup::found)
                 .onErrorResume(WebClientResponseException.NotFound.class, e -> Mono.just(UserLookup.notFound()))
                 .onErrorResume(e -> {
