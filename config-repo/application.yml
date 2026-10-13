@@ -27,3 +27,7 @@ management:
     web:
       exposure:
         include: health,info
+
+springdoc:
+  # 외부 문서에는 서비스 간 내부 API를 싣지 않는다(Gateway에서도 차단된다)
+  paths-to-exclude: /internal/**

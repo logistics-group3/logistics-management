@@ -1,7 +1,7 @@
 # junhyun/base-setting
 
 ## 지금 하는 일
-공통 인프라 스텝 8: springdoc, QueryDSL (시간이 남는 범위)
+공통 인프라 구현 완료, 사용자 전체 리뷰 대기
 
 ## 진행 상태
 공통 인프라 범위: [공통 인프라 개발 범위.md](공통%20인프라%20개발%20범위.md). 10/13 오후 구현, 10/14 오전 리뷰 후 한 명의 결과물을 채택한다. 이 브랜치를 main처럼 쓴다.
@@ -18,13 +18,13 @@
 - [x] 5. user 인증 (U-01, U-02, I-01, 샘플 API): Gateway 경유 가입·로그인 확인(완료 기준 2), 테스트 7개 통과. 위조 헤더가 아직 통과함을 재현
 - [x] 6. gateway 보안 필터: 완료 기준 3~6 curl 확인, gateway 테스트 9개 통과
 - [x] 7. 통합 검증 스크립트: 빈 DB에서 `script/e2e-check.sh --up` PASS 11/0, 64초 (완료 기준 1~6 전체)
-- [ ] 8. 시간이 남으면: springdoc, QueryDSL
+- [x] 8. springdoc(Gateway Swagger UI 통합), QueryDSL(OpenFeign 7.7) 공통 설정. e2e 회귀 없음
 - 면접 포인트: DB per service를 인스턴스 하나에서 스키마·계정으로 나눈 이유와 한계, compose의 depends_on과 healthcheck 차이, Config Server 값과 환경 변수의 우선순위
 
 ## 다음 단계
-1. springdoc: 서비스별 문서 + Gateway Swagger UI에서 서비스 선택
-2. QueryDSL 공통 설정
-3. 전체 리뷰 (사용자)
+1. 사용자 전체 리뷰: `docs/learning/steps/` 순서대로 읽고, 질문은 학습 노트로 남긴다
+2. 10/14 오전 팀 리뷰 시연: `docker compose down -v && script/e2e-check.sh --up`, Swagger UI(http://localhost:8080/swagger-ui.html)
+3. 채택되면 샘플 API(`user/presentation/sample`)를 지우고 서비스별 작업을 시작한다. 결과물을 main에 올리는 방법은 팀과 정한다
 
 ## 직접 해보기
 공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `docs/learning/steps/`에 있다.
