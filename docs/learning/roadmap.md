@@ -43,4 +43,4 @@
 | 장애 대응: 타임아웃, 재시도, 서킷 브레이커 | SA 3.5 | |
 | 로깅, 분산 추적 | Zipkin (선택) | |
 | 수평 확장과 무상태 설계 | `--scale` (SA 3.3) | |
-| CI, 테스트 자동화 | 추후 | [JaCoCo](qna/2026-10-14-flyway-and-jacoco.md) |
+| CI, 테스트 자동화 | 추후 | [JaCoCo](qna/2026-10-14-jacoco-coverage.md) |

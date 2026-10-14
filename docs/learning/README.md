@@ -7,6 +7,7 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-14 | [JaCoCo로 테스트 커버리지 재기 - 원리, 리포트 읽는 법, 함정](qna/2026-10-14-jacoco-coverage.md) | 중급 | jacoco, coverage, testing | Junhyun An |
 | 2026-10-14 | [Flyway와 JaCoCo는 무엇이고 이 프로젝트에 왜 필요한가](qna/2026-10-14-flyway-and-jacoco.md) | 중급 | flyway, migration, jacoco, coverage | Junhyun An |
 | 2026-10-14 | [서비스 8개가 Gradle 빌드를 한 번만 공유하는 Docker 멀티스테이지 빌드와 BuildKit 캐시](qna/2026-10-14-docker-multistage-buildkit-cache.md) | 중급 | docker, buildkit, gradle | Junhyun An |
 | 2026-10-14 | [save()로는 동시 가입이 500, saveAndFlush()로는 409인 이유와 테스트 검증법](qna/2026-10-14-jpa-flush-timing-and-concurrency-test.md) | 고급 | jpa, transaction, concurrency, testing | Junhyun An |
