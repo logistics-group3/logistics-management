@@ -24,7 +24,7 @@ script/db-check.sh            # 서비스 계정 5개의 실제 인증·스키�
 
 `.env`의 `COMPOSE_PROJECT_NAME`과 `POSTGRES_PORT`, `CONFIG_SERVER_PORT`, `EUREKA_PORT`, `GATEWAY_PORT`를 다르게 지정한다. 예를 들어 프로젝트 이름은 `logistics-integration`, 포트는 각각 `15432`, `18888`, `18761`, `18080`로 정한다. 컨테이너 내부 포트와 서비스 간 주소는 그대로다.
 
-검증 스크립트는 현재 Compose 프로젝트를 사용하며 E2E는 실제 공개 포트를 조회한다. `GATEWAY`·`EUREKA` 환경 변수로 검증 URL을 직접 지정할 수도 있다. IDE에서 `bootRun`을 함께 쓰는 경우에는 해당 서비스의 포트와 DB·Config Server·Eureka 접속 주소를 별도로 지정한다.
+검증 스크립트는 현재 Compose 프로젝트를 사용하며 E2E는 실제 공개 포트를 조회한다. `GATEWAY`·`EUREKA` 환경 변수로 검증 URL을 직접 지정할 수도 있다. IDE에서 서비스를 함께 띄우면 실행 설정에 `DB_PORT`, `CONFIG_SERVER_URL`, `EUREKA_URL`을 바꾼 포트에 맞게 넣는다([로컬 실행 가이드](docs/guides/local-run.md) 3.4).
 
 ## 직접 확인하기
 ```bash

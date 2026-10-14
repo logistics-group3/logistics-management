@@ -11,7 +11,8 @@ config-repo/ ──(config-server 빌드 때 jar에 포함)──▶ config-serv
 ```
 - `config-server/build.gradle`의 `processResources`가 루트 `config-repo/`를 jar 안 `classpath:/config-repo`로 넣는다. 로컬 실행과 컨테이너가 같은 설정을 읽는다.
 - 서비스는 기동할 때만 설정을 받는다. Config Server에 접속하지 못하면 기본값으로 뜨지 않고 바로 실패한다(`spring.cloud.config.fail-fast: true`).
-- `config-repo`의 `${ENV:기본값}` 자리표시자는 서비스 쪽 환경 변수로 풀린다. Config Server가 내려준 값은 서비스의 환경 변수보다 우선하므로, 환경마다 다른 값은 고정값이 아니라 자리표시자로 둔다.
+- `config-repo`의 `${ENV:기본값}` 자리표시자는 서비스 쪽 환경 변수로 풀린다. 환경마다 다른 값은 고정값이 아니라 자리표시자로 둔다.
+- 우선순위: 환경 변수·JVM 시스템 속성 > Config Server 값 > 모듈 `application.yml`. Config Server 값은 `spring.config.import`로 들어오는 설정 데이터라 환경 변수보다 낮다. 2026-10-14에 Config Server가 `server.port: 8080`을 내려줄 때 `SERVER_PORT=18080`을 준 Gateway가 18080으로 뜨는 것을 확인했다.
 
 ## 2. 비밀값 목록
 | 값 | 저장소에 적는 형태 | 실제 값 | 없을 때 |
@@ -30,7 +31,7 @@ config-repo/ ──(config-server 빌드 때 jar에 포함)──▶ config-serv
 | S3 | `.env`는 커밋하지 않는다(`.gitignore`). 새 변수는 `.env.example`에 더미 값으로, `docker-compose.yml`의 해당 서비스 `environment`에 함께 추가한다 | 팀원이 필요한 변수를 알 수 있다 |
 | S4 | actuator는 `health`, `info`만 노출한다(`config-repo/application.yml`). `env`, `configprops`, `heapdump`는 열지 않는다 | `/actuator/env`는 풀린 비밀값을 보여 줄 수 있다 |
 | S5 | Gateway 라우트·화이트리스트에 다른 서비스의 `/actuator/**`를 넣지 않는다. 비즈니스 서비스 포트는 호스트에 공개하지 않고, 관리 포트(postgres, config-server, eureka)는 `127.0.0.1`에만 연다 | 외부 진입점은 Gateway 하나다 |
-| S6 | `config-repo` 변경은 PR 리뷰를 거친다. PR 본문 "확인 방법"에 다시 시작해야 하는 서비스를 적는다 | 누가 언제 무엇을 바꿨는지 PR로 추적한다. 별도 CHANGELOG는 두지 않는다(팀 결정) |
+| S6 | `config-repo` 변경은 PR 리뷰를 거친다. PR 템플릿의 "설정 변경 시 다시 시작할 서비스" 항목에 적는다 | 누가 언제 무엇을 바꿨는지 PR로 추적한다. 별도 CHANGELOG는 두지 않는다(팀 결정) |
 | S7 | 로그·예외 메시지·응답에 비밀값을 출력하지 않는다 | 로그는 공유되고 오래 남는다 |
 
 비밀값을 실수로 커밋했다면 되돌리는 것으로 끝나지 않는다. 값을 바로 바꾸고 팀에 알린다.

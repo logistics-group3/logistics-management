@@ -64,7 +64,8 @@ docker compose up -d postgres config-server eureka-server gateway-service user-s
 docker compose stop hub-service          # 도커로 떠 있었다면 내린다
 # IntelliJ에서 HubServiceApplication 실행
 ```
-- 서비스의 접속 기본값이 `localhost`(Config Server 8888, Eureka 8761, DB 5432)와 `.env.example`의 DB 비밀번호라서 따로 지정하지 않아도 된다. 단, `.env`에서 `POSTGRES_PORT`를 바꿨다면 IDE 실행은 DB에 접속하지 못한다. DB URL의 5432가 `config-repo`에 고정돼 있고, Config Server 값이 환경 변수보다 우선하기 때문이다. IDE를 함께 쓸 때는 `POSTGRES_PORT=5432`로 둔다.
+- 서비스의 접속 기본값이 `localhost`(Config Server 8888, Eureka 8761, DB 5432)와 `.env.example`의 DB 비밀번호라서 따로 지정하지 않아도 된다.
+- `.env`에서 호스트 포트를 바꿨다면(8장) IDE 실행 설정에도 같은 값을 환경 변수로 넣는다: `DB_PORT`(=`POSTGRES_PORT`), `CONFIG_SERVER_URL`, `EUREKA_URL`, 필요하면 `SERVER_PORT`. 넣지 않으면 기본값(5432, 8888, 8761)으로 접속한다. 같은 PC에 다른 스택이 그 포트에 떠 있으면 그쪽 DB에 붙어 Flyway가 실행되므로 주의한다.
 - user-service와 gateway-service를 IDE로 띄울 때는 실행 설정에 `JWT_SECRET` 환경 변수를 넣는다. 기본값을 두지 않았다.
 - 같은 서비스를 Docker와 IDE에서 동시에 띄우면 Eureka에 두 인스턴스가 등록되고 Gateway가 번갈아 호출한다. Docker 쪽은 내려 둔다.
 - 서비스를 `localhost:{포트}`로 직접 부르면 Gateway를 거치지 않아 `X-User-*` 헤더가 없다. `@CurrentUser`를 쓰는 API는 401이다. Gateway(8080)로 부른다.

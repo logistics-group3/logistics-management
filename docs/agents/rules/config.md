@@ -20,7 +20,7 @@ paths:
 
 ## 비밀값
 - 저장소에 평문으로 쓰지 않는다. `config-repo`에서는 `${ENV:기본값}` 자리표시자로 받고, 실제 값은 `.env`나 환경 변수로 넣는다.
-- Config Server가 내려준 값은 클라이언트 환경 변수보다 우선한다. 그래서 환경마다 다른 값은 고정값이 아니라 자리표시자로 둔다(`config-repo/application.yml` 첫 주석).
+- 환경마다 다른 값(호스트, 포트, 비밀값)은 고정값이 아니라 `${ENV:기본값}` 자리표시자로 둔다. Config Server 값은 환경 변수보다 우선순위가 낮아 환경 변수로도 덮을 수 있지만, 자리표시자로 두어야 바꿀 수 있는 값이 드러난다(`config-repo/application.yml` 첫 주석).
 - 새 환경 변수는 `.env.example`(로컬 전용 더미 값)과 `docker-compose.yml`의 해당 서비스 `environment`에 함께 추가한다.
 - 비밀값을 로그에 남기지 않는다.
 

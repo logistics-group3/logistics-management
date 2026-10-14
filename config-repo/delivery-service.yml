@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/logistics?currentSchema=delivery_schema
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/logistics?currentSchema=delivery_schema
     username: delivery_app
     password: ${DELIVERY_DB_PASSWORD:delivery_local_pw}
   jpa:

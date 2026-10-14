@@ -21,7 +21,7 @@
 | 외부에서 `/internal/...` 호출이 404 | 정상이다. Gateway가 막는다 | 서비스 간 Feign으로만 호출한다 |
 | `port is already allocated` (5432, 8080 등) | 로컬 PostgreSQL이나 다른 compose 프로젝트가 포트를 쓰고 있다 | 기존 프로세스를 끄거나 `.env`의 `*_PORT`를 바꾼다(루트 `README.md` "기존 환경과 병행하기") |
 | `cannot find symbol Q{Entity}` | QueryDSL annotation processing이 돌지 않았다 | `./gradlew :{service}-service:compileJava`, IDE는 Gradle로 빌드를 위임한다 |
-| IntelliJ에서 IDE로 띄운 서비스가 DB 접속 실패 | `.env`의 `POSTGRES_PORT`가 5432가 아니다 | IDE를 함께 쓸 때는 `POSTGRES_PORT=5432`로 둔다([로컬 실행 가이드](guides/local-run.md) 3.4) |
+| IDE로 띄운 서비스가 DB 접속에 실패하거나 다른 DB에 붙는다 | `.env`의 `POSTGRES_PORT`를 바꿨는데 IDE 실행 설정에 `DB_PORT`가 없어 5432로 접속한다 | IDE 실행 설정에 `DB_PORT`를 `POSTGRES_PORT`와 같은 값으로 넣는다([로컬 실행 가이드](guides/local-run.md) 3.4) |
 | Windows Docker 빌드에서 `./gradlew: not found`, `/bin/sh^M` | `gradlew`가 CRLF로 체크아웃됐다 | `.gitattributes`가 LF로 고정한다. 이미 clone했다면 `git rm --cached -r . && git reset --hard` |
 
 ## 2. 사례 기록
