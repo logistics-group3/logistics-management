@@ -44,11 +44,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return validationError(request.getRequestURI(), errors);
     }
 
-    /** 정렬 파라미터에 Entity에 없는 필드를 넣은 경우. 예: {@code sort=password,DESC}. */
+    /** 정렬 파라미터에 Entity에 없는 필드를 넣은 경우. 예: {@code sort=unknown,DESC}. */
     @ExceptionHandler(PropertyReferenceException.class)
     public ResponseEntity<Object> handleUnknownSort(PropertyReferenceException e, HttpServletRequest request) {
-        return validationError(request.getRequestURI(),
-                List.of(new ErrorResponse.FieldError("sort", "정렬할 수 없는 필드입니다: " + e.getPropertyName())));
+        return sortError(request.getRequestURI(), e.getPropertyName());
+    }
+
+    /** API별 정렬 허용 목록(SortAllowList, QuerydslSupport)에 없는 필드. 예: {@code sort=password,DESC}. */
+    @ExceptionHandler(InvalidSortException.class)
+    public ResponseEntity<Object> handleDisallowedSort(InvalidSortException e, HttpServletRequest request) {
+        return sortError(request.getRequestURI(), e.getProperty());
     }
 
     /** Feign 연결 실패·타임아웃(RetryableException 등). 응답을 받은 실패는 FeignErrorDecoder가 BusinessException으로 바꾼다. */
@@ -113,6 +118,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     ? new SimpleErrorCode(status, CommonErrorCode.INVALID_REQUEST.code(), CommonErrorCode.INVALID_REQUEST.message())
                     : CommonErrorCode.INTERNAL_SERVER_ERROR;
         };
+    }
+
+    private ResponseEntity<Object> sortError(String path, String property) {
+        return validationError(path, List.of(new ErrorResponse.FieldError("sort", "정렬할 수 없는 필드입니다: " + property)));
     }
 
     private ResponseEntity<Object> validationError(String path, List<ErrorResponse.FieldError> errors) {

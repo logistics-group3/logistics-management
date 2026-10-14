@@ -1,6 +1,7 @@
 package com.sparta.logistics.common.response;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -26,6 +27,11 @@ public record PageResponse<T>(
                 page.getTotalPages(),
                 format(page.getSort())
         );
+    }
+
+    /** Entity 페이지를 응답 DTO 페이지로 바꾼다. 예: {@code PageResponse.from(hubPage, HubResult::from)} */
+    public static <E, T> PageResponse<T> from(Page<E> page, Function<? super E, ? extends T> mapper) {
+        return from(page.map(mapper));
     }
 
     private static String format(Sort sort) {

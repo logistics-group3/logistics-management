@@ -26,4 +26,15 @@ class PageResponseTest {
         assertThat(response.totalPages()).isEqualTo(5);
         assertThat(response.sort()).isEqualTo("createdAt,DESC");
     }
+
+    @Test
+    @DisplayName("mapper를 주면 내용만 바꾸고 페이지 정보는 그대로 둔다")
+    void fromPageWithMapper() {
+        PageImpl<String> page = new PageImpl<>(List.of("a", "bb"), PageRequest.of(0, 10), 2);
+
+        PageResponse<Integer> response = PageResponse.from(page, String::length);
+
+        assertThat(response.content()).containsExactly(1, 2);
+        assertThat(response.totalElements()).isEqualTo(2);
+    }
 }

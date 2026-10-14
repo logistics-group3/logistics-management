@@ -14,7 +14,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 /**
  * SA 6.1 검색 공통 규칙을 모든 서비스의 {@code Pageable} 파라미터에 적용한다.
  * page 기본 0, size는 10·30·50 중 하나이고 그 외 값은 10으로 보정, sort 기본 createdAt,DESC.
- * 정렬 허용 필드는 API마다 다르므로 각 서비스가 검증한다.
+ * 정렬 허용 필드는 API마다 다르므로 각 서비스가 SortAllowList(Spring Data) 또는 QuerydslSupport(QueryDSL)로 검증한다.
  */
 public class SearchPageableArgumentResolver implements HandlerMethodArgumentResolver {
 

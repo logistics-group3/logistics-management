@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 17 | [정렬 허용 목록·QueryDSL 도우미](step-17-sort-allow-list-querydsl.md) | feat(common): 정렬 허용 목록과 QueryDSL 검색 도우미 추가 |
 | 16 | [common 조건부 자동 설정](step-16-common-auto-configuration.md) | refactor(common): 공통 빈을 조건부 자동 설정으로 등록 |
 | 15 | [소유자 검증 헬퍼](step-15-owner-check-helpers.md) | feat(common): 본인·MASTER 소유자 검증 헬퍼 추가 |
 | 14 | [Eureka 로컬 튜닝](step-14-eureka-local-tuning.md) | chore(eureka): 로컬 개발용 등록 갱신·만료 주기 단축 |

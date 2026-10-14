@@ -108,8 +108,23 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
     }
 
+    @Test
+    @DisplayName("정렬 허용 목록에 없는 필드는 VALIDATION_ERROR와 sort 필드 사유")
+    void disallowedSort() throws Exception {
+        mockMvc.perform(get("/sample/sort"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[0].field").value("sort"))
+                .andExpect(jsonPath("$.errors[0].reason").value("정렬할 수 없는 필드입니다: password"));
+    }
+
     @RestController
     static class SampleController {
+
+        @GetMapping("/sample/sort")
+        void sort() {
+            throw new InvalidSortException("password");
+        }
 
         @GetMapping("/sample/feign")
         void feign() {
