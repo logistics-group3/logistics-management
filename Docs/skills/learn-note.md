@@ -1,6 +1,6 @@
 # learn-note — 하루 학습 정리
 
-> 분류: 학습 · 절차 원본: [`.claude/skills/learn-note/SKILL.md`](../../.claude/skills/learn-note/SKILL.md) · **직접 호출만 가능** (AI가 알아서 실행하지 않음)
+> 분류: 학습 · 절차 원본: [`.claude/skills/learn-note/SKILL.md`](../../.claude/skills/learn-note/SKILL.md) · 직접 호출하거나, AI 제안에 동의하면 실행
 
 ## 목적
 배운 것을 그날 정리하지 않으면 발표 직전에 몰아서 쓰게 되고 사람마다 형식도 제각각이 된다. 이 skill은 오늘 커밋과 대화를 바탕으로 학습 노트를 쓰고, 해결한 문제는 트러블슈팅에 기록한다.
@@ -13,6 +13,8 @@
 /learn-note           ← git user.name으로 이름을 정함
 /learn-note 권민혁
 ```
+
+직접 호출하지 않아도 커밋 직후나 "오늘은 여기까지" 같은 순간에 AI가 "오늘 내용을 `/learn-note`로 정리할까요?"라고 제안한다. **응**이라고 답하면 정리할 항목 목록을 먼저 보여 주고, 확인 후 기록한다. 제안이 번거로우면 "제안 그만".
 
 ## 하는 일
 1. **자료 모으기**: 오늘 내 커밋(`git log --since=midnight`), 이 대화에서 다룬 질문·설명·구현, 오늘 쓴 구현 노트

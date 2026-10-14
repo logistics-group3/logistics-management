@@ -101,3 +101,10 @@
 - 관련: `Docs/skills/`, `.claude/skills/`, COMMON-008
 - 내용: `SKILL.md`는 AI용 절차라 팀원이 읽고 사용법을 익히기 어렵다.
 - 결정: `Docs/skills/`에 사람용 사용 설명서(개요 README + skill별 문서: 목적·호출 예시·진행 흐름·결과물·팁)를 둔다. 절차 원본은 `SKILL.md`이며 어긋나면 `SKILL.md`가 우선한다. `SKILL.md`의 동작을 바꾸면 설명서도 함께 고친다.
+
+### COMMON-010 skill을 상황에 맞게 AI가 먼저 제안
+- 상태: DONE
+- 작성: 권민혁 / 2026-10-14
+- 관련: 루트 `CLAUDE.md` "학습·구현 skill 제안", `.claude/skills/learn-note/SKILL.md`, `Docs/skills/`
+- 내용: `learn-note`가 직접 호출 전용이라 정리 시점을 놓치기 쉽고, skill마다 언제 쓸지 지시자가 기억해야 했다.
+- 결정: 실행은 동의 후, 제안은 자동으로 한다. 제안 시점(커밋·마무리 발언, 문제 해결, 직접 짠 코드 커밋 전, impl-service 절차 밖 구현, 설명 후 혼란)을 항상 읽히는 루트 `CLAUDE.md`에 두었다. 한 시점에 한 번 제안하고, 거절한 제안은 반복하지 않으며, "제안 그만"이면 그 대화에서 멈춘다. `learn-note`는 `disable-model-invocation`을 해제해 "응"으로 바로 실행되게 하되, AI 제안으로 시작하면 정리할 항목을 먼저 보여 주고 동의를 받은 뒤에 기록한다. hook 방식은 소음·전원 영향 때문에 채택하지 않았다.

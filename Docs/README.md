@@ -41,7 +41,7 @@
 | [skills/impl-service.md](skills/impl-service.md) | 구현 — AI가 계층별로 멈추며 설명하고 구현 노트(처리 과정·핵심)를 남긴다. 반복 설명은 주제별 생략 가능 |
 | [skills/learn-explain.md](skills/learn-explain.md) | 학습 — 개념·코드·설계 이유를 우리 코드에 연결해 설명, 확인 질문 |
 | [skills/learn-review.md](skills/learn-review.md) | 학습 — 직접 짠 코드를 힌트 → 방향 → 정답 순으로 리뷰 |
-| [skills/learn-note.md](skills/learn-note.md) | 학습 — 하루 학습 노트와 트러블슈팅 기록 (직접 호출만) |
+| [skills/learn-note.md](skills/learn-note.md) | 학습 — 하루 학습 노트와 트러블슈팅 기록 (직접 호출 또는 AI 제안 후 동의) |
 
 절차 원본은 `.claude/skills/{이름}/SKILL.md`이고, `skills/`는 팀원용 사용 설명서다.
 
