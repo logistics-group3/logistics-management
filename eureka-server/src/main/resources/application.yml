@@ -18,3 +18,5 @@ eureka:
     eviction-interval-timer-in-ms: 5000
     # 서버가 한 대뿐이라 다른 서버와 동기화할 목록을 기다리지 않는다 (기본 5분)
     wait-time-in-ms-when-sync-empty: 0
+    # 목록 조회 응답을 30초마다 갱신하는 읽기 전용 캐시를 쓰지 않는다. 등록·해제·만료가 다음 조회에 바로 보인다.
+    use-read-only-response-cache: false

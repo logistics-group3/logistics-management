@@ -15,7 +15,7 @@ script/db-check.sh            # 서비스 계정 5개의 실제 인증·스키�
 - 종료: `docker compose down` (DB까지 지우려면 `docker compose down -v`)
 - 서비스 스키마·계정은 `infra/postgres/init.sh`가 빈 DB에서 처음 한 번 만들고, 테이블 변경은 Flyway가 관리한다(`*/src/main/resources/db/migration`).
 - `.env`의 DB 비밀번호는 초기화 스크립트와 서비스 접속 설정에 함께 사용된다. 기존 볼륨의 계정 비밀번호는 `.env`를 바꿔도 자동 갱신되지 않는다.
-- Flyway 도입 전의 DB가 있으면 데이터를 백업하고 기존 스키마와 마이그레이션 이력을 먼저 확인한다. 기존 볼륨을 자동으로 삭제하지 않는다.
+- **공통 인프라 통합 후 처음 실행할 때는 DB를 새로 시작한다.** 개인 브랜치에서 쓰던 볼륨은 스키마·계정·마이그레이션 이력이 달라 이어 쓰지 않는다(팀 결정). `docker compose down -v`로 지운 뒤 기동한다. 스크립트는 기존 볼륨을 자동으로 지우지 않는다.
 - MASTER 계정: user-service가 기동할 때 `.env`의 `MASTER_USERNAME`/`MASTER_PASSWORD`(기본 `master` / `Master!2026`)로 만든다. 이미 있으면 그대로 둔다. 가입한 계정을 승격하려면 `script/promote-master.sh <username>` 실행 후 다시 로그인한다.
 
 ## 기존 환경과 병행하기
