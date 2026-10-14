@@ -1,0 +1,2 @@
+com.sparta.logistics.common.autoconfigure.CommonWebAutoConfiguration
+com.sparta.logistics.common.autoconfigure.CommonJacksonAutoConfiguration

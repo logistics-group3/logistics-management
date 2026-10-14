@@ -6,6 +6,7 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0009 | [common 공통 빈을 조건부 자동 설정으로 등록](0009-common-conditional-auto-configuration.md) | 채택 | 2026-10-14 |
 | 0008 | [공통 인프라 브랜치의 선별 통합](0008-base-setting-integration.md) | 제안 (통합 브랜치 구현) | 2026-10-14 |
 | 0007 | [DB 스키마를 Flyway 마이그레이션으로 관리](0007-flyway-schema-migration.md) | 채택 | 2026-10-14 |
 | 0006 | [웹 무관 공통 계약을 common-core 모듈로 분리](0006-common-core-module.md) | 채택 | 2026-10-14 |

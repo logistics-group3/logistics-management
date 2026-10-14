@@ -7,7 +7,7 @@ Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (PR A, �
 - [x] 스텝 13 실행 환경 보강: 줄바꿈·인코딩·데몬 JDK·비밀값 무시 패턴 (compile 성공, 데몬 JVM 17 확인)
 - [x] 스텝 14 Eureka 로컬 튜닝: 서버 자기 보호 해제, 갱신 5초·만료 15초·목록 조회 5초 (런타임 측정은 스텝 21)
 - [x] 스텝 15 소유자 검증 헬퍼: `UserContextTest` 5개, `UserContextWebTest` 7개 통과
-- [ ] 스텝 16 common 조건부 자동 설정
+- [x] 스텝 16 common 조건부 자동 설정: 자동 설정 6개, 슬라이스 등록, common 34·user 17 테스트 통과 (ADR 0009)
 - [ ] 스텝 17 정렬 허용 목록·QueryDSL 도우미
 - [ ] 스텝 18 내부 API DTO 반환
 - [ ] 스텝 19 MASTER 계정 자동 생성

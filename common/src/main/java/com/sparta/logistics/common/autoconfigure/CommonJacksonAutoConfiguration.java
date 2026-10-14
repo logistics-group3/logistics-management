@@ -1,12 +1,18 @@
-package com.sparta.logistics.common.config;
+package com.sparta.logistics.common.autoconfigure;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
-@Configuration
-public class JacksonConfig {
+/** 끄기: {@code common.jackson.enabled=false} */
+@AutoConfiguration
+@ConditionalOnClass(Jackson2ObjectMapperBuilder.class)
+@ConditionalOnProperty(prefix = "common.jackson", name = "enabled", havingValue = "true", matchIfMissing = true)
+public class CommonJacksonAutoConfiguration {
 
     /**
      * Note: Jackson은 기본적으로 Enum에 숫자를 넣으면 선언 순서(ordinal)로 바꿔 준다. {@code "affiliationType": 1}이 HUB가 되는 식이다.

@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.stereotype.Component;
 
 /**
  * 하위 서비스의 에러 응답을 호출한 서비스의 예외로 바꾼다(SA 3.5).
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Component;
  * 5xx나 형식을 알 수 없는 응답은 하위 서비스 장애로 보고 503 SERVICE_UNAVAILABLE로 바꾼다.
  */
 @Slf4j
-@Component
 public class FeignErrorDecoder implements ErrorDecoder {
 
     private final ObjectMapper objectMapper;

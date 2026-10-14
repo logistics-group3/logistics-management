@@ -1,4 +1,4 @@
-package com.sparta.logistics.common.config;
+package com.sparta.logistics.common.autoconfigure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,7 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
-class JacksonConfigTest {
+class CommonJacksonAutoConfigurationTest {
 
     enum Type { COMPANY, HUB }
 
@@ -20,7 +20,7 @@ class JacksonConfigTest {
 
     private static ObjectMapper build() {
         Jackson2ObjectMapperBuilder builder = new Jackson2ObjectMapperBuilder();
-        new JacksonConfig().strictEnumCustomizer().customize(builder);
+        new CommonJacksonAutoConfiguration().strictEnumCustomizer().customize(builder);
         return builder.build();
     }
 

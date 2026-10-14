@@ -15,7 +15,8 @@ com.sparta.logistics.{서비스}
 - 상태 전이처럼 불변식이 있는 규칙은 Entity 메서드 안에서 검증한다. setter를 열지 않는다.
 - request DTO를 application 계층까지 넘기지 않는다. command로 변환해서 넘긴다.
 - 서비스 간 데이터는 FK 없이 UUID로 참조하고, 검증은 Feign 호출로 한다. 다른 서비스의 스키마에 직접 접근하지 않는다.
-- 공통 요소(BaseEntity, ApiResponse, ErrorCode, UserContext 등)는 `common`에 둔다. 서비스 메인 클래스는 `scanBasePackages = "com.sparta.logistics"`로 common을 스캔한다.
+- 공통 요소(BaseEntity, ApiResponse, ErrorCode, UserContext 등)는 `common`에 둔다. common의 공통 빈은 자동 설정(`AutoConfiguration.imports`)으로 등록되므로 서비스 메인 클래스는 기본 `@SpringBootApplication`만 쓴다. 스캔 범위를 상위 패키지로 넓히지 않는다.
+- common 공통 설정은 묶음별로 끄거나 바꿀 수 있다(ADR 0009). 끄기는 `common.{web,jpa-auditing,querydsl,feign,jackson,openapi}.enabled=false`, 바꾸기는 같은 타입의 빈을 서비스에 정의한다(예: `GlobalExceptionHandler`를 상속한 빈, `ErrorDecoder` 빈).
 
 ## 2. 간결하고 수준 높은 코드
 - 필요한 것만 만든다. 쓰이지 않는 추상화, 미래를 위한 인터페이스, 한 번만 쓰는 유틸을 미리 만들지 않는다.

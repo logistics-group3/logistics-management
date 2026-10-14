@@ -1,4 +1,4 @@
-package com.sparta.logistics.common.config;
+package com.sparta.logistics.common.autoconfigure;
 
 import com.sparta.logistics.common.auth.CurrentUser;
 import io.swagger.v3.oas.models.Components;
@@ -10,16 +10,24 @@ import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
 import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /**
  * 각 서비스의 OpenAPI 문서 공통 설정. 문서는 Gateway Swagger UI(http://localhost:8080/swagger-ui.html)에서 서비스별로 본다.
  * Note: 서버 주소를 상대 경로 "/"로 두면 Swagger UI의 Try it out 요청이 문서를 연 주소(Gateway)로 간다. 서비스 내부 IP가
  * 문서에 찍혀 외부에서 호출할 수 없는 문제를 피한다.
+ * 서비스가 OpenAPI 빈을 직접 정의하면 이 빈은 빠진다. 끄기: {@code common.openapi.enabled=false}
  */
-@Configuration
-public class OpenApiConfig {
+@AutoConfiguration
+@ConditionalOnClass({OpenAPI.class, SpringDocUtils.class})
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnProperty(prefix = "common.openapi", name = "enabled", havingValue = "true", matchIfMissing = true)
+public class CommonOpenApiAutoConfiguration {
 
     private static final String BEARER = "bearerAuth";
 
@@ -29,6 +37,7 @@ public class OpenApiConfig {
     }
 
     @Bean
+    @ConditionalOnMissingBean
     public OpenAPI openAPI(@Value("${spring.application.name}") String applicationName) {
         return new OpenAPI()
                 .info(new Info().title(applicationName + " API").version("v1"))

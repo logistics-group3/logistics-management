@@ -13,7 +13,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 class AuditorAwareTest {
 
-    private final AuditorAware<String> auditorAware = new JpaAuditingConfig().auditorAware();
+    private final AuditorAware<String> auditorAware = new HeaderAuditorAware();
 
     @AfterEach
     void tearDown() {

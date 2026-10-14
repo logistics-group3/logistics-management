@@ -1,0 +1,6 @@
+com.sparta.logistics.common.autoconfigure.CommonWebAutoConfiguration
+com.sparta.logistics.common.autoconfigure.CommonJpaAutoConfiguration
+com.sparta.logistics.common.autoconfigure.CommonQuerydslAutoConfiguration
+com.sparta.logistics.common.autoconfigure.CommonFeignAutoConfiguration
+com.sparta.logistics.common.autoconfigure.CommonJacksonAutoConfiguration
+com.sparta.logistics.common.autoconfigure.CommonOpenApiAutoConfiguration
