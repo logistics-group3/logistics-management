@@ -11,7 +11,7 @@ Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (PR A, �
 - [x] 스텝 17 정렬 허용 목록·QueryDSL 도우미: QuerydslSupport, SortAllowList, InvalidSortException → 400 VALIDATION_ERROR(sort). common 48개 통과
 - [x] 스텝 18 내부 API DTO 반환: I-01·Gateway 클라이언트 변경, 200 본문 테스트 추가, gateway 24·user 17 통과 (ADR 0010)
 - [x] 스텝 19 MASTER 계정 자동 생성: 기동 시 .env 값으로 생성, 단위 5·통합 1 추가, user 23개 통과 (E2E 확인은 스텝 21)
-- [ ] 스텝 20 에러 코드 규칙·통합 문서
+- [x] 스텝 20 에러 코드 규칙·통합 문서: docs/error-codes.md, error-codes-check.sh(PASS, 실패 경로 확인), INVALID_STATUS_TRANSITION 공통화
 - [ ] 스텝 21 새로 시작 안내·잔여 수정, 전체 검증, PR
 - 면접 포인트: Gradle toolchain과 데몬 JVM 기준의 차이
 

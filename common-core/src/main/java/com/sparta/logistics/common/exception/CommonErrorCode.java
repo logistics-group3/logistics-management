@@ -6,7 +6,8 @@ import lombok.experimental.Accessors;
 import org.springframework.http.HttpStatus;
 
 /**
- * 모든 서비스가 같이 쓰는 에러 코드. SA 6.1 공통 에러 코드 중 특정 도메인에 속하지 않는 것만 둔다.
+ * 모든 서비스가 같이 쓰는 에러 코드. SA 6.1 공통 에러 코드 중 특정 도메인에 속하지 않는 것과, 여러 서비스가 같은 의미로 쓰는 것을 둔다.
+ * 같은 이름을 서비스 enum에 다시 정의하지 않는다(docs/error-codes.md, script/error-codes-check.sh).
  */
 @Getter
 @Accessors(fluent = true)
@@ -18,6 +19,8 @@ public enum CommonErrorCode implements ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
     TOKEN_ROLE_MISMATCH(HttpStatus.UNAUTHORIZED, "권한 정보가 변경되었습니다. 다시 로그인해 주세요."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    /** order(주문 취소)와 delivery(구간 상태 변경)가 함께 쓴다. */
+    INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "허용되지 않는 상태 변경입니다."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."),
     NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE, "요청한 응답 형식을 지원하지 않습니다."),

@@ -27,6 +27,13 @@ com.sparta.logistics.{서비스}
 - 생성자 주입만 쓴다(`@RequiredArgsConstructor` + `private final`). 필드 주입은 쓰지 않는다.
 - `@Transactional`은 application 계층 public 메서드에 둔다. 조회는 `readOnly = true`를 쓴다.
 - 예외는 `common`의 ErrorCode 기반 커스텀 예외로 던진다. `RuntimeException`을 그대로 던지지 않는다.
+- 에러 코드 이름 규칙(전체 목록은 `docs/error-codes.md`):
+    - 서비스 코드는 `{Service}ErrorCode implements ErrorCode` enum(`domain` 패키지)에 둔다. 응답 `code`는 상수 이름이다.
+    - 이름은 `{리소스}_{상황}` 대문자 스네이크다. 예: `HUB_NOT_FOUND`, `PRODUCT_NOT_FOUND`. 하위 서비스의 코드는 Feign을 거쳐 그대로 전달되므로, 리소스 접두어로 어느 서비스의 실패인지 드러낸다.
+    - SA 6.1 표에 있는 코드는 이름을 바꾸지 않는다(`LOGIN_FAILED`, `DUPLICATE_USERNAME`, `MANAGER_HUB_MISMATCH` 등).
+    - 여러 서비스가 같은 의미로 쓰는 코드는 `CommonErrorCode`에만 둔다. 같은 이름을 두 서비스 enum에 정의하지 않는다.
+    - 다른 서비스가 분기에 쓰는 코드는 이름을 바꾸지 않는다. 바꿔야 하면 호출하는 서비스 담당자와 먼저 합의한다.
+    - 코드를 추가·변경하면 `docs/error-codes.md`를 함께 고치고 `script/error-codes-check.sh`로 확인한다.
 - Lombok은 `@Getter`, `@RequiredArgsConstructor`, `@NoArgsConstructor(access = PROTECTED)`, `@Builder`(생성 전용) 정도로 제한한다. Entity에 `@Data`, `@Setter`를 쓰지 않는다.
 - N+1, 불필요한 조회, 동시성 문제를 의식하고 쓴다. 해결했다면 그 지점은 `Note:` 대상이다.
 
