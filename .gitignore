@@ -22,3 +22,15 @@ out/
 
 ### Env ###
 .env
+.env.*
+!.env.example
+
+### Secrets ###
+*.pem
+*.key
+*.p12
+*.jks
+
+### 개인 에이전트 설정 ###
+CLAUDE.local.md
+.claude/settings.local.json
