@@ -1,0 +1,15 @@
+server:
+  port: 8085
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/logistics?currentSchema=delivery_schema
+    username: delivery_app
+    password: ${DELIVERY_DB_PASSWORD:delivery_local_pw}
+  jpa:
+    properties:
+      hibernate:
+        default_schema: delivery_schema
+  flyway:
+    # 마이그레이션 이력 테이블(flyway_schema_history)과 테이블을 이 서비스 스키마에 만든다
+    schemas: delivery_schema

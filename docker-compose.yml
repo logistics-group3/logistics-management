@@ -1,0 +1,141 @@
+# 실행: docker compose up -d --build   (빌드는 Dockerfile 안에서 한다)
+# 사전 준비: cp .env.example .env
+# 관리용 포트(postgres, config-server, eureka)는 이 PC(127.0.0.1)에서만 열고, 외부에는 Gateway 8080만 공개한다.
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: on-failure
+  networks: [logistics-net]
+
+# config-repo의 ${...} 자리표시자를 채우는 값. 설정 자체는 config-server가 내려준다.
+x-service-env: &service-env
+  CONFIG_SERVER_URL: http://config-server:8888
+  EUREKA_URL: http://eureka-server:8761/eureka
+  # Note: 컨테이너 호스트명(컨테이너 ID) 대신 IP로 Eureka에 등록해야 Gateway가 다른 컨테이너에서 찾아갈 수 있다.
+  EUREKA_PREFER_IP: "true"
+  DB_HOST: postgres
+
+x-db-service: &db-service
+  <<: *app
+  depends_on:
+    postgres:
+      condition: service_healthy
+    config-server:
+      condition: service_healthy
+    eureka-server:
+      condition: service_started
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD:?USER_DB_PASSWORD가 필요하다}
+      HUB_DB_PASSWORD: ${HUB_DB_PASSWORD:?HUB_DB_PASSWORD가 필요하다}
+      COMPANY_DB_PASSWORD: ${COMPANY_DB_PASSWORD:?COMPANY_DB_PASSWORD가 필요하다}
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD:?ORDER_DB_PASSWORD가 필요하다}
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD:?DELIVERY_DB_PASSWORD가 필요하다}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d logistics"]
+      interval: 5s
+      retries: 10
+    networks: [logistics-net]
+
+  config-server:
+    <<: *app
+    build:
+      context: .
+      args: { MODULE: config-server }
+    ports:
+      - "127.0.0.1:${CONFIG_SERVER_PORT:-8888}:8888"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs localhost:8888/actuator/health || exit 1"]
+      interval: 5s
+      retries: 20
+
+  eureka-server:
+    <<: *app
+    build:
+      context: .
+      args: { MODULE: eureka-server }
+    ports:
+      - "127.0.0.1:${EUREKA_PORT:-8761}:8761"
+
+  gateway-service:
+    <<: *app
+    build:
+      context: .
+      args: { MODULE: gateway-service }
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+
+  user-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: user-service }
+    environment:
+      <<: *service-env
+      JWT_SECRET: ${JWT_SECRET}
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+
+  hub-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: hub-service }
+    environment:
+      <<: *service-env
+      HUB_DB_PASSWORD: ${HUB_DB_PASSWORD}
+
+  company-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: company-service }
+    environment:
+      <<: *service-env
+      COMPANY_DB_PASSWORD: ${COMPANY_DB_PASSWORD}
+
+  order-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: order-service }
+    environment:
+      <<: *service-env
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+
+  delivery-service:
+    <<: *db-service
+    build:
+      context: .
+      args: { MODULE: delivery-service }
+    environment:
+      <<: *service-env
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD}
+
+networks:
+  logistics-net:
+    driver: bridge
+
+volumes:
+  pgdata:

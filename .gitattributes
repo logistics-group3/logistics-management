@@ -1,0 +1,2 @@
+# Windows 배치 파일은 checkout 시 CRLF를 유지하고 Git에는 LF로 저장한다.
+/gradlew.bat text eol=crlf
