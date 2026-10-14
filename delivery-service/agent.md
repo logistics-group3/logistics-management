@@ -1,6 +1,6 @@
 # delivery-service agent.md
 
-> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`와 이 파일을 먼저 읽는다.
+> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`, 이 폴더의 `CLAUDE.md`(세부 규칙), 이 파일을 먼저 읽는다.
 
 ## 1. 서비스 정보
 | 항목 | 값 |
@@ -29,14 +29,8 @@
 | I-01 `GET /internal/users/{userId}` | user-service | D-04·D-06 배정 시 배송담당자 여부·소속 허브 확인 |
 | I-14 `GET /internal/companies?managerId=` | company-service | D-01·D-02 업체 관리자 조회 권한 판단 |
 
-## 4. 서비스 고유 규칙 (원본: SA §5 배송 상태 전이, CLAUDE.md §7)
-- 흐름: 공급업체 허브 → (허브 이동 0~1구간) → 요청업체 허브 → 요청업체. 같은 허브면 구간 0개, 생성 즉시 `DEST_HUB_ARRIVED`.
-- 배송 상태: `HUB_WAITING` → `HUB_MOVING` → `DEST_HUB_ARRIVED` → `OUT_FOR_DELIVERY` → `DELIVERED` / `CANCELED`. 구간 상태(`WAITING`/`MOVING`/`ARRIVED`/`CANCELED`)와 1:1 자동 연동.
-- 전제 조건: `MOVING`은 허브 이동 담당자 배정 필수, `OUT_FOR_DELIVERY`는 `DEST_HUB_ARRIVED` + 업체 배송 담당자 필수. 출발·완료 시각 기록.
-- 취소는 `HUB_WAITING` 또는 이동 없이 시작한 `DEST_HUB_ARRIVED`만. 허브 이동을 마친 배송은 취소 불가.
-- 상태 전이 검증은 Entity 메서드에. 위반 시 409 `INVALID_STATUS_TRANSITION`.
-- 배정 규칙: 출발지 허브 소속 배송담당자만 (허브 이동 → 공급업체 허브, 업체 배송 → 요청업체 허브). 없음 404 `DELIVERY_MANAGER_NOT_FOUND`, 불일치 400 `MANAGER_HUB_MISMATCH`.
-- 조회 권한: MASTER 전체 / 배송담당자 본인 담당 / 업체 관리자 본인 업체 관련(I-14).
+## 4. 서비스 고유 규칙
+- 세부 규칙은 같은 폴더의 `CLAUDE.md`에 있다 (규칙은 그곳 한 곳에만 둔다, COMMON-005).
 
 ## 5. 구현 현황
 - [ ] 엔티티 + 상태 전이 메서드

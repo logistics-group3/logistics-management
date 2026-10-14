@@ -1,6 +1,6 @@
 # gateway-service agent.md
 
-> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`와 이 파일을 먼저 읽는다.
+> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`, 이 폴더의 `CLAUDE.md`(세부 규칙), 이 파일을 먼저 읽는다.
 
 ## 1. 서비스 정보
 | 항목 | 값 |
@@ -22,10 +22,7 @@
 | I-01 `GET /internal/users/{userId}` | user-service | 사용자 존재·권한 재확인, 헤더 값 (`userId, username, role, isDeliveryManager`) |
 
 ## 4. 서비스 고유 규칙
-- 새 외부 경로를 추가하는 서비스는 이 파일 로그에 라우팅 추가 요청을 남긴다 (예: 새 리소스 경로 prefix).
-- MASTER 전용 같은 **권한 규칙은 Gateway에 두지 않는다** — 각 서비스의 `@MasterOnly`·소유자 검증으로 처리.
-- JWT 계약(HS256, `sub`=userId, `username`, `role`, `iat`, `exp`)은 user-service `JwtTokenIssuer`와 반드시 같아야 한다.
-- 권한 재확인 캐시 60초: 권한 변경·탈퇴는 최대 60초 늦게 반영된다(팀 결정).
+- 세부 규칙은 같은 폴더의 `CLAUDE.md`에 있다 (규칙은 그곳 한 곳에만 둔다, COMMON-005).
 
 ## 5. 커뮤니케이션 로그
 작성 규칙: 맨 아래에 추가 · ID `GATEWAY-{번호}` · 상태 `OPEN` → `DECIDED` → `DONE` · 다른 서비스에 요청할 때는 **그 서비스의 agent.md**에 작성

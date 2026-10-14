@@ -1,6 +1,6 @@
 # order-service agent.md
 
-> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`와 이 파일을 먼저 읽는다.
+> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`, 이 폴더의 `CLAUDE.md`(세부 규칙), 이 파일을 먼저 읽는다.
 
 ## 1. 서비스 정보
 | 항목 | 값 |
@@ -27,14 +27,8 @@
 | I-12 배송 취소 원복 | delivery | 취소 보상 | X |
 | I-13 배송 삭제 | delivery | 보상·주문 삭제 | O (멱등) |
 
-## 4. 서비스 고유 규칙 (원본: SA §5, CLAUDE.md §5)
-- 주문 생성 순서: `orderId 선발급` → I-07·I-08 → 요청업체 관리자 본인 확인(MASTER 제외) → I-05 → I-09 → 주문 저장 → 커밋 후 Slack(`@TransactionalEventListener(AFTER_COMMIT)` + `@Async`)
-- 실패 시 **역순 보상**: 배송 생성 실패 → I-13 → I-06 / 주문 저장 실패 → I-13 → I-06 / 할당 타임아웃 → I-06. 보상 실패는 최대 3회 재시도 후 orderId 포함 ERROR 로그.
-- `Order` PK는 `@GeneratedValue` 쓰지 않고 **선발급 UUID**.
-- 한 번에 한 품목. `total_price = unit_price × quantity`를 서버에서 계산(`Math.multiplyExact`, 오버플로 400). 수량은 주문 후 변경 불가.
-- 상태 `ORDERED`/`CANCELED`. 취소는 허브 이동 시작 전 + 업체 배송 출발 전만. 삭제는 취소 또는 배송 완료 주문만(`ORDER_NOT_DELETABLE`).
-- Feign 재시도는 기본 꺼짐 → 위 표의 멱등 API 클라이언트에만 Retryer 설정 (최대 3회, 100ms부터 지수 백오프).
-- 하위 4xx는 그대로 전달(예: 409 `STOCK_INSUFFICIENT`), 5xx·타임아웃은 503.
+## 4. 서비스 고유 규칙
+- 세부 규칙은 같은 폴더의 `CLAUDE.md`에 있다 (규칙은 그곳 한 곳에만 둔다, COMMON-005).
 
 ## 5. 구현 현황
 - [ ] FeignClient (company, hub, delivery) + 클라이언트별 타임아웃·재시도

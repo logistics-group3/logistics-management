@@ -1,6 +1,6 @@
 # hub-service agent.md
 
-> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`와 이 파일을 먼저 읽는다.
+> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`, 이 폴더의 `CLAUDE.md`(세부 규칙), 이 파일을 먼저 읽는다.
 
 ## 1. 서비스 정보
 | 항목 | 값 |
@@ -27,15 +27,8 @@
 | --- | --- | --- |
 | I-08 `GET /internal/products/{productId}` | company-service | H-06 입고 시 상품 존재·소속 허브 확인 |
 
-## 4. 서비스 고유 규칙 (원본: SA, CLAUDE.md §4)
-- **상품은 공급업체 소속 허브에만 존재**: 상품당 재고 행 1개(`p_hub_stocks.product_id` UNIQUE). H-06은 상품 소속 허브로만 입고(다르면 400 `INVALID_REQUEST`).
-- 재고 수량 0 이상. 할당은 재고 행을 `SELECT ... FOR UPDATE`로 잠근 뒤 차감.
-- `p_stock_allocations`: `order_id` UNIQUE, `status` `ALLOCATED`/`RESTORED`.
-  - I-05: 재고 행 잠금 → `order_id`로 기존 할당 조회(있으면 반환) → 수량 검사 → 차감 + `ALLOCATED` 저장
-  - I-06: 락 없이 할당 조회(없으면 0) → 재고 행 잠금 → `ALLOCATED`면 복원 후 `RESTORED`
-  - **잠금 순서는 항상 "재고 행 → 할당 내역"** (교착 방지)
-- I-05 read timeout 5초에 맞춰 DB `lock_timeout` 3초.
-- 기동 시 허브 17개·경로 272개 시드 적재 (허브 데이터는 조회 전용).
+## 4. 서비스 고유 규칙
+- 세부 규칙은 같은 폴더의 `CLAUDE.md`에 있다 (규칙은 그곳 한 곳에만 둔다, COMMON-005).
 
 ## 5. 구현 현황
 - [ ] 허브·경로 시드 데이터 (HUB-001)

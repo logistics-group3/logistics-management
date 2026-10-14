@@ -1,6 +1,6 @@
 # user-service agent.md
 
-> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`와 이 파일을 먼저 읽는다.
+> 이 서비스의 **협업 창구**다. 사람·AI 모두 이 서비스 코드를 수정하기 전에 루트 `CLAUDE.md`, 이 폴더의 `CLAUDE.md`(세부 규칙), 이 파일을 먼저 읽는다.
 
 ## 1. 서비스 정보
 | 항목 | 값 |
@@ -22,12 +22,7 @@
 | I-02 `GET /internal/hubs/{hubId}` | hub-service | U-07 배송담당자 지정 시 소속 허브 존재 확인 |
 
 ## 4. 서비스 고유 규칙
-- 회원가입 권한은 항상 `USER`. 최초 MASTER는 기동 시 `.env`의 `MASTER_USERNAME`/`MASTER_PASSWORD`로 생성.
-- 권한은 `MASTER`/`USER` 2단계. 배송담당자는 `is_delivery_manager` 속성 + `hub_id`(지정 시 필수).
-- 로그인 실패는 아이디·비밀번호 구분 없이 401 `LOGIN_FAILED`.
-- username 유니크는 부분 인덱스(`db/indexes.sql`) — 탈퇴한 username은 재사용 가능.
-- JWT 계약은 gateway `JwtVerifier`와 같아야 한다 (HS256, `sub`=userId, `username`, `role`, `iat`, `exp`, 60분).
-- 권한·탈퇴 변경은 Gateway 캐시로 최대 60초 늦게 반영된다.
+- 세부 규칙은 같은 폴더의 `CLAUDE.md`에 있다 (규칙은 그곳 한 곳에만 둔다, COMMON-005).
 
 ## 5. 구현 현황
 - [x] U-01, U-02, U-03, U-08, I-01 (공통 인프라 단계)
