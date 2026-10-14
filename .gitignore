@@ -31,6 +31,10 @@ out/
 *.p12
 *.jks
 
-### 개인 에이전트 설정 ###
+### 에이전트 설정 ###
+# 개인 설정
 CLAUDE.local.md
 .claude/settings.local.json
+# script/setup-agents.sh가 .agents/skills, docs/agents/rules에서 만드는 결과물
+.claude/skills/
+.claude/rules/
