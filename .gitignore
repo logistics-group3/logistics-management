@@ -35,6 +35,9 @@ out/
 # 개인 설정
 CLAUDE.local.md
 .claude/settings.local.json
-# script/setup-agents.sh가 .agents/skills, docs/agents/rules에서 만드는 결과물
+# script/setup-agents.sh가 .agents/skills, docs/agents/rules에서 만드는 결과물과 그 목록
 .claude/skills/
 .claude/rules/
+.claude/.setup-agents-files
+# Claude Code가 만드는 임시 worktree
+.claude/worktrees/

@@ -16,4 +16,4 @@ Claude Code와 Codex가 함께 쓰는 스킬의 정본이다. 스킬마다 `<이
 - **폴더는 평평하게 둔다**: `common/`, `domain/` 같은 묶음 폴더를 만들지 않는다. Claude Code와 Codex 모두 `skills/<이름>/SKILL.md` 형태만 안내한다.
 - **머리말**: `name`(폴더 이름과 같게)과 `description`(언제 쓰는지, 예시 요청 포함)을 쓴다. 도구 전용 필드(`argument-hint` 등)는 써도 되지만 본문 절차는 어느 도구에서도 읽히게 쓴다.
 - **추가·수정·삭제는 PR에서 판단한다.** PR 본문에 이유를 쓴다.
-- **연결**: Codex는 이 폴더를 직접 읽는다. Claude Code는 `script/setup-agents.sh`를 한 번 실행하면 `.claude/skills/`에서 찾는다.
+- **연결**: Codex는 이 폴더를 직접 읽는다. Claude Code는 `script/setup-agents.sh`를 실행하면 `.claude/skills/`에서 찾는다. 스킬을 추가·수정·삭제한 변경을 pull하면 다시 실행한다.

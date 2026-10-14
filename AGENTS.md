@@ -52,7 +52,7 @@
 - **에이전트가 한 일은 알아서 기록한다.** 위 표의 상황이 되면 동의를 기다리지 않고 해당 위치에 쓰고, 답 끝에 `기록: <경로>`를 남긴다. 사람은 PR에서 기록을 검토하고 고친다.
 - **사람이 직접 한 일은 스킬을 제안한다.** 사용자가 직접 쓴 코드를 커밋하려 하면 `learn-review`, "오늘은 여기까지"라고 하면 `learning-note` 하루 정리를 답 끝에 한 줄로 제안한다. 한 번 거절한 제안도 다음 상황에서 다시 제안할 수 있다.
 - 스킬 목록과 분류(공통, 도메인)는 `.agents/skills/README.md`에 있다. 스킬 추가·수정·삭제는 PR에서 판단한다.
-- Codex는 `.agents/skills`를 직접 읽는다. Claude Code는 `script/setup-agents.sh`를 한 번 실행하면 `.claude/skills`에서 찾는다. 스킬을 자동으로 불러오지 못하는 에이전트는 해당 `SKILL.md`를 직접 읽고 따른다.
+- Codex는 `.agents/skills`를 직접 읽는다. Claude Code는 `script/setup-agents.sh`를 실행하면 `.claude/skills`에서 찾는다. pull로 스킬이나 규칙이 바뀌면 다시 실행한다. 스킬을 자동으로 불러오지 못하는 에이전트는 해당 `SKILL.md`를 직접 읽고 따른다.
 
 ## 개인 지침
 팀 규칙이 맞지 않는 부분은 저장소를 고치지 않고 개인 지침으로 보탠다. 팀 규칙과 충돌하면 팀 규칙이 우선이다.
@@ -65,5 +65,5 @@
 - 단일 모듈 실행: `./gradlew :eureka-server:bootRun` (서비스는 config-server를 먼저 띄운다)
 - 전체 실행: `script/run.sh` (`.env`가 없으면 만든다), 완료 기준 확인까지: `script/run.sh --check`
 - 에러 코드 중복·문서 누락: `script/error-codes-check.sh`, 문서 동기화: `script/docs-check.sh`
-- Claude Code 스킬·규칙 연결: `script/setup-agents.sh` (clone 후 한 번)
+- Claude Code 스킬·규칙 연결: `script/setup-agents.sh` (clone 후, pull로 스킬·규칙이 바뀌었을 때)
 - 셸 기본 JDK가 21이어도 Gradle toolchain이 17로 컴파일·실행한다. JAVA_HOME을 바꾸지 않는다.

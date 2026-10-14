@@ -59,7 +59,7 @@ type(scope): 요약
 - `dev` → `main`은 기능 묶음이 끝날 때(발표·제출 전) merge commit으로 합친다. PR 본문에 포함된 기능 PR 목록을 적는다.
 
 ## 4. 올리면 안 되는 것
-`.env`, `.env.*`(`.env.example` 제외), 키 파일(`*.pem`, `*.key`, `*.p12`, `*.jks`), IDE 설정(`.idea/`), 빌드 결과(`build/`, `.gradle/`), 개인 에이전트 설정(`CLAUDE.local.md`, `.claude/settings.local.json`, `.claude/skills/`, `.claude/rules/`). 모두 `.gitignore`에 있다. 나에게만 필요한 제외 경로는 `.git/info/exclude`에 쓴다.
+`.env`, `.env.*`(`.env.example` 제외), 키 파일(`*.pem`, `*.key`, `*.p12`, `*.jks`), IDE 설정(`.idea/`), 빌드 결과(`build/`, `.gradle/`), 개인 에이전트 설정(`CLAUDE.local.md`, `.claude/settings.local.json`), `script/setup-agents.sh` 결과물(`.claude/skills/`, `.claude/rules/`). 모두 `.gitignore`에 있다. 나에게만 필요한 제외 경로는 `.git/info/exclude`에 쓴다.
 
 비밀값을 실수로 커밋했다면 되돌리는 것으로 끝나지 않는다. 값을 바로 바꾸고 팀에 알린다([설정 보안 가이드](config-security.md)).
 
