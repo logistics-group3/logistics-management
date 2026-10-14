@@ -4,6 +4,7 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0006 | [웹 무관 공통 계약을 common-core 모듈로 분리](0006-common-core-module.md) | 채택 | 2026-10-14 |
 | 0005 | [Gateway 인증을 Spring Security(WebFlux)로 전환](0005-gateway-spring-security.md) | 채택 | 2026-10-13 |
 | 0004 | [API 문서(springdoc)와 QueryDSL 라이브러리 선택](0004-springdoc-querydsl.md) | 채택 | 2026-10-13 |
 | 0003 | [인증 관련 라이브러리와 구성](0003-auth-libraries.md) | 일부 대체됨 (0005) | 2026-10-13 |

@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 11 | [직접 구현·하드코딩 정리](step-11-review-2-fixes.md) | refactor: 공통 예외 처리기 상속, app.jar, common-core 분리, 생성자 주입 통일 (커밋 4개) |
 | 리뷰 2 | [직접 구현·하드코딩 검사](review-02-reinvention-check.md) | docs: 직접 구현·하드코딩 검사와 Flyway·JaCoCo 노트 추가 |
 | 10-6 | [Testcontainers DB 통합 테스트](step-10-6-integration-tests.md) | test: Testcontainers 기반 user-service 통합 테스트 추가 |
 | 10-5 | [인프라와 검증 스크립트 보강](step-10-5-infra.md) | fix: compose 단독 기동, 관리 포트 로컬 바인딩, e2e 보강 |

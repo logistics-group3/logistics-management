@@ -1,7 +1,7 @@
 ---
 title: MSA에서 Spring Security는 Gateway와 user-service 중 어디에 두나
 date: 2026-10-13
-updated: 2026-10-13
+updated: 2026-10-14
 asker: Junhyun An
 level: 중급
 tags: [spring-security, gateway, jwt, msa, auth]
@@ -11,6 +11,7 @@ tags: [spring-security, gateway, jwt, msa, auth]
 
 ## 질문
 Spring Security도 미리 넣어 두면 좋을 것 같다. 원래 Gateway에 두지 않고 user-service에 두는 것인가.
+(추가 질문, 2026-10-14) user-service는 왜 Spring Security를 안 쓰나. Gateway에서 쓰기로 한 것인가.
 
 ## 짧은 답
 - 정답이 하나로 정해져 있지 않다. **"누가 토큰을 검증하는가"**로 위치가 갈린다.
@@ -39,6 +40,26 @@ Spring Security도 미리 넣어 두면 좋을 것 같다. 원래 Gateway에 두
 ### 서비스에도 넣는다면
 - Gateway가 넣은 헤더를 읽어 `SecurityContext`에 사용자를 넣는 사전 인증 필터를 만든다. 그러면 `@PreAuthorize("hasRole('MASTER')")`, `@AuthenticationPrincipal`을 쓸 수 있다.
 - 지금의 `@RequireRole`, `@CurrentUser`와 역할이 겹치므로 둘 중 하나로 정한다.
+
+## 추가: user-service는 왜 Spring Security를 안 쓰나 (2026-10-14)
+
+**맞다. SA에서 인증은 Gateway가 맡기로 정했다.**
+- SA 3.1 구성도에 Spring Security는 gateway-service에만 적혀 있다.
+- SA 8.1 인증 흐름에서 user-service가 하는 일은 두 가지뿐이다. 로그인 때 BCrypt로 비밀번호를 확인하고, JWT를 발급한다. 토큰 검증은 Gateway가 한다.
+- SA 8.3 7단계에서 각 서비스의 역할 확인은 커스텀 어노테이션(`@RequireRole`)과 인터셉터로 한다고 정했다.
+
+**정확히는 "Spring Security의 일부만" 쓴다.**
+- Spring Security는 여러 모듈로 나뉜다. 그중 `spring-security-crypto`는 비밀번호 해시(BCrypt) 같은 암호화 도구만 담은 모듈이다. 필터도, 로그인 처리도 없다.
+- user-service는 이 crypto 모듈만 쓴다. 웹 요청을 가로채는 보안 필터 체인(`spring-boot-starter-security`)은 쓰지 않는다.
+
+**필터 체인까지 넣으면 생기는 일**
+- 스타터를 넣는 순간 Boot가 기본 보안 설정을 켠다. 모든 API가 인증을 요구하고, 기본 로그인 폼과 CSRF 검사가 생기며, 기동 로그에 임시 비밀번호가 찍힌다.
+- 이미 Gateway가 인증을 끝낸 요청이라 이 필터들이 할 일이 없다. 결국 "전부 허용, CSRF 끄기, 폼 로그인 끄기" 같은 해제 설정만 늘어난다.
+- 토큰을 user-service에서도 검증하려면 secret을 서비스마다 나눠 갖고, 같은 검증 로직을 중복해야 한다.
+
+**user-service가 필터 체인까지 쓰게 되는 경우**
+- user-service가 OAuth2 인가 서버(Spring Authorization Server)가 되어, 외부 앱에 토큰을 발급하고 동의 화면을 띄워야 할 때
+- 내부망도 믿지 않는 구조로 바꿔 모든 서비스가 JWT를 직접 검증할 때(리소스 서버). 이때는 user-service만이 아니라 서비스 5개 모두에 넣는다.
 
 ## 이 프로젝트에서는
 - 처음 구현은 Gateway도 Spring Security 없이 `WebFilter`로 SA 8.3 순서를 직접 구현했다(ADR 0003). SA와 달랐다.

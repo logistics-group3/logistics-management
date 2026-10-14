@@ -21,12 +21,14 @@
 - [x] 8. springdoc(Gateway Swagger UI 통합), QueryDSL(OpenFeign 7.7) 공통 설정. e2e 회귀 없음
 - [x] 9. Gateway를 Spring Security(WebFlux)로 전환(SA 3.1 일치, ADR 0005). 캐시 만료 후 재조회를 실제로 확인하고 e2e `--with-cache-ttl`에 추가. 빈 DB부터 PASS 14/0
 - [x] 리뷰 1: 메인·Claude·Codex 교차 검토(major 5, minor 17). 스텝 10-1~10-6으로 반영. 빈 상태에서 `docker compose up --build`만으로 e2e PASS 17/0, 테스트 61개 통과
+- [x] 리뷰 2: 직접 구현·하드코딩 검사. 스텝 11에서 A-1~A-4 반영(ResponseEntityExceptionHandler 상속, app.jar 고정, common-core 분리, 생성자 주입 통일). 테스트 63개, e2e PASS 17/0
 - 면접 포인트: DB per service를 인스턴스 하나에서 스키마·계정으로 나눈 이유와 한계, compose의 depends_on과 healthcheck 차이, Config Server 값과 환경 변수의 우선순위
 
 ## 다음 단계
 1. 10/14 오전 팀 리뷰 시연: `docker compose down -v && script/e2e-check.sh --up --with-cache-ttl`, Swagger UI(http://localhost:8080/swagger-ui.html)
 2. 채택되면 샘플 API(`user/presentation/sample`)를 지우고 서비스별 작업을 시작한다
-3. U-07 담당자에게 전달: `p_users`의 CHECK(배송담당자면 hub_id 필수)와 DEFAULT('USER', FALSE)를 U-07 구현 때 함께 넣는다(리뷰 1 minor 14)
+3. 팀 안건: Flyway 도입(ddl-auto 대체), JaCoCo 도입(보류 중)
+4. U-07 담당자에게 전달: `p_users`의 CHECK(배송담당자면 hub_id 필수)와 DEFAULT('USER', FALSE)를 U-07 구현 때 함께 넣는다(리뷰 1 minor 14)
 
 ## 직접 해보기
 공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `docs/learning/steps/`에 있다.

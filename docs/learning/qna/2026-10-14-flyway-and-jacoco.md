@@ -11,6 +11,7 @@ tags: [flyway, database, migration, jacoco, test-coverage, gradle]
 
 ## 질문
 Flyway와 JaCoCo가 무엇인가.
+(추가 질문) Alembic을 많이 들어 봤는데 Spring에서도 쓸 수 있나. 쓸 수 있다면 Flyway와 비교하면 어떤가.
 
 ## 짧은 답
 - **Flyway**: DB 스키마 변경을 **버전이 붙은 SQL 파일**로 관리하는 도구다. 앱이 뜰 때 아직 실행하지 않은 파일만 순서대로 실행하고, 실행 기록을 DB에 남긴다. "DB 스키마용 Git"에 가깝다.
@@ -52,6 +53,31 @@ ALTER TABLE p_users
 - 대안으로 Liquibase가 있다. 롤백 기능과 XML·YAML 형식을 지원하지만, Flyway는 SQL을 그대로 써서 더 단순하다.
 - 모든 서비스가 영향을 받는 결정이라, 공통 인프라 채택 전에 팀과 정하는 게 좋다.
 
+### Alembic을 Spring에서 쓸 수 있나
+
+**결론: Spring Boot와 함께 쓰는 도구가 아니다.** 기술적으로 억지로 붙일 수는 있지만 얻는 게 없다.
+- Alembic은 Python의 SQLAlchemy용 마이그레이션 도구다. 마이그레이션 파일이 Python 스크립트이고, `alembic upgrade head` 같은 Python CLI로 실행한다.
+- Spring Boot가 기동할 때 자동으로 실행해 주는 도구는 Flyway와 Liquibase뿐이다. Alembic은 이 흐름에 들어오지 못한다.
+- 마이그레이션은 결국 DB에 SQL을 실행하는 일이라, Alembic을 별도 Python 컨테이너로 돌려 같은 PostgreSQL에 적용할 수는 있다. 하지만 Java 프로젝트에 Python 실행 환경을 하나 더 들여야 한다.
+- Alembic의 가장 큰 장점인 자동 생성(`--autogenerate`)은 SQLAlchemy 모델과 DB를 비교하는 기능이다. 우리 모델은 JPA Entity라서 이 기능을 쓸 수 없다.
+- Testcontainers 통합 테스트에서도 앱과 같은 마이그레이션을 자동으로 적용할 수 없다.
+
+**Alembic, Flyway, Liquibase 비교**
+| | Alembic | Flyway | Liquibase |
+|---|---|---|---|
+| 생태계 | Python, SQLAlchemy | Java(JVM), Spring Boot 자동 실행 | Java(JVM), Spring Boot 자동 실행 |
+| 마이그레이션 형식 | Python 스크립트(`upgrade()`, `downgrade()` 안에 `op.add_column(...)`) | SQL 파일(`V2__add_check.sql`). Java 클래스로도 작성 가능 | XML, YAML, JSON, SQL 변경 묶음(changeSet) |
+| 순서 관리 | 리비전 ID와 이전 리비전(`down_revision`)을 연결한 그래프. 브랜치와 병합 가능 | 파일 이름의 버전 번호 순서(일직선) | changeSet의 id·작성자와 파일 안 순서 |
+| 자동 생성 | `--autogenerate`: SQLAlchemy 모델과 DB를 비교해 초안 생성 | 기본 기능 없음. IntelliJ 플러그인(JPA Buddy) 등으로 Entity 차이를 SQL로 생성 | `diffChangeLog`: liquibase-hibernate 확장으로 Entity와 DB 비교 |
+| 되돌리기 | `downgrade()`를 기본으로 작성 | 무료판에는 없다(유료 에디션 기능). 되돌리는 내용을 새 버전 파일로 추가 | rollback 기본 지원 |
+| 이력 테이블 | `alembic_version`: 현재 리비전만 저장 | `flyway_schema_history`: 실행한 모든 버전과 체크섬 | `DATABASECHANGELOG`: 실행한 모든 changeSet과 체크섬 |
+| 실행 시점 | 보통 배포 단계에서 CLI로 따로 실행 | 앱 기동 시 자동(Gradle·CLI로 따로도 가능) | 앱 기동 시 자동(따로도 가능) |
+
+**Alembic에 익숙하다면**
+- Alembic의 "되돌리기 기본 지원"과 "모델 비교 자동 생성"이 좋았다면, Java 쪽에서 가장 비슷한 것은 Liquibase다.
+- Flyway는 그 두 기능이 기본으로 없는 대신 SQL을 그대로 쓰고 규칙이 단순하다.
+- 이 프로젝트에는 Flyway를 권한다. SA에 이미 SQL 형태의 스키마(init.sql, DBML)가 있고, 팀이 SQL을 직접 읽고 리뷰하기 쉽다. 되돌리기는 운영에서 실제로 쓰기 어려운 경우가 많아(데이터 손실 위험), 실무에서도 "되돌리는 새 버전을 추가"하는 방식을 많이 쓴다.
+
 ### JaCoCo
 
 **동작 방식**
@@ -86,6 +112,7 @@ tasks.named('test') { finalizedBy 'jacocoTestReport' }
 - "운영에서 `ddl-auto`를 쓰면 안 되는 이유와 대안": 컬럼 삭제·변경 불가, 이력 없음, 예측 불가능 → Flyway/Liquibase + `validate`
 - "이미 적용한 마이그레이션 파일을 수정하면?": 체크섬 불일치로 기동 실패. 새 버전 파일을 추가해야 한다.
 - "커버리지가 높으면 테스트가 좋은가?": 아니다. 실행과 검증은 다르다. 뮤테이션 테스트로 보완한다.
+- "Flyway와 Liquibase 중 무엇을 고르나": SQL을 직접 다루고 단순함을 원하면 Flyway, 되돌리기·DB 독립 형식·자동 비교가 필요하면 Liquibase.
 
 ## 참고
 - https://documentation.red-gate.com/fd (Flyway)
