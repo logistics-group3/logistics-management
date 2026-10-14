@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 15 | [소유자 검증 헬퍼](step-15-owner-check-helpers.md) | feat(common): 본인·MASTER 소유자 검증 헬퍼 추가 |
 | 14 | [Eureka 로컬 튜닝](step-14-eureka-local-tuning.md) | chore(eureka): 로컬 개발용 등록 갱신·만료 주기 단축 |
 | 13 | [실행 환경 보강](step-13-runtime-env.md) | chore(build): 줄바꿈·인코딩·데몬 JDK 고정과 비밀값 무시 패턴 추가 |
 | 12 | [Flyway로 DB 스키마 관리](step-12-flyway.md) | feat: Flyway로 DB 스키마 관리 |
