@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common-core/logistics-management.common-core.main.iml" filepath="$PROJECT_DIR$/.idea/modules/common-core/logistics-management.common-core.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/logistics-management.common.main.iml" filepath="$PROJECT_DIR$/.idea/modules/common/logistics-management.common.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/company-service/logistics-management.company-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/company-service/logistics-management.company-service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/config-server/logistics-management.config-server.main.iml" filepath="$PROJECT_DIR$/.idea/modules/config-server/logistics-management.config-server.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/delivery-service/logistics-management.delivery-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/delivery-service/logistics-management.delivery-service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/eureka-server/logistics-management.eureka-server.main.iml" filepath="$PROJECT_DIR$/.idea/modules/eureka-server/logistics-management.eureka-server.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/gateway-service/logistics-management.gateway-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/gateway-service/logistics-management.gateway-service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/hub-service/logistics-management.hub-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/hub-service/logistics-management.hub-service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/order-service/logistics-management.order-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/order-service/logistics-management.order-service.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/user-service/logistics-management.user-service.main.iml" filepath="$PROJECT_DIR$/.idea/modules/user-service/logistics-management.user-service.main.iml" />
+    </modules>
+  </component>
+</project>
