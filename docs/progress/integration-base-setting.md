@@ -12,11 +12,13 @@ Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (PR A, �
 - [x] 스텝 18 내부 API DTO 반환: I-01·Gateway 클라이언트 변경, 200 본문 테스트 추가, gateway 24·user 17 통과 (ADR 0010)
 - [x] 스텝 19 MASTER 계정 자동 생성: 기동 시 .env 값으로 생성, 단위 5·통합 1 추가, user 23개 통과 (E2E 확인은 스텝 21)
 - [x] 스텝 20 에러 코드 규칙·통합 문서: docs/error-codes.md, error-codes-check.sh(PASS, 실패 경로 확인), INVALID_STATUS_TRANSITION 공통화
-- [ ] 스텝 21 새로 시작 안내·잔여 수정, 전체 검증, PR
-- 면접 포인트: Gradle toolchain과 데몬 JVM 기준의 차이
+- [x] 스텝 21 새로 시작 안내·전체 검증: build 98개 통과, E2E 18/0(새 볼륨), db-check 5/5, error-codes PASS, Eureka 강제 종료 17초
+- [ ] main 대상 PR 생성, 팀 리뷰 후 병합, main에서 dev 생성
+- 면접 포인트: Gradle toolchain과 데몬 JVM 기준의 차이, 컴포넌트 스캔과 조건부 자동 설정의 차이, Eureka 응답 캐시와 인스턴스 만료 시간
 
 ## 다음 단계
-1. 계획 파일 순서대로 스텝 14부터 진행한다. 스텝마다 커밋하고 `docs/learning/steps/`에 설명을 남긴다.
+1. `integration/base-setting`을 push하고 `docs/reviews/base-setting-integration-pr.md` 본문으로 main 대상 PR을 만든다.
+2. 병합 후 main에서 `dev`를 만들고, 문서·AI 지침 정비(PR B)를 dev에서 분기해 진행한다.
 
 ## 직접 해보기
 1. `./gradlew --version`을 실행해 `Daemon JVM` 줄에 `Compatible with Java 17`이 보이는지 확인한다.
