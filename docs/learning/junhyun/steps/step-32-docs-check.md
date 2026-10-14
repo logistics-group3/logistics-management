@@ -11,7 +11,6 @@
 | `script/docs-check.sh` | 세 가지 모드: 인자 없음(작업 트리), 기준 ref(`base...HEAD`, CI), `--hook`(에이전트 종료 훅, 누락 시 exit 2) |
 | `.github/workflows/docs-guard.yml` | PR마다 `docs-check`(skip-docs 라벨이면 건너뜀)와 `error-codes-check`(항상) |
 | `CLAUDE.md` | 개인 설정으로 종료 훅을 거는 예시 |
-| `README.md` | 빠른 실행을 `script/run.sh` 기준으로 바꿨다 |
 
 ## haneol 원본과 다른 점
 | 항목 | haneol | 이 저장소 |
