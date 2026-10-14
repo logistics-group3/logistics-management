@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 34 | [전수검사와 병합 전 수정](step-34-audit-fixes.md) | fix(agents)·fix(config)·docs(agents)·docs(decisions)·fix(script) 6개 |
 | 33 | [문서·AI 지침 범위 최종 확인](step-33-final-check.md) | docs(infra): 문서·AI 지침 범위 최종 확인과 PR 본문 갱신 |
 | 32 | [문서 동기화 검사](step-32-docs-check.md) | chore(ci): 문서 동기화 검사와 PR 검사 워크플로 추가 |
 | 31 | [로컬 실행 스크립트](step-31-run-script.md) | feat(infra): 로컬 실행 스크립트 run.sh 추가 |

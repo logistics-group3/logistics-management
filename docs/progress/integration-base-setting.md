@@ -26,6 +26,7 @@ Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (코드 +
 - [x] 스텝 32 문서 동기화 검사·PR 검사 워크플로: 9가지 경우 확인
 - [x] 스텝 33 최종 확인: build 98개 통과, 상대 링크 깨짐 0건, docs-check·error-codes PASS
 - [x] main 대상 PR 생성: https://github.com/logistics-group3/logistics-management/pull/1 (docs-guard 통과)
+- [x] 스텝 34 전수검사와 병합 전 7건 수정: build 98개, E2E 15/0, db-check 음성 시험 통과. 기록 `docs/reviews/base-setting-integration-audit.md`
 - [ ] 팀 리뷰 후 병합, main에서 dev 생성
 - 면접 포인트: Gradle toolchain과 데몬 JVM 기준의 차이, 컴포넌트 스캔과 조건부 자동 설정의 차이, Eureka 응답 캐시와 인스턴스 만료 시간
 
@@ -33,6 +34,7 @@ Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (코드 +
 1. PR #1 리뷰 의견을 반영한다(코드와 문서·AI 지침을 한 PR로, 2026-10-14 결정).
 2. 팀 리뷰 후 병합되면 main에서 `dev`를 만들어 push한다.
 3. 관리자: `skip-docs` 라벨 생성, main·dev 보호 규칙.
+4. 병합 후 `dev`에서 전수검사 2장 후속 작업을 처리한다(`docs/reviews/base-setting-integration-audit.md`).
 
 ## 직접 해보기
 1. `./gradlew --version`을 실행해 `Daemon JVM` 줄에 `Compatible with Java 17`이 보이는지 확인한다.

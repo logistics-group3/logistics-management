@@ -43,7 +43,20 @@ feat(infra): 공통 인프라 통합과 문서·AI 지침 정비 — 팀 검토 
 | 31 | `feat(infra)` | `script/run.sh`(`.env` 준비, `--reset`, `--check`, 서비스·`--scale` 전달) | haneol, KEJ |
 | 32 | `chore(ci)` | 문서 동기화 검사(`docs/doc-map.tsv`, `script/docs-check.sh`), PR 검사 워크플로 | haneol |
 
-스텝별 설명은 `docs/learning/junhyun/steps/step-13` ~ `step-33`에 있다.
+### 전수검사 반영 (스텝 34)
+PR을 올린 뒤 다섯 영역(코드, 인프라·스크립트, 문서와 코드 대조, 결정 기록·팀 결정, AI 지침)을 전수검사했다. 병합 전에 고칠 7건을 커밋 6개로 고쳤고, 나머지는 `dev`에서 처리할 후속 작업으로 남겼다. 상세: `docs/reviews/base-setting-integration-audit.md`
+
+| # | 고친 것 |
+|---|---|
+| 1 | `setup-agents.sh`가 `.claude/skills`·`.claude/rules`의 개인 파일까지 지우던 문제 |
+| 2 | "Config Server 값이 환경 변수보다 우선"이라는 반대 설명 정정, DB URL에 `${DB_PORT:5432}` |
+| 3 | Feign 타임아웃·연결 실패는 `FeignException`이라는 점과 보상 예시 |
+| 4 | `db-check.sh`가 127.0.0.1(trust)로 접속해 비밀번호를 검사하지 않던 문제 |
+| 5 | `error-codes-check.sh`의 들여쓰기·검사 대상 파일 |
+| 6 | ADR 0008·선별 검토 문서에 팀 검토 후속 결정 반영 |
+| 7 | 하루 정리 기록 규칙 충돌(알아서 기록 ↔ 제안) |
+
+스텝별 설명은 `docs/learning/junhyun/steps/step-13` ~ `step-34`에 있다.
 
 ## 결과 (Result)
 ### 코드와 실행
@@ -67,6 +80,15 @@ feat(infra): 공통 인프라 통합과 문서·AI 지침 정비 — 팀 검토 
 | `git ls-files --eol` | 스크립트 8개와 `gradlew` 모두 LF |
 | GitHub Actions `docs-guard` (PR #1) | `docs-check` pass, `error-codes-check` pass |
 
+### 전수검사 수정 후 (스텝 34)
+| 검사 | 결과 |
+|---|---|
+| `./gradlew clean build` | 성공, 테스트 98개 실패 0 |
+| `script/run.sh --reset --check` (새 볼륨, 별도 Compose 프로젝트) | E2E PASS 15 / FAIL 0 |
+| `script/db-check.sh` | PASS 5개. 틀린 비밀번호를 주면 `password authentication failed`로 실패(수정 전에는 통과했다) |
+| 환경 변수 우선순위 | Config Server가 8080을 줄 때 `SERVER_PORT=18080`인 Gateway가 18080으로 기동 |
+| `setup-agents.sh` 8가지 경우(`/bin/bash` 3.2) | 개인 항목 보존, 이름 겹침 건너뜀, 폴더 링크 중단 |
+
 확인하지 못한 것: Windows에서 clone·실행과 `setup-agents.sh`의 복사 대체 경로, 팀원별 IDE import, Claude Code 종료 훅 연결(개인 선택).
 
 ## 리뷰 포인트
@@ -89,6 +111,7 @@ feat(infra): 공통 인프라 통합과 문서·AI 지침 정비 — 팀 검토 
 
 ## 관련 문서
 - 결정: `docs/decisions/0008`~`0013`, 서비스 결정 `docs/services/{service}/decisions/`
+- 전수검사 결과와 후속 작업: `docs/reviews/base-setting-integration-audit.md`
 - 문서 지도: `docs/README.md`, 팀 가이드: `docs/guides/`
 - 범위 대조와 선별 근거: `docs/reviews/base-setting-integration.md`
 - 에러 코드: `docs/error-codes.md`
