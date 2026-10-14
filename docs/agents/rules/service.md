@@ -35,7 +35,7 @@ public CompanyResult update(UserContext user, UUID companyId, UpdateCompanyComma
 
 ## 다른 서비스 호출
 - application에 인터페이스를 두고 infrastructure/client에서 Feign으로 구현한다([feign.md](feign.md)).
-- 원격 에러는 `BusinessException`으로 올라온다. 분기가 필요하면 `e.getErrorCode().code()`를 문자열 상수와 비교한다.
+- 상대가 응답한 실패는 `BusinessException`, 응답을 받지 못한 실패(연결 실패·타임아웃)는 `FeignException`으로 올라온다. 분기가 필요하면 `e.getErrorCode().code()`를 비교하고, 보상이 필요한 호출은 두 예외를 모두 잡는다([feign.md](feign.md) "에러 분기").
 - 여러 서비스를 차례로 바꾸는 흐름(주문 Saga)은 실패 지점 이후의 보상 호출을 명시하고, 보상 실패는 로그와 상태값으로 남긴다(SA 7장).
 - 오래 걸리는 원격 호출은 DB 트랜잭션 밖에서 하거나 트랜잭션 범위를 메서드로 나눈다.
 
