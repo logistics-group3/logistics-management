@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 리뷰 1 | [공통 인프라 교차 검토](review-01-common-infra.md) | docs: 공통 인프라 교차 검토 결과 추가 |
 | 9 | [Gateway를 Spring Security로 전환](step-09-gateway-spring-security.md) | refactor: Gateway 인증을 Spring Security WebFlux로 전환 |
 | 8 | [springdoc, QueryDSL](step-08-springdoc-querydsl.md) | feat: springdoc 문서 통합과 QueryDSL 공통 설정 추가 |
 | 7 | [통합 검증 스크립트](step-07-e2e-check.md) | feat: 공통 인프라 완료 기준 자동 검증 스크립트 추가 |
