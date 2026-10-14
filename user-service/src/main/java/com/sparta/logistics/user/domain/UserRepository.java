@@ -8,7 +8,8 @@ import java.util.UUID;
  */
 public interface UserRepository {
 
-    User save(User user);
+    /** 저장하고 바로 INSERT를 실행한다. 유니크 제약 위반을 호출한 메서드 안에서 잡기 위해 쓴다. */
+    User saveAndFlush(User user);
 
     Optional<User> findById(UUID id);
 

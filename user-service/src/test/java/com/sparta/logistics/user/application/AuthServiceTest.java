@@ -21,7 +21,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,8 +34,13 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private TokenIssuer tokenIssuer;
-    @InjectMocks
     private AuthService authService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        given(passwordEncoder.encode(any())).willReturn("dummy-hash");
+        authService = new AuthService(userRepository, passwordEncoder, tokenIssuer);
+    }
 
     private final SignupCommand signup = new SignupCommand(
             "hong01", "Sparta!2026", "홍길동", "U01ABCDE2FG", AffiliationType.COMPANY, "부산수산도매");
@@ -46,7 +50,7 @@ class AuthServiceTest {
     void signup() {
         given(userRepository.existsByUsernameIncludingDeleted("hong01")).willReturn(false);
         given(passwordEncoder.encode("Sparta!2026")).willReturn("hashed");
-        given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
+        given(userRepository.saveAndFlush(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         SignupResult result = authService.signup(signup);
 
@@ -63,7 +67,7 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.signup(signup))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(UserErrorCode.DUPLICATE_USERNAME);
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -92,5 +96,27 @@ class AuthServiceTest {
                 .extracting("errorCode").isEqualTo(UserErrorCode.LOGIN_FAILED);
         assertThatThrownBy(() -> authService.login(new LoginCommand("nobody", "Sparta!2026")))
                 .extracting("errorCode").isEqualTo(UserErrorCode.LOGIN_FAILED);
+    }
+
+    @Test
+    @DisplayName("없는 사용자도 더미 해시와 비교해 BCrypt 비용을 똑같이 쓴다")
+    void comparesDummyHashForMissingUser() {
+        given(userRepository.findByUsername("nobody")).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(new LoginCommand("nobody", "Sparta!2026")))
+                .extracting("errorCode").isEqualTo(UserErrorCode.LOGIN_FAILED);
+        verify(passwordEncoder).matches("Sparta!2026", "dummy-hash");
+    }
+
+    @Test
+    @DisplayName("저장 시점에 유니크 제약이 위반되면(동시 가입) DUPLICATE_USERNAME")
+    void uniqueViolationOnSave() {
+        given(userRepository.existsByUsernameIncludingDeleted("hong01")).willReturn(false);
+        given(passwordEncoder.encode("Sparta!2026")).willReturn("hashed");
+        given(userRepository.saveAndFlush(any(User.class)))
+                .willThrow(new org.springframework.dao.DataIntegrityViolationException("uk_username"));
+
+        assertThatThrownBy(() -> authService.signup(signup))
+                .extracting("errorCode").isEqualTo(UserErrorCode.DUPLICATE_USERNAME);
     }
 }

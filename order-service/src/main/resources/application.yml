@@ -3,3 +3,7 @@ spring:
     name: order-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  cloud:
+    config:
+      # config-server에 접속하지 못하면 기본값(포트 8080 등)으로 뜨지 않고 바로 실패한다
+      fail-fast: true

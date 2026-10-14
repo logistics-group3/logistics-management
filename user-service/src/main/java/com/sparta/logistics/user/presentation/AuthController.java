@@ -6,6 +6,7 @@ import com.sparta.logistics.user.application.dto.SignupResult;
 import com.sparta.logistics.user.application.dto.TokenResult;
 import com.sparta.logistics.user.presentation.dto.LoginRequest;
 import com.sparta.logistics.user.presentation.dto.SignupRequest;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 회원가입·로그인은 Public API라 문서의 전역 Bearer 요구사항을 비운다. */
+@SecurityRequirements
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth")
