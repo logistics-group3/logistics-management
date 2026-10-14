@@ -6,7 +6,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * 실제 PostgreSQL 16 컨테이너로 서비스를 띄우는 통합 테스트의 공통 부모. Docker가 실행 중이어야 한다.
- * config-server와 Eureka는 끄고, 스키마는 테스트마다 Entity로 새로 만든다.
+ * config-server와 Eureka는 끄고, 스키마는 운영과 같은 Flyway 마이그레이션으로 만든 뒤 Entity와 맞는지 검사한다(ddl-auto=validate).
  *
  * Note: 컨테이너를 static 필드로 한 번만 띄워 모든 테스트 클래스가 공유한다(싱글턴 컨테이너 패턴).
  * {@code @ServiceConnection}이 컨테이너의 접속 정보(url, username, password)를 spring.datasource.* 대신 넣어 준다.
@@ -15,7 +15,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @SpringBootTest(properties = {
         "spring.cloud.config.enabled=false",
         "eureka.client.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
+        "spring.jpa.hibernate.ddl-auto=validate"
 })
 public abstract class PostgresIntegrationTest {
 

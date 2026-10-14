@@ -12,6 +12,7 @@ script/e2e-check.sh           # 공통 인프라 완료 기준 6개 자동 확�
 - Eureka 대시보드: http://localhost:8761 (관리용 포트는 이 PC에서만 열린다)
 - API 진입점(Gateway): http://localhost:8080
 - 종료: `docker compose down` (DB까지 지우려면 `docker compose down -v`)
+- DB 스키마는 Flyway가 만든다(`*/src/main/resources/db/migration`). Flyway 도입 전의 로컬 DB는 처음 한 번 `docker compose down -v`
 - MASTER 계정 만들기: 가입 후 `script/promote-master.sh <username>` 실행, 다시 로그인
 
 ## 구성

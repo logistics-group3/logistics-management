@@ -13,7 +13,11 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      # 스키마는 Flyway가 만든다. Hibernate는 Entity와 실제 테이블이 맞는지만 검사하고, 다르면 기동을 멈춘다.
+      ddl-auto: validate
+  flyway:
+    # 서비스 스키마는 init.sql이 만들어 둔다. 서비스 계정은 스키마를 만들 권한이 없으므로 Flyway가 만들지 않게 한다.
+    create-schemas: false
   cloud:
     openfeign:
       client:

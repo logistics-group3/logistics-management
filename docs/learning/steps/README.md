@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 12 | [Flyway로 DB 스키마 관리](step-12-flyway.md) | feat: Flyway로 DB 스키마 관리 |
 | 11 | [직접 구현·하드코딩 정리](step-11-review-2-fixes.md) | refactor: 공통 예외 처리기 상속, app.jar, common-core 분리, 생성자 주입 통일 (커밋 4개) |
 | 리뷰 2 | [직접 구현·하드코딩 검사](review-02-reinvention-check.md) | docs: 직접 구현·하드코딩 검사와 Flyway·JaCoCo 노트 추가 |
 | 10-6 | [Testcontainers DB 통합 테스트](step-10-6-integration-tests.md) | test: Testcontainers 기반 user-service 통합 테스트 추가 |

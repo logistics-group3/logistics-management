@@ -10,6 +10,9 @@ spring:
     properties:
       hibernate:
         default_schema: user_schema
+  flyway:
+    # 마이그레이션 이력 테이블(flyway_schema_history)과 테이블을 이 서비스 스키마에 만든다
+    schemas: user_schema
 
 jwt:
   # 서명 키는 저장소에 두지 않는다. compose는 .env의 JWT_SECRET을 넘기고, 로컬 실행은 환경 변수로 지정한다.

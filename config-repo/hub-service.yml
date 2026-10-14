@@ -10,3 +10,6 @@ spring:
     properties:
       hibernate:
         default_schema: hub_schema
+  flyway:
+    # 마이그레이션 이력 테이블(flyway_schema_history)과 테이블을 이 서비스 스키마에 만든다
+    schemas: hub_schema

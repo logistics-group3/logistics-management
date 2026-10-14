@@ -64,6 +64,12 @@ Optional<Product> findWithLockById(UUID id);
 - 테스트 이름은 한국어 `@DisplayName`으로 시나리오를 쓴다.
 - 테스트를 통과시키려고 검증 로직을 약화하지 않는다.
 
-## 5. 설정
+## 5. DB 스키마 (Flyway)
+- 스키마는 Flyway가 만든다. Hibernate는 `ddl-auto: validate`로 검사만 한다.
+- 테이블을 추가·변경하면 Entity와 함께 `src/main/resources/db/migration/V{번호}__{설명}.sql`을 추가한다. SQL에 스키마 이름을 붙이지 않는다.
+- 이미 커밋한 마이그레이션 파일은 고치지 않는다. 새 버전 파일로 고친다.
+- SA의 CHECK, DEFAULT, 부분 인덱스(`WHERE deleted_at IS NULL`)는 마이그레이션에 명시하고, 통합 테스트로 확인한다.
+
+## 6. 설정
 - `application.yml`에는 로컬 기본값을 두고, 컨테이너 환경 값은 환경 변수(`SPRING_DATASOURCE_*` 등)로 덮어쓴다.
 - 포트, 스키마, 계정 이름은 SA 문서 3.2와 3.4를 따른다.

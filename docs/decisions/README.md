@@ -4,6 +4,7 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0007 | [DB 스키마를 Flyway 마이그레이션으로 관리](0007-flyway-schema-migration.md) | 채택 | 2026-10-14 |
 | 0006 | [웹 무관 공통 계약을 common-core 모듈로 분리](0006-common-core-module.md) | 채택 | 2026-10-14 |
 | 0005 | [Gateway 인증을 Spring Security(WebFlux)로 전환](0005-gateway-spring-security.md) | 채택 | 2026-10-13 |
 | 0004 | [API 문서(springdoc)와 QueryDSL 라이브러리 선택](0004-springdoc-querydsl.md) | 채택 | 2026-10-13 |

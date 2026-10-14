@@ -133,4 +133,27 @@ class UserAuthIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.data.hubId").doesNotExist())
                 .andExpect(jsonPath("$.data.slackId").value("U01"));
     }
+
+    @Test
+    @DisplayName("Flyway가 만든 CHECK 제약: 소속 허브 없이 배송담당자로 지정하면 DB가 거부한다(SA 5.2)")
+    void deliveryManagerRequiresHub() {
+        SignupResult result = authService.signup(signup("itchk01"));
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "UPDATE p_users SET is_delivery_manager = TRUE WHERE user_id = ?", result.userId()))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class)
+                .hasMessageContaining("ck_p_users_delivery_manager_hub");
+
+        jdbcTemplate.update("UPDATE p_users SET is_delivery_manager = TRUE, hub_id = gen_random_uuid() WHERE user_id = ?",
+                result.userId());
+        assertThat(jdbcTemplate.queryForObject("SELECT is_delivery_manager FROM p_users WHERE user_id = ?",
+                Boolean.class, result.userId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("스키마 이력: Flyway가 V1 마이그레이션을 적용한 기록이 남는다")
+    void migrationHistory() {
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM flyway_schema_history WHERE version = '1' AND success", Integer.class)).isEqualTo(1);
+    }
 }

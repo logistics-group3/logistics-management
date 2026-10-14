@@ -104,9 +104,10 @@ tasks.named('test') { finalizedBy 'jacocoTestReport' }
 - 100%를 목표로 하면 설정 코드나 단순 getter까지 테스트하느라 비용만 든다. 도메인 규칙과 보안 경계처럼 중요한 코드를 높게 유지하는 편이 낫다.
 
 ## 이 프로젝트에서는
-- 현재: `ddl-auto: update`, 커버리지 도구 없음
+- Flyway: 2026-10-14 도입(스텝 12, ADR 0007). `ddl-auto: validate`, user-service V1에 SA 5.2 제약 반영
+- JaCoCo: 도입 보류. 측정 결과는 리뷰 2에 있다
 - 검사 기록: [리뷰 2](../steps/review-02-reinvention-check.md) (커버리지 측정 결과 포함)
-- 도입 여부는 팀 결정 대상이다. Flyway는 모든 서비스의 스키마 관리 방식을 바꾸기 때문이다.
+- Flyway는 모든 서비스의 스키마 관리 방식을 바꾸므로, 공통 인프라 리뷰 때 팀에 함께 공유한다.
 
 ## 면접 포인트
 - "운영에서 `ddl-auto`를 쓰면 안 되는 이유와 대안": 컬럼 삭제·변경 불가, 이력 없음, 예측 불가능 → Flyway/Liquibase + `validate`
