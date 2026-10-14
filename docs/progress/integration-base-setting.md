@@ -1,7 +1,7 @@
 # integration/base-setting
 
 ## 지금 하는 일
-Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (PR A, 코드)
+Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (코드 + 문서·AI 지침)
 
 ## 진행 상태
 - [x] 스텝 13 실행 환경 보강: 줄바꿈·인코딩·데몬 JDK·비밀값 무시 패턴 (compile 성공, 데몬 JVM 17 확인)
@@ -13,6 +13,8 @@ Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (PR A, �
 - [x] 스텝 19 MASTER 계정 자동 생성: 기동 시 .env 값으로 생성, 단위 5·통합 1 추가, user 23개 통과 (E2E 확인은 스텝 21)
 - [x] 스텝 20 에러 코드 규칙·통합 문서: docs/error-codes.md, error-codes-check.sh(PASS, 실패 경로 확인), INVALID_STATUS_TRANSITION 공통화
 - [x] 스텝 21 새로 시작 안내·전체 검증: build 98개 통과, E2E 18/0(새 볼륨), db-check 5/5, error-codes PASS, Eureka 강제 종료 17초
+- [x] 스텝 22 학습 노트 사람별 폴더 이동: 링크 깨짐 0건
+- [ ] 스텝 23~ 문서 지도·작성 가이드, 서비스 협업 창구, ADR 이관, 모듈 지침, 레이어 규칙, 스킬, 팀 가이드, run.sh, 문서 동기화 점검
 - [ ] main 대상 PR 생성, 팀 리뷰 후 병합, main에서 dev 생성
 - 면접 포인트: Gradle toolchain과 데몬 JVM 기준의 차이, 컴포넌트 스캔과 조건부 자동 설정의 차이, Eureka 응답 캐시와 인스턴스 만료 시간
 

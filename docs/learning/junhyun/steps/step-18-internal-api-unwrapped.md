@@ -1,7 +1,7 @@
 # 스텝 18. 내부 API는 DTO 그대로 반환
 
 - 날짜: 2026-10-14
-- 결정 기록: [ADR 0010](../../decisions/0010-internal-api-unwrapped-response.md)
+- 결정 기록: [ADR 0010](../../../decisions/0010-internal-api-unwrapped-response.md)
 - 결과: gateway 테스트 24개, user-service 테스트 17개 통과. 새 테스트 `UserServiceClientTest.readsUnwrappedBody`
 
 ## 바꾼 것

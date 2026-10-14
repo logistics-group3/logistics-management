@@ -2,7 +2,7 @@
 
 - 날짜: 2026-10-13
 - 결과: Gateway Swagger UI에서 서비스 5개 문서를 선택해 조회, QUser·QBaseEntity 생성 확인. 전체 빌드와 e2e(PASS 11/0) 회귀 없음
-- 결정 기록: [ADR 0004](../../decisions/0004-springdoc-querydsl.md)
+- 결정 기록: [ADR 0004](../../../decisions/0004-springdoc-querydsl.md)
 
 ## 만든 것
 | 파일 | 역할 |

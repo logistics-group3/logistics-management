@@ -3,7 +3,7 @@
 - 날짜: 2026-10-13
 - 계기: "Spring Security는 Gateway와 user-service 중 어디에 두나"라는 질문([노트](../qna/2026-10-13-spring-security-placement-in-msa.md))을 확인하다가, SA는 Gateway에 Spring Security를 두는데 스텝 6 구현은 직접 짠 WebFilter였다는 점을 발견했다.
 - 결과: 빈 DB부터 `script/e2e-check.sh --up --with-cache-ttl` PASS 14 / FAIL 0 (126초). Security 통합 테스트 8개, 캐시 테스트 3개 통과. Swagger 문서 접근 정상
-- 결정 기록: [ADR 0005](../../decisions/0005-gateway-spring-security.md)
+- 결정 기록: [ADR 0005](../../../decisions/0005-gateway-spring-security.md)
 
 ## 전환 전 확인: 권한 캐시와 만료 후 재조회
 요청받은 대로 전환 전에 기존 구현을 실제 컨테이너에서 확인했다.

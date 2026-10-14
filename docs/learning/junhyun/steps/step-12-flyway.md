@@ -1,7 +1,7 @@
 # 스텝 12. Flyway로 DB 스키마 관리
 
 - 날짜: 2026-10-14
-- 결정 기록: [ADR 0007](../../decisions/0007-flyway-schema-migration.md)
+- 결정 기록: [ADR 0007](../../../decisions/0007-flyway-schema-migration.md)
 - 결과: 테스트 65개 통과(통합 테스트 2개 추가), 빈 상태 e2e PASS 14/0. 컨테이너에서 `user_schema`에 `flyway_schema_history`, `p_users`, CHECK 3개·유니크 제약 생성 확인
 
 ## 바꾼 것

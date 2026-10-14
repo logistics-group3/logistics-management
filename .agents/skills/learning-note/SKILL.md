@@ -1,6 +1,6 @@
 ---
 name: learning-note
-description: 사용자가 개념, 원리, 방법, 비교를 물었을 때 답을 docs/learning/qna/에 날짜별 학습 노트로 저장한다. 작업 지시나 단순 상태 확인에는 쓰지 않는다.
+description: 사용자가 개념, 원리, 방법, 비교를 물었을 때 답을 docs/learning/<이름>/qna/에 날짜별 학습 노트로 저장한다. 작업 지시나 단순 상태 확인에는 쓰지 않는다.
 ---
 
 # learning-note
@@ -10,9 +10,9 @@ description: 사용자가 개념, 원리, 방법, 비교를 물었을 때 답을
 
 ## 절차
 1. 채팅에서 핵심 답을 짧게 먼저 준다.
-2. `docs/learning/qna/`에서 같은 주제의 노트를 찾는다. 있으면 그 노트를 보강하고 `updated`를 갱신한다.
-3. 없으면 `docs/learning/qna/YYYY-MM-DD-<영문-kebab-slug>.md`를 만든다. 날짜는 질문한 날이다.
-4. `docs/learning/README.md` 표에 한 줄을 추가하거나 갱신한다. 최신 노트가 위로 오게 한다.
+2. `docs/learning/<이름>/qna/`에서 같은 주제의 노트를 찾는다. 있으면 그 노트를 보강하고 `updated`를 갱신한다.
+3. 없으면 `docs/learning/<이름>/qna/YYYY-MM-DD-<영문-kebab-slug>.md`를 만든다. 날짜는 질문한 날이다.
+4. `docs/learning/<이름>/README.md` 표에 한 줄을 추가하거나 갱신한다. 최신 노트가 위로 오게 한다.
 5. 채팅 마지막 줄에 `노트 저장: <경로>`를 남긴다.
 
 ## 노트 형식

@@ -1,7 +1,7 @@
 # 스텝 16. common 조건부 자동 설정
 
 - 날짜: 2026-10-14
-- 결정 기록: [ADR 0009](../../decisions/0009-common-conditional-auto-configuration.md)
+- 결정 기록: [ADR 0009](../../../decisions/0009-common-conditional-auto-configuration.md)
 - 근거: Notion "팀 합의 대조·추가 검토" 3장 "부분적으로 공통 Configuration이 적용되게끔". 방식은 KEJ·KMH·seungkeun 브랜치와 같다.
 - 결과: common 테스트 34개, user-service 테스트 17개 통과. 새 테스트는 `CommonAutoConfigurationTest` 7개, `CommonAutoConfigurationIntegrationTest` 1개, `AuthControllerWebMvcTest` 1개
 

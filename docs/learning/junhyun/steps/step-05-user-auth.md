@@ -2,7 +2,7 @@
 
 - 날짜: 2026-10-13
 - 결과: Gateway를 거쳐 회원가입(201), 중복 가입(409), 로그인(200, JWT) 확인 (완료 기준 2). I-01 내부 호출 확인(없는 사용자 404). user-service 테스트 7개 통과
-- 결정 기록: [ADR 0003](../../decisions/0003-auth-libraries.md)
+- 결정 기록: [ADR 0003](../../../decisions/0003-auth-libraries.md)
 
 ## 만든 것 (`user-service/.../user/`)
 | 계층 | 파일 | 역할 |

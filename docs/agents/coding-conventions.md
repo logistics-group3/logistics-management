@@ -62,7 +62,7 @@ com.sparta.logistics.{서비스}
 Optional<Product> findWithLockById(UUID id);
 ```
 ```groovy
-// Note: 셸 JAVA_HOME과 무관하게 JDK 17로 컴파일·실행하게 고정하는 설정. 팀원 간 JDK 차이를 없앤다. (docs/learning/qna/2026-10-13-gradle-toolchain-and-initializr.md)
+// Note: 셸 JAVA_HOME과 무관하게 JDK 17로 컴파일·실행하게 고정하는 설정. 팀원 간 JDK 차이를 없앤다. (docs/learning/junhyun/qna/2026-10-13-gradle-toolchain-and-initializr.md)
 ```
 
 ## 4. 테스트

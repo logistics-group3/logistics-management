@@ -15,7 +15,7 @@
 - 후: 루트 `build.gradle`에서 Boot 플러그인을 쓰는 모듈의 `bootJar` 산출물 이름을 `app.jar`로 고정하고, 실행할 수 없는 plain jar는 만들지 않는다. Dockerfile은 `build/libs/app.jar`만 복사한다.
 - `plugins.withId('org.springframework.boot') { ... }`: 그 플러그인이 적용된 모듈에만 설정을 건다. common 같은 라이브러리 모듈의 jar는 그대로 둔다.
 
-## 11-3. common-core 분리 ([ADR 0006](../../decisions/0006-common-core-module.md))
+## 11-3. common-core 분리 ([ADR 0006](../../../decisions/0006-common-core-module.md))
 - 웹 스택과 무관한 계약(에러 코드, ErrorResponse, ApiResponse, UserHeaders, Role, BusinessException)을 `common-core`로 옮겼다. 패키지는 그대로라 서비스 코드는 한 줄도 바뀌지 않았다.
 - gateway는 common-core를 써서 `UserHeaders`, `GatewayErrorCode`, `ApiEnvelope` 중복을 지웠다. Gateway의 에러 응답도 서비스와 같은 `ErrorResponse` 객체로 만든다.
 - `ErrorResponseContractTest`가 에러 응답 모양(errors는 VALIDATION_ERROR일 때만)을 한곳에서 고정한다.

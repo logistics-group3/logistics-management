@@ -63,7 +63,7 @@ docker compose exec gateway-service curl -s http://user-service:8081/actuator/he
 ## 문서
 - 설계: `docs/SA/`
 - 공통 인프라 범위: `docs/progress/공통 인프라 개발 범위.md`
-- 구현 스텝별 설명: `docs/learning/steps/`
+- 학습 노트(사람별): `docs/learning/`
 - 결정 기록: `docs/decisions/`
 - 에이전트·작업 규칙: `AGENTS.md`, `docs/agents/`
 - 브랜치 선별 근거·검증 결과: `docs/reviews/base-setting-integration.md`
