@@ -27,7 +27,7 @@ fi
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "git 저장소가 아니다" >&2; exit 2; }
 cd "$root"
 map=docs/doc-map.tsv
-[[ -f "$map" ]] || { echo "$map이 없다" >&2; exit 2; }
+[[ -f "$map" ]] || { echo "${map}이 없다" >&2; exit 2; }
 
 if [[ "$mode" == range ]]; then
   git rev-parse --verify --quiet "$base" >/dev/null || { echo "기준 ref를 찾을 수 없다: $base" >&2; exit 2; }

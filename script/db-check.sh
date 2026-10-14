@@ -4,10 +4,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 docker compose exec -T postgres bash -euo pipefail <<'BASH'
+# Note: postgres 이미지 기본 pg_hba는 소켓과 127.0.0.1 접속을 trust로 둬 비밀번호를 보지 않는다.
+# 컨테이너 자신의 IP로 접속해야 서비스와 같은 scram-sha-256 비밀번호 인증을 거친다.
+host=$(hostname -i | awk '{print $1}')
+
 check_service() {
   local schema="$1" app_user="$2" password="$3" result
-  # TCP 접속으로 실제 비밀번호 인증을 검증한다. 컨테이너 내부 소켓의 trust 인증을 쓰지 않는다.
-  result=$(PGPASSWORD="$password" psql --host=127.0.0.1 --username "$app_user" \
+  result=$(PGPASSWORD="$password" psql --host="$host" --username "$app_user" \
     --dbname "$POSTGRES_DB" --no-password -v ON_ERROR_STOP=1 -At \
     --set=schema_name="$schema" --set=app_user="$app_user" <<'SQL'
 SELECT current_user = :'app_user'
