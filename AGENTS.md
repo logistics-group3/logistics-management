@@ -7,7 +7,7 @@
 - 모듈과 포트: `config-server`(8888), `eureka-server`(8761), `gateway-service`(8080), `{user,hub,company,order,delivery}-service`(8081~8085), `common-core`(웹 무관 공통 계약: 에러 코드·응답, 사용자 헤더), `common`(MVC 서비스 공통, common-core 포함)
 - 설정: 서비스 설정은 `config-repo/`(config-server가 제공)에 둔다. 각 모듈의 `application.yml`에는 이름과 `spring.config.import`만 둔다.
 - 패키지: `com.sparta.logistics.{서비스}`, 내부는 `presentation / application / domain / infrastructure`
-- 설계 정본: `docs/SA/Sparta_logistics_SA_Master .md`. 설계와 다르게 구현해야 하면 먼저 사용자에게 확인하고 `docs/decisions/`에 기록한다.
+- 설계 정본: `docs/SA/sparta-logistics-sa.md`. 설계와 다르게 구현해야 하면 먼저 사용자에게 확인하고 `docs/decisions/`에 기록한다.
 - 팀 공유 저장소다. 팀 합의(SA 문서, 결정 기록)를 개인 판단으로 덮어쓰지 않는다.
 
 ## 대전제
@@ -31,7 +31,7 @@
 | 코드 작성·수정 전 | `docs/agents/coding-conventions.md` |
 | 사용자 질문에 답할 때, 개념 설명·"직접 해보기" 작성 시 | `docs/agents/learning-guide.md` |
 | 작업 완료 보고·리뷰·테스트 전 | `docs/agents/quality-gates.md` |
-| 브랜치·커밋·PR 작업 시 | `docs/agents/git-workflow.md` |
+| 브랜치·커밋·PR 작업 시 | `docs/guides/git-workflow.md` |
 | 결정 기록 시 | `docs/decisions/README.md` |
 
 ## 공용 스킬 (`.agents/skills/`)

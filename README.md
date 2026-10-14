@@ -61,10 +61,13 @@ docker compose exec gateway-service curl -s http://user-service:8081/actuator/he
 | common | - | MVC 서비스 공통: 예외 처리기, BaseEntity, `@CurrentUser`, `@RequireRole`, Feign 오류·헤더 처리, 페이지 규칙 |
 
 ## 문서
-- 설계: `docs/SA/`
-- 공통 인프라 범위: `docs/progress/공통 인프라 개발 범위.md`
+[문서 지도](docs/README.md)에서 시작한다. 무엇을 어디에 쓰고, 상황마다 무엇을 읽는지 정리돼 있다.
+
+- 설계: `docs/SA/sparta-logistics-sa.md`
+- 팀 가이드(구현 순서, 리뷰, 로컬 실행, 설정 보안, Git, 문서 작성): `docs/guides/`
+- 서비스 협업 창구(API 계약, 구현 현황, 요청 기록): `docs/services/`
+- 결정 기록: `docs/decisions/`, 서비스 결정은 `docs/services/{service}/decisions/`
+- 에러 코드: `docs/error-codes.md`, 문제 해결 기록: `docs/troubleshooting.md`
+- AI 에이전트 규칙: `AGENTS.md`, `docs/agents/`, 모듈별 `{module}/AGENTS.md`, 공용 스킬 `.agents/skills/`
 - 학습 노트(사람별): `docs/learning/`
-- 결정 기록: `docs/decisions/`
-- 에이전트·작업 규칙: `AGENTS.md`, `docs/agents/`
-- 브랜치 선별 근거·검증 결과: `docs/reviews/base-setting-integration.md`
-- 문서별 기준 위치와 미확정 계약: `docs/agents/document-map.md`
+- 공통 인프라 범위와 통합 검토: `docs/progress/공통 인프라 개발 범위.md`, `docs/reviews/`
