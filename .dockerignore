@@ -1,0 +1,11 @@
+# 빌드에 필요 없는 파일은 컨텍스트에서 제외 (비밀 정보 포함)
+.git
+.gradle
+.idea
+**/build
+**/out
+*.iml
+.env
+# *.md
+infra
+script

@@ -1,0 +1,9 @@
+// 공통 의존성(common, Eureka Client, PostgreSQL, QueryDSL)은 루트 build.gradle에서 주입된다.
+dependencies {
+    // BCrypt만 사용 (Security 필터 체인은 쓰지 않는다. 인증은 Gateway 담당)
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+}

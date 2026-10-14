@@ -1,0 +1,108 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  config:
+    # 로컬(IDE) 실행 시 프로젝트 루트의 .env를 읽는다. Docker에서는 환경 변수로 주입된다.
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+  cloud:
+    loadbalancer:
+      cache:
+        ttl: 5s
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: 1000
+            response-timeout: 30s
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/users/**
+            - id: hub-service
+              uri: lb://hub-service
+              predicates:
+                - Path=/api/v1/hubs/**,/api/v1/hub-routes/**
+            - id: company-service
+              uri: lb://company-service
+              predicates:
+                - Path=/api/v1/companies/**,/api/v1/products/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/v1/orders/**
+            - id: delivery-service
+              uri: lb://delivery-service
+              predicates:
+                - Path=/api/v1/deliveries/**
+            # 서비스별 OpenAPI 문서 (Gateway Swagger UI에서 선택 조회)
+            - id: user-service-docs
+              uri: lb://user-service
+              predicates:
+                - Path=/docs/user-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: hub-service-docs
+              uri: lb://hub-service
+              predicates:
+                - Path=/docs/hub-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: company-service-docs
+              uri: lb://company-service
+              predicates:
+                - Path=/docs/company-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: order-service-docs
+              uri: lb://order-service
+              predicates:
+                - Path=/docs/order-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: delivery-service-docs
+              uri: lb://delivery-service
+              predicates:
+                - Path=/docs/delivery-service/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            # /internal/** 은 라우팅하지 않는다 (매칭 라우트가 없어 404. 실수로 라우트가 생겨도 AuthenticationFilter가 403 차단)
+
+jwt:
+  secret: ${JWT_SECRET}
+
+eureka:
+  client:
+    # 로컬 개발: 새로 뜬 인스턴스를 빠르게 인식하도록 레지스트리 갱신 주기를 줄인다 (기본 30초)
+    registry-fetch-interval-seconds: 5
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.uuid}
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: user-service
+        url: /docs/user-service/v3/api-docs
+      - name: hub-service
+        url: /docs/hub-service/v3/api-docs
+      - name: company-service
+        url: /docs/company-service/v3/api-docs
+      - name: order-service
+        url: /docs/order-service/v3/api-docs
+      - name: delivery-service
+        url: /docs/delivery-service/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,135 @@
+name: sparta-logistics
+
+# 실행: docker compose up -d --build  (멀티 스테이지 Dockerfile이 컨테이너 안에서 Gradle 빌드)
+# 외부 공개 포트는 Gateway 8080, Eureka 8761뿐이다. 비즈니스 서비스는 호스트 포트를 열지 않으므로
+# docker compose up -d --scale order-service=2 처럼 수평 확장할 수 있다.
+
+x-business-service: &business-service
+  restart: unless-stopped
+  networks: [logistics-net]
+  depends_on:
+    postgres:
+      condition: service_healthy
+    eureka-server:
+      condition: service_started
+
+x-business-env: &business-env
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_NAME: logistics
+  EUREKA_URL: http://eureka-server:8761/eureka
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: logistics-postgres
+    environment:
+      POSTGRES_DB: logistics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+      HUB_DB_PASSWORD: ${HUB_DB_PASSWORD}
+      COMPANY_DB_PASSWORD: ${COMPANY_DB_PASSWORD}
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD}
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d logistics"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [logistics-net]
+
+  eureka-server:
+    build:
+      context: .
+      args:
+        MODULE: eureka-server
+    container_name: logistics-eureka
+    environment:
+      EUREKA_HOSTNAME: eureka-server
+    ports:
+      - "8761:8761"
+    networks: [logistics-net]
+
+  gateway-service:
+    build:
+      context: .
+      args:
+        MODULE: gateway-service
+    container_name: logistics-gateway
+    restart: unless-stopped
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    networks: [logistics-net]
+
+  user-service:
+    <<: *business-service
+    build:
+      context: .
+      args:
+        MODULE: user-service
+    environment:
+      <<: *business-env
+      USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
+      MASTER_USERNAME: ${MASTER_USERNAME:-}
+      MASTER_PASSWORD: ${MASTER_PASSWORD:-}
+
+  hub-service:
+    <<: *business-service
+    build:
+      context: .
+      args:
+        MODULE: hub-service
+    environment:
+      <<: *business-env
+      HUB_DB_PASSWORD: ${HUB_DB_PASSWORD}
+
+  company-service:
+    <<: *business-service
+    build:
+      context: .
+      args:
+        MODULE: company-service
+    environment:
+      <<: *business-env
+      COMPANY_DB_PASSWORD: ${COMPANY_DB_PASSWORD}
+
+  order-service:
+    <<: *business-service
+    build:
+      context: .
+      args:
+        MODULE: order-service
+    environment:
+      <<: *business-env
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+
+  delivery-service:
+    <<: *business-service
+    build:
+      context: .
+      args:
+        MODULE: delivery-service
+    environment:
+      <<: *business-env
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD}
+
+networks:
+  logistics-net:
+    driver: bridge
+
+volumes:
+  pgdata:

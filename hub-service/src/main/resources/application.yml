@@ -1,0 +1,48 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: hub-service
+  config:
+    # 로컬(IDE) 실행 시 프로젝트 루트의 .env를 읽는다. Docker에서는 환경 변수로 주입된다.
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:logistics}?currentSchema=hub_schema
+    username: hub_app
+    password: ${HUB_DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: hub_schema
+  cloud:
+    loadbalancer:
+      cache:
+        ttl: 5s
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 1000
+            read-timeout: 3000
+
+eureka:
+  client:
+    # 로컬 개발: 새로 뜬 인스턴스를 빠르게 인식하도록 레지스트리 갱신 주기를 줄인다 (기본 30초)
+    registry-fetch-interval-seconds: 5
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.uuid}
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

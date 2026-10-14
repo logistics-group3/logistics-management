@@ -1,0 +1,3 @@
+// 공통 의존성(common, Eureka Client, PostgreSQL, QueryDSL)은 루트 build.gradle에서 주입된다.
+dependencies {
+}
