@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 32 | [문서 동기화 검사](step-32-docs-check.md) | chore(ci): 문서 동기화 검사와 PR 검사 워크플로 추가 |
 | 31 | [로컬 실행 스크립트](step-31-run-script.md) | feat(infra): 로컬 실행 스크립트 run.sh 추가 |
 | 30 | [Git 작업 가이드와 PR 템플릿](step-30-git-workflow.md) | docs(guides): 팀 Git 흐름과 STAR PR 템플릿 정리 |
 | 29 | [팀 가이드와 문제 해결 기록](step-29-team-guides.md) | docs(guides): 구현·로컬 실행·설정 보안 가이드와 문제 해결 기록 추가 |

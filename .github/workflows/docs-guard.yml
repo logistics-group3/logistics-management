@@ -1,0 +1,28 @@
+# PR마다 문서 동기화(script/docs-check.sh, 매핑 docs/doc-map.tsv)와 에러 코드(script/error-codes-check.sh)를 검사한다.
+# 문서 영향이 없는 PR은 skip-docs 라벨을 붙이면 문서 검사만 건너뛴다. 에러 코드 검사는 항상 돈다.
+name: docs-guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  docs-check:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-docs') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 문서 동기화 검사
+        run: script/docs-check.sh "origin/${{ github.base_ref }}"
+
+  error-codes-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 에러 코드 중복·문서 누락 검사
+        run: script/error-codes-check.sh

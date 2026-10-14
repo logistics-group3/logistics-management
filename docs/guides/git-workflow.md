@@ -37,7 +37,7 @@ type(scope): 요약
 | `docs` | 문서만 |
 | `chore` | 빌드, 설정, 의존성 |
 
-- scope는 모듈이나 영역 이름이다: `hub`, `order`, `common`, `gateway`, `config`, `infra`, `build`, `agents`, `docs`. 예: `feat(hub): 허브 재고 차감 내부 API 추가 (I-05)`, `chore(config): order Feign 타임아웃 조정`
+- scope는 모듈이나 영역 이름이다: `hub`, `order`, `common`, `gateway`, `config`, `infra`, `build`, `ci`, `agents`, `docs`. 예: `feat(hub): 허브 재고 차감 내부 API 추가 (I-05)`, `chore(config): order Feign 타임아웃 조정`
 - 요약은 한국어 평서형으로 50자 안쪽에 쓰고 마침표를 찍지 않는다.
 - 한 커밋에 한 가지 변경만 담는다. 빌드가 깨지는 중간 커밋을 만들지 않는다.
 - `Co-Authored-By` 같은 AI 공동 작성자 표기를 넣지 않는다.
