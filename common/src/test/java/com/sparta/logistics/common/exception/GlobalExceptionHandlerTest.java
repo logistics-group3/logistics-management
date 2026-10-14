@@ -82,10 +82,11 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("지원하지 않는 HTTP 메서드는 405 METHOD_NOT_ALLOWED")
+    @DisplayName("지원하지 않는 HTTP 메서드는 405 METHOD_NOT_ALLOWED이고, 허용 메서드를 Allow 헤더로 알려 준다")
     void methodNotAllowed() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/sample/users"))
                 .andExpect(status().isMethodNotAllowed())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Allow", "POST"))
                 .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
     }
 
