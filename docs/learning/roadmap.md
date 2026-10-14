@@ -6,10 +6,10 @@
 | 주제 | 프로젝트에서 만나는 지점 | 노트 |
 |---|---|---|
 | 빌드 도구, 의존성 관리, BOM | 멀티 모듈 세팅 | [멀티 모듈](qna/2026-10-13-spring-boot-multimodule-setup.md), [toolchain](qna/2026-10-13-gradle-toolchain-and-initializr.md) |
-| IoC/DI, 빈 스캔, 자동 설정 | common 모듈 스캔, starter | |
+| IoC/DI, 빈 스캔, 자동 설정 | common 모듈 스캔, starter | [-parameters](qna/2026-10-14-java-parameters-compiler-flag.md) |
 | 스프링 MVC 요청 흐름, 필터와 인터셉터 | Controller, 공통 응답, 예외 처리 | |
 | Bean Validation | 요청 DTO 검증 (SA 8.5) | |
-| JPA 영속성 컨텍스트, 더티 체킹, 지연 로딩 | Entity 설계, BaseEntity | |
+| JPA 영속성 컨텍스트, 더티 체킹, 지연 로딩 | Entity 설계, BaseEntity | [flush 시점과 동시 가입](qna/2026-10-14-jpa-flush-timing-and-concurrency-test.md) |
 | 트랜잭션 전파와 격리 수준, 프록시 | application 서비스 | |
 
 ## 2. 설계: 코드 구조와 데이터
@@ -20,7 +20,7 @@
 | ERD, 인덱스, 논리 삭제 | 테이블 명세 (SA 4, 5) | |
 | N+1, 페치 조인, QueryDSL 동적 쿼리 | 검색 API | |
 | REST API 설계, 공통 응답, 페이징 | API 명세 (SA 6) | |
-| 테스트 전략 (단위, 슬라이스, 통합) | 도메인 테스트, @DataJpaTest | |
+| 테스트 전략 (단위, 슬라이스, 통합) | 도메인 테스트, Testcontainers | [동시성 테스트 검증](qna/2026-10-14-jpa-flush-timing-and-concurrency-test.md) |
 
 ## 3. MSA와 분산 시스템
 | 주제 | 프로젝트에서 만나는 지점 | 노트 |
@@ -37,7 +37,7 @@
 ## 4. 운영
 | 주제 | 프로젝트에서 만나는 지점 | 노트 |
 |---|---|---|
-| Docker, docker-compose, 이미지 빌드 | 컨테이너 구성 (SA 3.2) | [작업 환경 무게](qna/2026-10-13-multimodule-workspace-weight.md) |
+| Docker, docker-compose, 이미지 빌드 | 컨테이너 구성 (SA 3.2) | [작업 환경 무게](qna/2026-10-13-multimodule-workspace-weight.md), [멀티스테이지·BuildKit](qna/2026-10-14-docker-multistage-buildkit-cache.md) |
 | 설정 분리, 환경 변수, 비밀값 관리 | application.yml, .env | |
 | 헬스 체크, Actuator | 서비스 기동 순서 | |
 | 장애 대응: 타임아웃, 재시도, 서킷 브레이커 | SA 3.5 | |

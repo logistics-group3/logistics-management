@@ -7,6 +7,9 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-14 | [서비스 8개가 Gradle 빌드를 한 번만 공유하는 Docker 멀티스테이지 빌드와 BuildKit 캐시](qna/2026-10-14-docker-multistage-buildkit-cache.md) | 중급 | docker, buildkit, gradle | Junhyun An |
+| 2026-10-14 | [save()로는 동시 가입이 500, saveAndFlush()로는 409인 이유와 테스트 검증법](qna/2026-10-14-jpa-flush-timing-and-concurrency-test.md) | 고급 | jpa, transaction, concurrency, testing | Junhyun An |
+| 2026-10-14 | [-parameters 컴파일 옵션이 없으면 왜 Spring이 @RequestParam 이름을 못 읽나](qna/2026-10-14-java-parameters-compiler-flag.md) | 중급 | java, spring, gradle | Junhyun An |
 | 2026-10-13 | [MSA에서 Spring Security는 Gateway와 user-service 중 어디에 두나](qna/2026-10-13-spring-security-placement-in-msa.md) | 중급 | spring-security, gateway, jwt, msa | Junhyun An |
 | 2026-10-13 | [모듈마다 Spring 프로젝트를 두면 작업 환경이 무거워지지 않나](qna/2026-10-13-multimodule-workspace-weight.md) | 기초 | gradle, multi-module, msa, docker | Junhyun An |
 | 2026-10-13 | [Eureka 서버와 클라이언트는 어떻게 설정하나](qna/2026-10-13-eureka-server-setup.md) | 기초 | spring-cloud, eureka, service-discovery | Junhyun An |
