@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 10-2 | [Feign 공통 오류 처리와 재시도](step-10-2-common-feign.md) | feat: Feign 공통 오류 변환과 재시도 설정 추가 |
 | 10-1 | [common 예외·입력 규칙 보강](step-10-1-common-errors-input.md) | fix: common 예외 처리와 입력 규칙 보강 |
 | 리뷰 1 | [공통 인프라 교차 검토](review-01-common-infra.md) | docs: 공통 인프라 교차 검토 결과 추가 |
 | 9 | [Gateway를 Spring Security로 전환](step-09-gateway-spring-security.md) | refactor: Gateway 인증을 Spring Security WebFlux로 전환 |

@@ -99,8 +99,23 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.errors[0].reason").value("1 이상이어야 합니다."));
     }
 
+    @Test
+    @DisplayName("Feign 연결 실패·타임아웃은 503 SERVICE_UNAVAILABLE")
+    void feignFailure() throws Exception {
+        mockMvc.perform(get("/sample/feign"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
+    }
+
     @RestController
     static class SampleController {
+
+        @GetMapping("/sample/feign")
+        void feign() {
+            throw new feign.RetryableException(-1, "Read timed out", feign.Request.HttpMethod.GET, (Long) null,
+                    feign.Request.create(feign.Request.HttpMethod.GET, "http://hub-service/internal/hubs/1",
+                            java.util.Map.of(), null, java.nio.charset.StandardCharsets.UTF_8, null));
+        }
 
         @GetMapping("/sample/quantity")
         int quantity(@RequestParam @Min(value = 1, message = "1 이상이어야 합니다.") int quantity) {

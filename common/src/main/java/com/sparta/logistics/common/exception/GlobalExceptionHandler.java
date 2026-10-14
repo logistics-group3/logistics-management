@@ -1,5 +1,6 @@
 package com.sparta.logistics.common.exception;
 
+import feign.FeignException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -92,6 +93,13 @@ public class GlobalExceptionHandler {
         }
         ErrorCode errorCode = toCommonCode(status);
         return respond(errorCode, errorCode.message(), request, null);
+    }
+
+    /** Feign 연결 실패·타임아웃(RetryableException 등). 응답을 받은 실패는 FeignErrorDecoder가 BusinessException으로 바꾼다. */
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ErrorResponse> handleFeign(FeignException e, HttpServletRequest request) {
+        log.warn("하위 서비스 호출 실패: {} {} cause={}", request.getMethod(), request.getRequestURI(), e.toString());
+        return respond(CommonErrorCode.SERVICE_UNAVAILABLE, CommonErrorCode.SERVICE_UNAVAILABLE.message(), request, null);
     }
 
     @ExceptionHandler(Exception.class)
