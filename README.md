@@ -15,6 +15,29 @@ script/e2e-check.sh           # 공통 인프라 완료 기준 6개 자동 확�
 - DB 스키마는 Flyway가 만든다(`*/src/main/resources/db/migration`). Flyway 도입 전의 로컬 DB는 처음 한 번 `docker compose down -v`
 - MASTER 계정 만들기: 가입 후 `script/promote-master.sh <username>` 실행, 다시 로그인
 
+## 직접 확인하기
+```bash
+docker compose ps                         # postgres, config-server가 healthy인지
+open http://localhost:8761                # Eureka: 서비스 6개 UP
+open http://localhost:8080/swagger-ui.html
+
+# 회원가입 → 로그인 → 토큰을 변수에 저장
+curl -s -X POST localhost:8080/api/v1/auth/signup -H 'Content-Type: application/json' \
+  -d '{"username":"hong01","password":"Sparta!2026","name":"홍길동","slackId":"U01","affiliationType":"COMPANY","affiliationName":"부산수산도매"}'
+TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"hong01","password":"Sparta!2026"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
+
+curl -s localhost:8080/api/v1/users/sample/me    -H "Authorization: Bearer $TOKEN"   # 200, 내 정보
+curl -s localhost:8080/api/v1/users/sample/admin -H "Authorization: Bearer $TOKEN"   # 403 FORBIDDEN (USER)
+curl -s localhost:8080/api/v1/users/sample/me                                        # 401 UNAUTHORIZED (토큰 없음)
+curl -s localhost:8080/internal/users/x          -H "Authorization: Bearer $TOKEN"   # 404 (외부 차단)
+
+script/promote-master.sh hong01    # MASTER로 승격 후 다시 로그인하면 admin API가 200
+
+docker compose logs -f user-service                                                  # 로그 보기
+docker compose exec gateway-service curl -s http://user-service:8081/actuator/health # 내부 헬스 체크
+```
+
 ## 구성
 | 모듈 | 포트 | 역할 |
 |---|---|---|
