@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 25 | [모듈별 지침](step-25-module-guidelines.md) | docs(agents): 모듈별 AGENTS.md와 CLAUDE.md 추가 |
 | 24 | [서비스 협업 창구](step-24-service-collaboration.md) | docs(services): 서비스별 협업 창구 추가 |
 | 23 | [문서 지도와 작성 가이드](step-23-docs-map-writing-guide.md) | docs: 문서 지도·작성 가이드·서비스 협업 창구 규칙 추가 |
 | 22 | [학습 노트를 사람별 폴더로](step-22-learning-notes-per-person.md) | docs(learning): 학습 노트를 사람별 폴더로 이동 |

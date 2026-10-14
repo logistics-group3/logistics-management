@@ -23,14 +23,19 @@
 
 ## 시작 절차
 1. `git branch --show-current`로 브랜치를 확인하고 `docs/progress/<브랜치명의 / 를 - 로 바꾼 이름>.md`를 읽는다. 없으면 `handoff` 스킬 형식으로 만든다.
-2. 작업 유형에 맞는 아래 문서를 읽고 시작한다.
+2. 고칠 모듈이 정해지면 그 모듈 폴더의 `AGENTS.md`(예: `order-service/AGENTS.md`)를 먼저 읽는다. 하위 폴더의 지침을 자동으로 불러오지 못하는 에이전트도 있으므로 직접 읽는다.
+3. 작업 유형에 맞는 아래 문서를 읽고 시작한다. 문서를 어디에 둘지 모르면 `docs/README.md`(문서 지도)를 본다.
 
 ## 작업별 필수 문서
 | 언제 | 읽을 문서 |
 |---|---|
-| 코드 작성·수정 전 | `docs/agents/coding-conventions.md` |
+| 코드 작성·수정 전 | `docs/agents/coding-conventions.md`, 고칠 모듈의 `{module}/AGENTS.md` |
+| 계층별 코드(presentation, application, domain, infrastructure, 마이그레이션, 설정, 테스트) | `docs/agents/rules/` (경로별 파일은 `rules/README.md`) |
+| 다른 서비스 API를 호출하거나 내 API 계약을 바꿀 때 | `docs/services/{service}/README.md` |
+| 에러 코드를 추가·변경할 때 | `docs/error-codes.md` |
 | 사용자 질문에 답할 때, 개념 설명·"직접 해보기" 작성 시 | `docs/agents/learning-guide.md` |
-| 작업 완료 보고·리뷰·테스트 전 | `docs/agents/quality-gates.md` |
+| 작업 완료 보고·리뷰·테스트 전 | `docs/agents/quality-gates.md`, `docs/guides/review-checklist.md` |
+| 문서·노트·커밋·PR 본문을 쓸 때 | `docs/guides/writing.md` |
 | 브랜치·커밋·PR 작업 시 | `docs/guides/git-workflow.md` |
 | 결정 기록 시 | `docs/decisions/README.md` |
 
