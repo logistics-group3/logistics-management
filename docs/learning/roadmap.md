@@ -17,7 +17,7 @@
 |---|---|---|
 | 계층형 아키텍처, 의존 방향 | 4계층 패키지 (SA 2.4) | |
 | 도메인 모델과 상태 전이 | 배송 상태 전이 (SA 2.5) | |
-| ERD, 인덱스, 논리 삭제 | 테이블 명세 (SA 4, 5) | |
+| ERD, 인덱스, 논리 삭제 | 테이블 명세 (SA 4, 5) | [Flyway](qna/2026-10-14-flyway-and-jacoco.md) |
 | N+1, 페치 조인, QueryDSL 동적 쿼리 | 검색 API | |
 | REST API 설계, 공통 응답, 페이징 | API 명세 (SA 6) | |
 | 테스트 전략 (단위, 슬라이스, 통합) | 도메인 테스트, Testcontainers | [동시성 테스트 검증](qna/2026-10-14-jpa-flush-timing-and-concurrency-test.md) |
@@ -43,4 +43,4 @@
 | 장애 대응: 타임아웃, 재시도, 서킷 브레이커 | SA 3.5 | |
 | 로깅, 분산 추적 | Zipkin (선택) | |
 | 수평 확장과 무상태 설계 | `--scale` (SA 3.3) | |
-| CI, 테스트 자동화 | 추후 | |
+| CI, 테스트 자동화 | 추후 | [JaCoCo](qna/2026-10-14-flyway-and-jacoco.md) |

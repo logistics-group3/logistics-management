@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 리뷰 2 | [직접 구현·하드코딩 검사](review-02-reinvention-check.md) | docs: 직접 구현·하드코딩 검사와 Flyway·JaCoCo 노트 추가 |
 | 10-6 | [Testcontainers DB 통합 테스트](step-10-6-integration-tests.md) | test: Testcontainers 기반 user-service 통합 테스트 추가 |
 | 10-5 | [인프라와 검증 스크립트 보강](step-10-5-infra.md) | fix: compose 단독 기동, 관리 포트 로컬 바인딩, e2e 보강 |
 | 10-4 | [Gateway 타임아웃·취소·오류 형식·JWT 검증 보강](step-10-4-gateway.md) | fix: Gateway 타임아웃, 캐시 취소, 오류 형식, JWT 필수 claim 보강 |
