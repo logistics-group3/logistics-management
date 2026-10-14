@@ -4,7 +4,7 @@
 
 ## 프로젝트
 - Java 17, Spring Boot 3.5.16, Spring Cloud 2025.0.x, Gradle 8.14 멀티 모듈, PostgreSQL 16
-- 모듈과 포트: `config-server`(8888), `eureka-server`(8761), `gateway-service`(8080), `{user,hub,company,order,delivery}-service`(8081~8085), `common`(라이브러리)
+- 모듈과 포트: `config-server`(8888), `eureka-server`(8761), `gateway-service`(8080), `{user,hub,company,order,delivery}-service`(8081~8085), `common-core`(웹 무관 공통 계약: 에러 코드·응답, 사용자 헤더), `common`(MVC 서비스 공통, common-core 포함)
 - 설정: 서비스 설정은 `config-repo/`(config-server가 제공)에 둔다. 각 모듈의 `application.yml`에는 이름과 `spring.config.import`만 둔다.
 - 패키지: `com.sparta.logistics.{서비스}`, 내부는 `presentation / application / domain / infrastructure`
 - 설계 정본: `docs/SA/Sparta_logistics_SA_Master .md`. 설계와 다르게 구현해야 하면 먼저 사용자에게 확인하고 `docs/decisions/`에 기록한다.

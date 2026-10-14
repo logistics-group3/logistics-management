@@ -1,7 +1,7 @@
 package com.sparta.logistics.gateway.security;
 
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.gateway.support.ErrorResponseWriter;
-import com.sparta.logistics.gateway.support.GatewayErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
@@ -23,10 +23,10 @@ public class JsonAuthenticationEntryPoint implements ServerAuthenticationEntryPo
 
     @Override
     public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {
-        GatewayErrorCode errorCode = ex instanceof GatewayAuthenticationException gateway
+        CommonErrorCode errorCode = ex instanceof GatewayAuthenticationException gateway
                 ? gateway.getErrorCode()
-                : GatewayErrorCode.UNAUTHORIZED;
-        if (errorCode == GatewayErrorCode.SERVICE_UNAVAILABLE) {
+                : CommonErrorCode.UNAUTHORIZED;
+        if (errorCode == CommonErrorCode.SERVICE_UNAVAILABLE) {
             log.warn("user-service 권한 재확인 실패: {}", String.valueOf(ex.getCause()));
         }
         return errorWriter.write(exchange, errorCode);

@@ -1,6 +1,6 @@
 package com.sparta.logistics.gateway.security;
 
-import com.sparta.logistics.gateway.support.GatewayErrorCode;
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.core.convert.converter.Converter;
@@ -29,16 +29,16 @@ public class UserVerifyingJwtConverter implements Converter<Jwt, Mono<AbstractAu
         try {
             userId = UUID.fromString(jwt.getSubject());
         } catch (IllegalArgumentException | NullPointerException e) {
-            return Mono.error(new GatewayAuthenticationException(GatewayErrorCode.UNAUTHORIZED));
+            return Mono.error(new GatewayAuthenticationException(CommonErrorCode.UNAUTHORIZED));
         }
         String tokenRole = jwt.getClaimAsString("role");
 
         return userLookup.find(userId)
-                .onErrorMap(e -> new GatewayAuthenticationException(GatewayErrorCode.SERVICE_UNAVAILABLE, e))
+                .onErrorMap(e -> new GatewayAuthenticationException(CommonErrorCode.SERVICE_UNAVAILABLE, e))
                 .flatMap(found -> found
                         .filter(user -> user.role().equals(tokenRole))
                         .map(user -> Mono.<AbstractAuthenticationToken>just(authenticated(user, jwt)))
-                        .orElseGet(() -> Mono.error(new GatewayAuthenticationException(GatewayErrorCode.TOKEN_ROLE_MISMATCH))));
+                        .orElseGet(() -> Mono.error(new GatewayAuthenticationException(CommonErrorCode.TOKEN_ROLE_MISMATCH))));
     }
 
     private UsernamePasswordAuthenticationToken authenticated(UserSnapshot user, Jwt jwt) {

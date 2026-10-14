@@ -1,5 +1,6 @@
 package com.sparta.logistics.gateway.support;
 
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatusCode;
@@ -31,26 +32,26 @@ public class GatewayErrorWebExceptionHandler implements ErrorWebExceptionHandler
         if (exchange.getResponse().isCommitted()) {
             return Mono.error(ex);
         }
-        GatewayErrorCode errorCode = toErrorCode(ex);
-        if (errorCode == GatewayErrorCode.SERVICE_UNAVAILABLE) {
+        CommonErrorCode errorCode = toErrorCode(ex);
+        if (errorCode == CommonErrorCode.SERVICE_UNAVAILABLE) {
             log.warn("Gateway 라우팅 실패: {} {} cause={}", exchange.getRequest().getMethod(),
                     exchange.getRequest().getPath(), ex.toString());
         }
         return errorWriter.write(exchange, errorCode);
     }
 
-    static GatewayErrorCode toErrorCode(Throwable ex) {
+    static CommonErrorCode toErrorCode(Throwable ex) {
         if (!(ex instanceof ErrorResponse response)) {
-            return GatewayErrorCode.SERVICE_UNAVAILABLE;
+            return CommonErrorCode.SERVICE_UNAVAILABLE;
         }
         HttpStatusCode status = response.getStatusCode();
         return switch (status.value()) {
-            case 400 -> GatewayErrorCode.INVALID_REQUEST;
-            case 401 -> GatewayErrorCode.UNAUTHORIZED;
-            case 403 -> GatewayErrorCode.FORBIDDEN;
-            case 404 -> GatewayErrorCode.NOT_FOUND;
-            case 405 -> GatewayErrorCode.METHOD_NOT_ALLOWED;
-            default -> status.is4xxClientError() ? GatewayErrorCode.INVALID_REQUEST : GatewayErrorCode.SERVICE_UNAVAILABLE;
+            case 400 -> CommonErrorCode.INVALID_REQUEST;
+            case 401 -> CommonErrorCode.UNAUTHORIZED;
+            case 403 -> CommonErrorCode.FORBIDDEN;
+            case 404 -> CommonErrorCode.NOT_FOUND;
+            case 405 -> CommonErrorCode.METHOD_NOT_ALLOWED;
+            default -> status.is4xxClientError() ? CommonErrorCode.INVALID_REQUEST : CommonErrorCode.SERVICE_UNAVAILABLE;
         };
     }
 }

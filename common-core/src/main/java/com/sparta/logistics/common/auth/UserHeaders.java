@@ -1,8 +1,10 @@
-package com.sparta.logistics.gateway.security;
+package com.sparta.logistics.common.auth;
 
 import java.util.List;
 
-/** 서비스로 전달하는 사용자 헤더. common 모듈의 UserHeaders와 같은 값이다(gateway는 MVC 기반 common에 의존하지 않는다). */
+/**
+ * Gateway가 인증 후 주입하는 사용자 헤더 이름(SA 6.1). gateway가 넣고, 서비스와 Feign 전달이 읽는다.
+ */
 public final class UserHeaders {
 
     public static final String USER_ID = "X-User-Id";

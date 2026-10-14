@@ -22,7 +22,8 @@ script/e2e-check.sh           # 공통 인프라 완료 기준 6개 자동 확�
 | gateway-service | 8080 | Spring Security(WebFlux): JWT 검증, 권한 재확인(60초 캐시), 사용자 헤더 주입, `/internal` 차단 |
 | user-service | 8081 | 회원가입, 로그인(JWT 발급), 내부 사용자 조회 |
 | hub / company / order / delivery-service | 8082~8085 | 서비스별 담당자가 구현 |
-| common | - | 공통 응답·예외, BaseEntity, `@CurrentUser`, `@RequireRole`, Feign 헤더 전달 |
+| common-core | - | 웹 스택과 무관한 공통 계약: 에러 코드, 에러·성공 응답, 사용자 헤더 이름 (gateway와 서비스가 함께 사용) |
+| common | - | MVC 서비스 공통: 예외 처리기, BaseEntity, `@CurrentUser`, `@RequireRole`, Feign 오류·헤더 처리, 페이지 규칙 |
 
 ## 문서
 - 설계: `docs/SA/`

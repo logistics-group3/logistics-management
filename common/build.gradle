@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     // 서비스가 그대로 쓰는 라이브러리는 api로 노출한다(서비스 build.gradle에 반복하지 않는다)
+    api project(':common-core')
     api "org.springdoc:springdoc-openapi-starter-webmvc-api:${springdocVersion}"
     api "io.github.openfeign.querydsl:querydsl-jpa:${querydslVersion}"
     implementation 'org.springframework.boot:spring-boot-starter-web'

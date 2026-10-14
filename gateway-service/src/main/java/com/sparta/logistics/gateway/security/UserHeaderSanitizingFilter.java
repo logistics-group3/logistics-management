@@ -1,7 +1,8 @@
 package com.sparta.logistics.gateway.security;
 
+import com.sparta.logistics.common.auth.UserHeaders;
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.gateway.support.ErrorResponseWriter;
-import com.sparta.logistics.gateway.support.GatewayErrorCode;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -40,7 +41,7 @@ public class UserHeaderSanitizingFilter implements WebFilter {
         // 2. /internal/** 는 외부에서 호출할 수 없다 (404)
         String path = stripped.getPath().value();
         if (PATH_MATCHER.match("/internal/**", path) || PATH_MATCHER.match("/internal", path)) {
-            return errorWriter.write(sanitized, GatewayErrorCode.NOT_FOUND);
+            return errorWriter.write(sanitized, CommonErrorCode.NOT_FOUND);
         }
         return chain.filter(sanitized);
     }

@@ -1,7 +1,7 @@
 package com.sparta.logistics.gateway.security;
 
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.gateway.support.ErrorResponseWriter;
-import com.sparta.logistics.gateway.support.GatewayErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Objects;
@@ -59,7 +59,7 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(new UserVerifyingJwtConverter(userLookup)))
                         .authenticationEntryPoint(entryPoint)
-                        .accessDeniedHandler((exchange, denied) -> errorWriter.write(exchange, GatewayErrorCode.FORBIDDEN)))
+                        .accessDeniedHandler((exchange, denied) -> errorWriter.write(exchange, CommonErrorCode.FORBIDDEN)))
                 .exceptionHandling(handling -> handling.authenticationEntryPoint(entryPoint))
                 .addFilterAfter(new UserHeaderInjectionFilter(), SecurityWebFiltersOrder.AUTHORIZATION)
                 .build();
@@ -91,6 +91,6 @@ public class SecurityConfig {
     /** 방화벽이 거부한 요청(경로 우회 시도 등)도 SA 6.1 형식의 400으로 응답한다. 기본값은 본문 없는 400이다. */
     @Bean
     public ServerExchangeRejectedHandler serverExchangeRejectedHandler(ErrorResponseWriter errorWriter) {
-        return (exchange, rejected) -> errorWriter.write(exchange, GatewayErrorCode.INVALID_REQUEST);
+        return (exchange, rejected) -> errorWriter.write(exchange, CommonErrorCode.INVALID_REQUEST);
     }
 }

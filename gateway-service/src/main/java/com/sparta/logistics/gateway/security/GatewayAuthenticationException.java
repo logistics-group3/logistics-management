@@ -1,6 +1,6 @@
 package com.sparta.logistics.gateway.security;
 
-import com.sparta.logistics.gateway.support.GatewayErrorCode;
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import lombok.Getter;
 import org.springframework.security.core.AuthenticationException;
 
@@ -11,14 +11,14 @@ import org.springframework.security.core.AuthenticationException;
 @Getter
 public class GatewayAuthenticationException extends AuthenticationException {
 
-    private final GatewayErrorCode errorCode;
+    private final CommonErrorCode errorCode;
 
-    public GatewayAuthenticationException(GatewayErrorCode errorCode) {
+    public GatewayAuthenticationException(CommonErrorCode errorCode) {
         super(errorCode.message());
         this.errorCode = errorCode;
     }
 
-    public GatewayAuthenticationException(GatewayErrorCode errorCode, Throwable cause) {
+    public GatewayAuthenticationException(CommonErrorCode errorCode, Throwable cause) {
         super(errorCode.message(), cause);
         this.errorCode = errorCode;
     }

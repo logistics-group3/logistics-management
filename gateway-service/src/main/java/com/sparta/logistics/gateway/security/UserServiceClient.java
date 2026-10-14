@@ -1,5 +1,6 @@
 package com.sparta.logistics.gateway.security;
 
+import com.sparta.logistics.common.response.ApiResponse;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,7 +15,7 @@ import reactor.core.publisher.Mono;
  */
 public class UserServiceClient {
 
-    private static final ParameterizedTypeReference<ApiEnvelope<UserSnapshot>> TYPE = new ParameterizedTypeReference<>() {
+    private static final ParameterizedTypeReference<ApiResponse<UserSnapshot>> TYPE = new ParameterizedTypeReference<>() {
     };
 
     private final WebClient webClient;
@@ -36,8 +37,5 @@ public class UserServiceClient {
                 .onErrorResume(WebClientResponseException.class, e -> e.getStatusCode() == HttpStatus.NOT_FOUND
                         ? Mono.just(Optional.empty())
                         : Mono.error(e));
-    }
-
-    record ApiEnvelope<T>(int status, String message, T data) {
     }
 }

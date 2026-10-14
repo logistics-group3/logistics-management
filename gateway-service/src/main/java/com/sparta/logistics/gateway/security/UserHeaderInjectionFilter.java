@@ -1,5 +1,6 @@
 package com.sparta.logistics.gateway.security;
 
+import com.sparta.logistics.common.auth.UserHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
