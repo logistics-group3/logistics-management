@@ -5,10 +5,11 @@
 ## 빠른 실행
 ```bash
 cp .env.example .env
-script/e2e-check.sh --up      # 빌드 → docker compose 기동 → 공통 인프라 완료 기준 6개 자동 확인
+docker compose up -d --build  # 빌드는 Dockerfile 안에서 한다(로컬 Gradle 빌드 불필요)
+script/e2e-check.sh           # 공통 인프라 완료 기준 6개 자동 확인 (--up을 붙이면 기동까지 한다)
 # 권한 재확인 60초 캐시와 만료 후 재조회까지 보려면 --with-cache-ttl 추가 (약 65초)
 ```
-- Eureka 대시보드: http://localhost:8761
+- Eureka 대시보드: http://localhost:8761 (관리용 포트는 이 PC에서만 열린다)
 - API 진입점(Gateway): http://localhost:8080
 - 종료: `docker compose down` (DB까지 지우려면 `docker compose down -v`)
 - MASTER 계정 만들기: 가입 후 `script/promote-master.sh <username>` 실행, 다시 로그인

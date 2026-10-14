@@ -44,5 +44,5 @@
 ## 검증 명령
 - 전체 빌드: `./gradlew build`
 - 단일 모듈 실행: `./gradlew :eureka-server:bootRun` (서비스는 config-server를 먼저 띄운다)
-- 전체 실행: `./gradlew bootJar && docker compose up -d --build` (사전에 `cp .env.example .env`)
+- 전체 실행: `docker compose up -d --build` (사전에 `cp .env.example .env`), 검증: `script/e2e-check.sh`
 - 셸 기본 JDK가 21이어도 Gradle toolchain이 17로 컴파일·실행한다. JAVA_HOME을 바꾸지 않는다.

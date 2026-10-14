@@ -1,5 +1,6 @@
-# 실행: ./gradlew bootJar && docker compose up -d --build
+# 실행: docker compose up -d --build   (빌드는 Dockerfile 안에서 한다)
 # 사전 준비: cp .env.example .env
+# 관리용 포트(postgres, config-server, eureka)는 이 PC(127.0.0.1)에서만 열고, 외부에는 Gateway 8080만 공개한다.
 
 x-app: &app
   build:
@@ -34,7 +35,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -50,7 +51,7 @@ services:
       context: .
       args: { MODULE: config-server }
     ports:
-      - "8888:8888"
+      - "127.0.0.1:8888:8888"
     healthcheck:
       test: ["CMD-SHELL", "curl -fs localhost:8888/actuator/health || exit 1"]
       interval: 5s
@@ -62,7 +63,7 @@ services:
       context: .
       args: { MODULE: eureka-server }
     ports:
-      - "8761:8761"
+      - "127.0.0.1:8761:8761"
 
   gateway-service:
     <<: *app

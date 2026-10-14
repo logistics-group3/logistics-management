@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 공통 인프라 완료 기준 6개를 실제 컨테이너 환경에서 확인한다.
 # 사용: script/e2e-check.sh                     (이미 compose가 떠 있을 때)
-#      script/e2e-check.sh --up                (bootJar 빌드 후 compose를 올리고 확인)
+#      script/e2e-check.sh --up                (compose를 빌드·기동한 뒤 확인. 실패하면 바로 종료)
 #      script/e2e-check.sh --with-cache-ttl    (권한 재확인 60초 캐시와 만료 후 재조회까지 확인, 약 65초 추가)
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -23,13 +23,15 @@ check() {
 }
 
 json() { python3 -c "import sys,json; d=json.load(sys.stdin); print($1)" 2>/dev/null; }
-status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+CURL=(curl -s --max-time 10)
+status() { "${CURL[@]}" -o /dev/null -w '%{http_code}' "$@"; }
+code() { "${CURL[@]}" "$@" | json "d.get('code')"; }
 signup() {
-  curl -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/v1/auth/signup" -H 'Content-Type: application/json' \
+  "${CURL[@]}" -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/v1/auth/signup" -H 'Content-Type: application/json' \
     -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\",\"name\":\"검증\",\"slackId\":\"U0E2E\",\"affiliationType\":\"HUB\",\"affiliationName\":\"서울특별시 센터\"}"
 }
 login() {
-  curl -s -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' \
+  "${CURL[@]}" -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' \
     -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\"}" | json "d['data']['accessToken']"
 }
 
@@ -44,17 +46,29 @@ done
 
 if [[ "$up" == true ]]; then
   [[ -f .env ]] || cp .env.example .env
-  ./gradlew bootJar -q && docker compose up -d --build
+  if ! docker compose up -d --build; then
+    echo "docker compose 빌드·기동 실패" >&2
+    exit 1
+  fi
 fi
 
-echo "준비 대기 (Eureka 등록과 Gateway 라우팅)"
+echo "준비 대기 (Eureka에 UP 상태로 등록, Gateway 라우팅)"
+ready_ok=false
 for _ in $(seq 1 60); do
-  registered=$(curl -s -H 'Accept: application/json' "$EUREKA/eureka/apps" \
-    | json "' '.join(sorted(a['name'] for a in d['applications'].get('application', [])))")
+  # 인스턴스가 하나라도 UP인 서비스 이름만 센다
+  registered=$("${CURL[@]}" -H 'Accept: application/json' "$EUREKA/eureka/apps" \
+    | json "' '.join(sorted(a['name'] for a in d['applications'].get('application', []) if any(i['status'] == 'UP' for i in a['instance'])))")
   ready=$(status -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' -d '{"username":"none","password":"none"}')
-  [[ "$(wc -w <<<"$registered")" -ge ${#SERVICES[@]} && "$ready" == "401" ]] && break
+  if [[ "$(wc -w <<<"$registered")" -ge ${#SERVICES[@]} && "$ready" == "401" ]]; then
+    ready_ok=true
+    break
+  fi
   sleep 5
 done
+if [[ "$ready_ok" != true ]]; then
+  echo "5분 안에 준비되지 않았다. 등록: [$registered], 로그인 응답: $ready" >&2
+  exit 1
+fi
 
 suffix=$(date +%s | tail -c 7)
 user="e2eu$suffix"
@@ -62,7 +76,7 @@ master="e2em$suffix"
 
 echo "[1] docker compose up 한 번으로 전체 기동, Eureka 등록"
 missing=$(for s in "${SERVICES[@]}"; do grep -qw "$s" <<<"$registered" || echo "$s"; done | xargs)
-check "서비스 ${#SERVICES[@]}개 등록" "" "$missing"
+check "서비스 ${#SERVICES[@]}개 UP 등록" "" "$missing"
 
 echo "[2] 회원가입 → 로그인 → 토큰 발급"
 check "회원가입 201" "201" "$(signup "$user")"
@@ -70,23 +84,26 @@ user_token=$(login "$user")
 check "로그인 후 토큰 발급" "yes" "$([[ -n "$user_token" ]] && echo yes || echo no)"
 
 echo "[3] Gateway 경유 호출 시 서비스가 @CurrentUser로 사용자 정보를 받음"
-me=$(curl -s "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $user_token")
+me=$("${CURL[@]}" "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $user_token")
 check "@CurrentUser username" "$user" "$(json "d['data']['username']" <<<"$me")"
 
 echo "[4] 토큰 없음·위조는 401, USER가 MASTER 전용 API 호출은 403"
 check "토큰 없음 401" "401" "$(status "$GATEWAY/api/v1/users/sample/me")"
+check "토큰 없음 code UNAUTHORIZED" "UNAUTHORIZED" "$(code "$GATEWAY/api/v1/users/sample/me")"
 check "위조 토큰 401" "401" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer ${user_token%?????}AAAAA")"
 check "USER → MASTER 전용 403" "403" "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token")"
+check "USER → MASTER 전용 code FORBIDDEN" "FORBIDDEN" "$(code "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token")"
 signup "$master" >/dev/null && script/promote-master.sh "$master" >/dev/null
 check "MASTER → MASTER 전용 200" "200" "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $(login "$master")")"
 
 echo "[5] 외부에서 /internal/** 호출 차단"
 check "/internal 404" "404" "$(status "$GATEWAY/internal/users/00000000-0000-0000-0000-000000000000" -H "Authorization: Bearer $user_token")"
+check "/internal code NOT_FOUND" "NOT_FOUND" "$(code "$GATEWAY/internal/users/00000000-0000-0000-0000-000000000000")"
 
 echo "[6] 클라이언트가 보낸 X-User-Role: MASTER 무시"
 check "위조 role 헤더로 MASTER 전용 403" "403" \
   "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token" -H 'X-User-Role: MASTER')"
-forged=$(curl -s "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $user_token" -H 'X-Username: evil' -H 'X-User-Role: MASTER')
+forged=$("${CURL[@]}" "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $user_token" -H 'X-Username: evil' -H 'X-User-Role: MASTER')
 check "위조 헤더가 서비스에 전달되지 않음" "$user USER" "$(json "d['data']['username'] + ' ' + d['data']['role']" <<<"$forged")"
 
 if [[ "$cache_ttl" == true ]]; then
@@ -99,7 +116,7 @@ if [[ "$cache_ttl" == true ]]; then
   script/promote-master.sh "$ttl_user" >/dev/null
   check "DB role 변경 직후에도 캐시된 값으로 200" "200" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")"
   sleep $(( 63 - ($(date +%s) - started) ))
-  expired=$(curl -s "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")
+  expired=$("${CURL[@]}" "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")
   check "만료 후 재조회로 TOKEN_ROLE_MISMATCH" "TOKEN_ROLE_MISMATCH" "$(json "d['code']" <<<"$expired")"
 fi
 

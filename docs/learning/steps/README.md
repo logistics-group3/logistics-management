@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 10-5 | [인프라와 검증 스크립트 보강](step-10-5-infra.md) | fix: compose 단독 기동, 관리 포트 로컬 바인딩, e2e 보강 |
 | 10-4 | [Gateway 타임아웃·취소·오류 형식·JWT 검증 보강](step-10-4-gateway.md) | fix: Gateway 타임아웃, 캐시 취소, 오류 형식, JWT 필수 claim 보강 |
 | 10-3 | [user-service와 설정 클라이언트 보강](step-10-3-user-service.md) | fix: 동시 가입 409, 로그인 타이밍, config fail-fast |
 | 10-2 | [Feign 공통 오류 처리와 재시도](step-10-2-common-feign.md) | feat: Feign 공통 오류 변환과 재시도 설정 추가 |
