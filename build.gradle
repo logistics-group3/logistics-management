@@ -48,6 +48,17 @@ subprojects {
     tasks.named('test') {
         useJUnitPlatform()
     }
+
+    // 실행 jar 이름을 버전과 무관하게 app.jar로 고정한다. Dockerfile이 버전을 몰라도 되고, 버전을 올려도 이미지 빌드가 깨지지 않는다.
+    // 실행할 수 없는 plain jar는 만들지 않는다(build/libs에 jar가 하나만 남는다).
+    plugins.withId('org.springframework.boot') {
+        tasks.named('bootJar') {
+            archiveFileName = 'app.jar'
+        }
+        tasks.named('jar') {
+            enabled = false
+        }
+    }
 }
 
 // Note: JPA를 쓰는 모듈(common + 비즈니스 서비스)에만 QueryDSL Q클래스 생성을 건다. 서비스마다 같은 설정을 반복하지 않게 루트에서 한 번 선언한다.

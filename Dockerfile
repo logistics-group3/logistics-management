@@ -13,7 +13,7 @@ FROM eclipse-temurin:17-jre
 ARG MODULE
 RUN useradd --system --uid 1001 app
 WORKDIR /app
-COPY --from=build /workspace/${MODULE}/build/libs/${MODULE}-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /workspace/${MODULE}/build/libs/app.jar app.jar
 USER app
 
 ENV JAVA_OPTS="-Xms128m -Xmx384m" \
