@@ -44,12 +44,12 @@
 |---|---|---|
 | `impl-service` | 서비스 기능(API, 엔티티, FeignClient)을 구현할 때 | `docs/services/{service}/notes.md`, 협업 창구 구현 현황 |
 | `learn-review` | 사용자가 직접 쓴 코드를 리뷰해 달라고 할 때 | 대화만 |
-| `learning-note` | 개념·방법 질문에 답했을 때, 하루 작업을 마칠 때 | `docs/learning/<이름>/` |
+| `learning-note` | 개념·방법 질문에 답했을 때. 하루 정리는 제안한 뒤 사용자가 원할 때만 | `docs/learning/<이름>/` |
 | `troubleshooting` | 막혔던 문제를 해결했을 때 | `docs/troubleshooting.md` |
 | `adr` | 되돌리기 어려운 결정을 했을 때 | `docs/decisions/`, `docs/services/{service}/decisions/` |
 | `handoff` | 작업을 시작·전환·종료할 때 | `docs/progress/<branch>.md` |
 
-- **에이전트가 한 일은 알아서 기록한다.** 위 표의 상황이 되면 동의를 기다리지 않고 해당 위치에 쓰고, 답 끝에 `기록: <경로>`를 남긴다. 사람은 PR에서 기록을 검토하고 고친다.
+- **에이전트가 한 일은 알아서 기록한다.** 위 표의 상황이 되면 동의를 기다리지 않고 해당 위치에 쓰고, 답 끝에 `기록: <경로>`를 남긴다. 하루 정리는 사용자가 한 일을 정리하는 것이라 아래 제안 규칙을 따른다. 사람은 PR에서 기록을 검토하고 고친다.
 - **사람이 직접 한 일은 스킬을 제안한다.** 사용자가 직접 쓴 코드를 커밋하려 하면 `learn-review`, "오늘은 여기까지"라고 하면 `learning-note` 하루 정리를 답 끝에 한 줄로 제안한다. 한 번 거절한 제안도 다음 상황에서 다시 제안할 수 있다.
 - 스킬 목록과 분류(공통, 도메인)는 `.agents/skills/README.md`에 있다. 스킬 추가·수정·삭제는 PR에서 판단한다.
 - Codex는 `.agents/skills`를 직접 읽는다. Claude Code는 `script/setup-agents.sh`를 실행하면 `.claude/skills`에서 찾는다. pull로 스킬이나 규칙이 바뀌면 다시 실행한다. 스킬을 자동으로 불러오지 못하는 에이전트는 해당 `SKILL.md`를 직접 읽고 따른다.
