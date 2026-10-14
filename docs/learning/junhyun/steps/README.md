@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 29 | [팀 가이드와 문제 해결 기록](step-29-team-guides.md) | docs(guides): 구현·로컬 실행·설정 보안 가이드와 문제 해결 기록 추가 |
 | 28 | [공용 스킬 재구성과 도구 연결](step-28-skills.md) | feat(agents): 공용 스킬 재구성과 Claude Code 연결 스크립트 추가 |
 | 27 | [레이어별 코드 규칙과 리뷰 체크리스트](step-27-layer-rules.md) | docs(agents): 레이어별 코드 규칙과 리뷰 체크리스트 추가 |
 | 26 | [팀원 ADR 이관](step-26-adr-migration.md) | docs(decisions): 팀원 ADR을 공통·서비스별 결정 기록으로 이관 |
