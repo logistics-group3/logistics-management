@@ -1,0 +1,22 @@
+pluginManagement {
+    plugins {
+        id 'org.springframework.boot' version "${springBootVersion}"
+        id 'io.spring.dependency-management' version "${dependencyManagementVersion}"
+    }
+}
+
+rootProject.name = 'logistics-management'
+
+// 공통 모듈 (ADR-15)
+include 'common'
+
+// 인프라 서비스 (ADR-01)
+include 'eureka-server'
+include 'gateway'
+
+// 비즈니스 서비스 (ADR-01)
+include 'user-service'
+include 'hub-service'
+include 'company-service'
+include 'order-service'
+include 'delivery-service'

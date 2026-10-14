@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:   # Cloud 2025.0부터 접두사가 spring.cloud.gateway.server.webflux.* (ADR-02)
+          httpclient:
+            connect-timeout: 5000
+            response-timeout: 60s   # ADR-04: Gateway 60초 > Feign 20초
+          # /internal/** 는 라우팅이 없으므로 외부에서 부르면 404 (ADR-05)
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/auth/**, /api/v1/users/**
+            - id: hub-service
+              uri: lb://hub-service
+              predicates:
+                - Path=/api/v1/hubs/**, /api/v1/hub-routes/**
+            - id: company-service
+              uri: lb://company-service
+              predicates:
+                - Path=/api/v1/companies/**, /api/v1/products/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/v1/orders/**
+            - id: delivery-service
+              uri: lb://delivery-service
+              predicates:
+                - Path=/api/v1/deliveries/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+# ADR-05: JWT 검증 후 user-service(I-01)에 권한·탈퇴 재확인 (60초 로컬 캐시)
+jwt:
+  secret: ${JWT_SECRET:change-me-change-me-change-me-change-me-0123456789}
+auth:
+  user-cache-ttl-seconds: 60
+  # Public API (토큰 없이 호출)
+  public-paths:
+    - /api/v1/auth/signup
+    - /api/v1/auth/login
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.sparta.logistics: debug

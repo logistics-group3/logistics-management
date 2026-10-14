@@ -1,0 +1,7 @@
+# 줄바꿈 규칙: 저장소에는 LF로 저장하고, Windows 배치 파일만 CRLF로 체크아웃한다.
+* text=auto
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.jar binary

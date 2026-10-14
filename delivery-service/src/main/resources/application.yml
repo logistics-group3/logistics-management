@@ -1,0 +1,42 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: delivery-service
+  datasource:
+    # ADR-03: DB 1개 + 서비스별 스키마·계정. 자기 스키마에만 권한이 있다.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:logistics}?currentSchema=delivery_schema
+    username: ${DB_USERNAME:delivery_app}
+    password: ${DB_PASSWORD:delivery_app_pw}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}   # 개발용. 운영 전에 validate로 바꾼다.
+    properties:
+      hibernate:
+        default_schema: delivery_schema
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+# ADR-04: Feign connect 5초 / read 20초 (Gateway 60초보다 짧게)
+spring.cloud.openfeign.client.config.default:
+  connect-timeout: 5000
+  read-timeout: 20000
+  logger-level: basic
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.sparta.logistics: debug

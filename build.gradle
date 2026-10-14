@@ -1,0 +1,69 @@
+plugins {
+    id 'org.springframework.boot' apply false
+    id 'io.spring.dependency-management' apply false
+}
+
+// 모든 모듈 공통 설정 (ADR-02: Java 17, Boot 3.5.x, Cloud 2025.0.x를 BOM으로 한 곳에서 관리)
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    group = 'com.sparta.logistics'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+
+    // 설치된 JDK와 무관하게 Java 17 바이트코드로 컴파일한다.
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 17
+        options.encoding = 'UTF-8'
+        options.compilerArgs << '-parameters'
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+}
+
+// 비즈니스 서비스 5개 공통 의존성 (Servlet/MVC + JPA + Eureka Client + Feign)
+configure(subprojects.findAll { it.name.endsWith('-service') }) {
+    apply plugin: 'org.springframework.boot'
+
+    dependencies {
+        implementation project(':common')
+
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+        implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+        implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
+
+        runtimeOnly 'org.postgresql:postgresql'
+
+        // QueryDSL Q클래스는 각 서비스에서 생성한다 (ADR-15)
+        implementation "io.github.openfeign.querydsl:querydsl-jpa:${querydslVersion}"
+        annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:${querydslVersion}:jpa"
+        annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+        annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+    }
+}

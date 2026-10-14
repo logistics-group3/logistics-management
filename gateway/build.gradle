@@ -1,0 +1,17 @@
+// WebFlux 기반이라 common(MVC·JPA)을 쓰지 않는다 (ADR-15)
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    // Cloud 2025.0부터 스타터 이름이 바뀌었다 (ADR-02)
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // JWT(HS256) 검증
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+}
