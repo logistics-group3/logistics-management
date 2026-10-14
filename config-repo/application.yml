@@ -5,9 +5,14 @@ eureka:
   client:
     service-url:
       defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    # 등록 목록을 받아 오는 주기 (기본 30초). 새로 뜬 서비스를 Gateway·Feign이 빨리 찾게 한다.
+    registry-fetch-interval-seconds: 5
   instance:
     instance-id: ${spring.application.name}:${random.value}
     prefer-ip-address: ${EUREKA_PREFER_IP:false}
+    # 로컬 개발용 값. 살아 있음을 5초마다 알리고, 15초 동안 신호가 없으면 Eureka가 목록에서 지운다 (기본 30초 / 90초).
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
 
 spring:
   jpa:

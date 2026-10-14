@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 14 | [Eureka 로컬 튜닝](step-14-eureka-local-tuning.md) | chore(eureka): 로컬 개발용 등록 갱신·만료 주기 단축 |
 | 13 | [실행 환경 보강](step-13-runtime-env.md) | chore(build): 줄바꿈·인코딩·데몬 JDK 고정과 비밀값 무시 패턴 추가 |
 | 12 | [Flyway로 DB 스키마 관리](step-12-flyway.md) | feat: Flyway로 DB 스키마 관리 |
 | 11 | [직접 구현·하드코딩 정리](step-11-review-2-fixes.md) | refactor: 공통 예외 처리기 상속, app.jar, common-core 분리, 생성자 주입 통일 (커밋 4개) |
