@@ -1,7 +1,7 @@
 # junhyun/base-setting
 
 ## 지금 하는 일
-공통 인프라 구현 완료, 사용자 전체 리뷰 대기
+공통 인프라 구현과 교차 검토 반영 완료, 팀 리뷰 대기
 
 ## 진행 상태
 공통 인프라 범위: [공통 인프라 개발 범위.md](공통%20인프라%20개발%20범위.md). 10/13 오후 구현, 10/14 오전 리뷰 후 한 명의 결과물을 채택한다. 이 브랜치를 main처럼 쓴다.
@@ -20,12 +20,13 @@
 - [x] 7. 통합 검증 스크립트: 빈 DB에서 `script/e2e-check.sh --up` PASS 11/0, 64초 (완료 기준 1~6 전체)
 - [x] 8. springdoc(Gateway Swagger UI 통합), QueryDSL(OpenFeign 7.7) 공통 설정. e2e 회귀 없음
 - [x] 9. Gateway를 Spring Security(WebFlux)로 전환(SA 3.1 일치, ADR 0005). 캐시 만료 후 재조회를 실제로 확인하고 e2e `--with-cache-ttl`에 추가. 빈 DB부터 PASS 14/0
+- [x] 리뷰 1: 메인·Claude·Codex 교차 검토(major 5, minor 17). 스텝 10-1~10-6으로 반영. 빈 상태에서 `docker compose up --build`만으로 e2e PASS 17/0, 테스트 61개 통과
 - 면접 포인트: DB per service를 인스턴스 하나에서 스키마·계정으로 나눈 이유와 한계, compose의 depends_on과 healthcheck 차이, Config Server 값과 환경 변수의 우선순위
 
 ## 다음 단계
-1. 사용자 전체 리뷰: `docs/learning/steps/` 순서대로 읽고, 질문은 학습 노트로 남긴다
-2. 10/14 오전 팀 리뷰 시연: `docker compose down -v && script/e2e-check.sh --up` (캐시 시연까지 하려면 `--with-cache-ttl`), Swagger UI(http://localhost:8080/swagger-ui.html)
-3. 채택되면 샘플 API(`user/presentation/sample`)를 지우고 서비스별 작업을 시작한다. 결과물을 main에 올리는 방법은 팀과 정한다
+1. 10/14 오전 팀 리뷰 시연: `docker compose down -v && script/e2e-check.sh --up --with-cache-ttl`, Swagger UI(http://localhost:8080/swagger-ui.html)
+2. 채택되면 샘플 API(`user/presentation/sample`)를 지우고 서비스별 작업을 시작한다
+3. U-07 담당자에게 전달: `p_users`의 CHECK(배송담당자면 hub_id 필수)와 DEFAULT('USER', FALSE)를 U-07 구현 때 함께 넣는다(리뷰 1 minor 14)
 
 ## 직접 해보기
 공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `docs/learning/steps/`에 있다.

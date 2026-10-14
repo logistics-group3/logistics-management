@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'java-test-fixtures'
 }
 
 dependencies {
@@ -10,4 +11,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+}
+
+dependencies {
+    // 서비스 통합 테스트 공통 기반(PostgresIntegrationTest). 서비스는 testImplementation(testFixtures(project(':common')))로 쓴다
+    testFixturesApi 'org.springframework.boot:spring-boot-starter-test'
+    testFixturesApi 'org.springframework.boot:spring-boot-testcontainers'
+    testFixturesApi 'org.testcontainers:junit-jupiter'
+    testFixturesApi 'org.testcontainers:postgresql'
 }

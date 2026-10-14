@@ -59,7 +59,8 @@ Optional<Product> findWithLockById(UUID id);
 ## 4. 테스트
 - 도메인 규칙(상태 전이, 계산)은 순수 단위 테스트로 먼저 작성한다. 실패하는 테스트 → 구현 → 리팩터 순서를 기본으로 한다.
 - application 서비스는 의존을 목으로 바꿔 흐름을 검증한다.
-- 저장소와 쿼리는 `@DataJpaTest`로 확인한다. DB가 필요한 통합 테스트는 Testcontainers 도입 후 작성한다(도입 시 ADR 기록).
+- DB가 필요한 테스트는 common testFixtures의 `PostgresIntegrationTest`를 상속한다(실제 PostgreSQL 16, Testcontainers). H2는 쓰지 않는다. Docker가 실행 중이어야 한다.
+- 부분 인덱스, 네이티브 쿼리, 유니크 제약, 동시성처럼 DB 동작에 기대는 코드는 반드시 통합 테스트로 검증한다.
 - 테스트 이름은 한국어 `@DisplayName`으로 시나리오를 쓴다.
 - 테스트를 통과시키려고 검증 로직을 약화하지 않는다.
 
