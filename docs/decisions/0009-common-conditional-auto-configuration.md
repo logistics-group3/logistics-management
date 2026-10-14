@@ -35,3 +35,15 @@
 - 기본 동작은 이전과 같다. 서비스는 아무것도 하지 않아도 공통 빈을 받는다.
 - JPA Auditing을 끄면 BaseEntity의 NOT NULL Audit 컬럼이 비어 저장이 실패한다. 끄는 서비스는 `@EnableJpaAuditing`을 직접 선언해야 한다. 켜 둔 채로 또 선언하면 같은 빈이 두 번 등록돼 기동에 실패한다.
 - 확인: `CommonAutoConfigurationTest`(조건 7가지), user-service `CommonAutoConfigurationIntegrationTest`(실제 기동 시 빈이 한 번씩 등록), `AuthControllerWebMvcTest`(슬라이스에서 SA 에러 형식). 슬라이스 등록 파일을 빼면 `AuthControllerWebMvcTest`가 실패하는 것을 확인했다.
+
+## 팀원 ADR 보완: seungkeun ADR-15 공통 모듈: 기술 공통만 담은 작은 common
+> 원문: 최승근, Notion "스파르타물류 기술 결정 문서 (ADR)". 원문 문장을 그대로 옮겼다. 이 ADR과 다른 점: AutoConfiguration 등록과 정렬 허용 목록·QueryDSL 도우미를 common에 두는 점은 같다(스텝 17에서 반영). 원문은 gateway가 common을 쓰지 않고 필요한 계약을 gateway 안에 따로 두지만, 이 저장소는 common-core를 gateway와 공유한다(ADR 0006).
+
+### 트레이드오프
+- common을 바꾸면 모든 서비스를 다시 빌드합니다. 모노레포라 빌드 한 번이면 되고, 내용을 기술 공통으로 제한해 바뀔 일이 적게 했습니다.
+- Feign DTO를 서비스마다 만드는 중복은 감수합니다. 중복보다 결합이 더 비싼다고 봤습니다.
+- 서비스 내부 4계층(Presentation, Application, Domain, Infrastructure)은 팀 합의로 엄격하게 강제하지 않고 타협했습니다.
+
+### 면접 답변
+> "common에는 '바뀔 때 모든 서비스가 함께 바뀌어야 하는' 기술 공통만 두었습니다. 도메인 DTO를 공유하면 서비스 경계가 common을 통해 무너지기 때문에, 중복을 감수하고 각자 만들었습니다."
+- **Q. 왜 gateway는 common을 쓰지 않나요?** gateway는 WebFlux 기반이라 Servlet·JPA 의존성과 섭일 수 없습니다. 필요한 것은 에러 형식뿐이라 gateway 안에 따로 둠습니다.

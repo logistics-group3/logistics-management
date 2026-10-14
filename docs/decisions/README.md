@@ -6,6 +6,9 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0013 | [서비스 간 통신: 동기 OpenFeign](0013-sync-openfeign-communication.md) | 제안 (최승근 ADR-04) | 2026-10-14 |
+| 0012 | [데이터 분리: 서비스별 스키마, FK 없음, UUID 논리 참조](0012-schema-per-service-uuid-reference.md) | 제안 (최승근 ADR-03) | 2026-10-14 |
+| 0011 | [서비스 경계: 비즈니스 서비스 5개와 인프라 서비스 2개](0011-service-boundaries.md) | 제안 (최승근 ADR-01) | 2026-10-14 |
 | 0010 | [내부 API는 DTO를 감싸지 않고 반환](0010-internal-api-unwrapped-response.md) | 채택 | 2026-10-14 |
 | 0009 | [common 공통 빈을 조건부 자동 설정으로 등록](0009-common-conditional-auto-configuration.md) | 채택 | 2026-10-14 |
 | 0008 | [공통 인프라 브랜치의 선별 통합](0008-base-setting-integration.md) | 제안 (통합 브랜치 구현) | 2026-10-14 |
@@ -16,3 +19,19 @@
 | 0003 | [인증 관련 라이브러리와 구성](0003-auth-libraries.md) | 일부 대체됨 (0005) | 2026-10-13 |
 | 0002 | [에이전트 중립 작업 규칙 구조](0002-agent-neutral-guidelines.md) | 채택 | 2026-10-13 |
 | 0001 | [Spring Boot 3.5.16 수동 Gradle 멀티 모듈 구성](0001-boot-3-5-manual-gradle-multimodule.md) | 채택 | 2026-10-13 |
+
+## 서비스별 결정
+한 서비스 안의 결정은 그 서비스 폴더에 둔다. 번호는 서비스마다 따로 매긴다.
+
+| 서비스 | 결정 기록 |
+|---|---|
+| hub | [docs/services/hub/decisions](../services/hub/decisions/README.md) |
+| company | [docs/services/company/decisions](../services/company/decisions/README.md) |
+| order | [docs/services/order/decisions](../services/order/decisions/README.md) |
+| delivery | [docs/services/delivery/decisions](../services/delivery/decisions/README.md) |
+
+## 팀원 ADR 이관
+최승근의 Notion ADR 15개를 옮겼다(팀 결정: "ADR 문서 자체는 넣는데 각 서비스에 위치시키기"). 팀 승인 기록이 없어 모두 "제안"이다.
+- 공통 결정 ADR-01·03·04는 0011~0013으로 옮겼다.
+- 기존 결정과 겹치는 ADR-02·05·15는 0001·0005·0009 끝에 "팀원 ADR 보완" 절로 붙였다.
+- 서비스 결정 ADR-06~14는 위 서비스별 결정 기록으로 옮겼다. SA v2.0과 다른 결정(재고, 배송 2구간 등)은 서비스 담당자가 채택 여부를 정한다.
