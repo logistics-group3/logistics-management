@@ -41,5 +41,5 @@
 | 8 | 범위 모드에서 누락, `/bin/bash` 3.2 | exit 1 |
 | 9 | 없는 ref | exit 2 |
 
-- 워크플로 YAML은 Ruby YAML 파서로 읽어 job 두 개를 확인했다. GitHub에서의 실제 실행은 PR을 올린 뒤 확인한다.
+- 워크플로 YAML은 Ruby YAML 파서로 읽어 job 두 개를 확인했다. GitHub에서도 PR #1에서 두 job이 모두 통과했다.
 - `skip-docs` 라벨은 아직 저장소에 없다. 관리자가 만든다([Git 작업 가이드](../../../guides/git-workflow.md) 5장).

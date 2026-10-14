@@ -12,6 +12,7 @@
 | `script/error-codes-check.sh` | PASS, 에러 코드 15개 |
 | `git ls-files --eol` | `gradlew`와 `script/*.sh` 8개 모두 LF |
 | `git diff origin/main --check` | 공백 오류 없음 |
+| GitHub Actions `docs-guard` (PR #1) | `docs-check` pass(5초), `error-codes-check` pass(6초) |
 | 문서 속 `경로` 표기 존재 여부 | 없는 경로 14개는 모두 의도한 것(haneol 원본 경로, 예시 파일, 개인 설정 파일) |
 
 ## 고친 것
@@ -25,4 +26,4 @@
 
 ## 리뷰 포인트
 1. **한 PR로 합친 이유**: Notion에서는 문서·AI 지침을 dev 대상 별도 PR로 나누기로 했었다. 담당자들이 dev에서 바로 같은 규칙으로 시작하도록 같은 브랜치에 담았다(2026-10-14 결정). 커밋을 스텝별로 나눠 두어 문서 범위만 따로 볼 수 있다(`git log 575a411..HEAD`).
-2. **확인하지 못한 것**: Windows clone·실행과 `setup-agents.sh` 복사 경로, GitHub Actions 실제 실행(PR을 올리면 처음 돈다), Claude Code 종료 훅 연결.
+2. **확인하지 못한 것**: Windows clone·실행과 `setup-agents.sh` 복사 경로, Claude Code 종료 훅 연결.

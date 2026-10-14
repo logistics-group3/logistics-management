@@ -65,8 +65,9 @@ feat(infra): 공통 인프라 통합과 문서·AI 지침 정비 — 팀 검토 
 | Codex(`codex exec`, 0.160.0) | `.agents/skills`의 스킬 6개 인식, 루트 `AGENTS.md` 시작 절차 인용 |
 | `script/run.sh` 서비스 지정·`--scale` | 지정한 서비스만 빌드·교체(8초), hub 2개 Eureka UP 2 |
 | `git ls-files --eol` | 스크립트 8개와 `gradlew` 모두 LF |
+| GitHub Actions `docs-guard` (PR #1) | `docs-check` pass, `error-codes-check` pass |
 
-확인하지 못한 것: Windows에서 clone·실행과 `setup-agents.sh`의 복사 대체 경로, 팀원별 IDE import, GitHub Actions 워크플로 실제 실행(이 PR에서 처음 돈다), Claude Code 종료 훅 연결(개인 선택).
+확인하지 못한 것: Windows에서 clone·실행과 `setup-agents.sh`의 복사 대체 경로, 팀원별 IDE import, Claude Code 종료 훅 연결(개인 선택).
 
 ## 리뷰 포인트
 1. common 자동 설정(ADR 0009): 서비스 메인 클래스의 `scanBasePackages`를 없앴다. 공통 동작을 바꾸려면 같은 타입의 빈을 정의하고, 묶음 전체를 끌 때만 `common.<묶음>.enabled=false`를 쓴다.
