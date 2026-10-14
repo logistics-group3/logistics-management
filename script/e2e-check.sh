@@ -30,7 +30,16 @@ signup() {
 }
 login() {
   "${CURL[@]}" -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\"}" | json "d['data']['accessToken']"
+    -d "{\"username\":\"$1\",\"password\":\"${2:-$PASSWORD}\"}" | json "d['data']['accessToken']"
+}
+# .env를 셸 코드로 실행하지 않고 KEY=VALUE 한 줄만 읽는다. 환경 변수가 있으면 그 값을 쓴다.
+env_value() {
+  local file
+  for file in .env .env.example; do
+    [[ -f "$file" ]] || continue
+    grep -E "^$1=" "$file" | tail -n 1 | cut -d= -f2- && return 0
+  done
+  return 1
 }
 
 up=false
@@ -98,7 +107,8 @@ fi
 
 suffix=$(date +%s | tail -c 7)
 user="e2eu$suffix"
-master="e2em$suffix"
+master_username="${MASTER_USERNAME:-$(env_value MASTER_USERNAME)}"
+master_password="${MASTER_PASSWORD:-$(env_value MASTER_PASSWORD)}"
 
 echo "[1] docker compose up 한 번으로 전체 기동, Eureka 등록"
 missing=$(for s in "${SERVICES[@]}"; do grep -qw "$s" <<<"$registered" || echo "$s"; done | xargs)
@@ -119,8 +129,10 @@ check "토큰 없음 code UNAUTHORIZED" "UNAUTHORIZED" "$(code "$GATEWAY/api/v1/
 check "위조 토큰 401" "401" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer ${user_token%?????}AAAAA")"
 check "USER → MASTER 전용 403" "403" "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token")"
 check "USER → MASTER 전용 code FORBIDDEN" "FORBIDDEN" "$(code "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token")"
-signup "$master" >/dev/null && script/promote-master.sh "$master" >/dev/null
-check "MASTER → MASTER 전용 200" "200" "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $(login "$master")")"
+# MASTER는 user-service가 기동할 때 .env의 MASTER_USERNAME으로 만든다
+master_token=$(login "$master_username" "$master_password")
+check "기동 시 만든 MASTER 로그인" "yes" "$([[ -n "$master_token" ]] && echo yes || echo no)"
+check "MASTER → MASTER 전용 200" "200" "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $master_token")"
 
 echo "[5] 외부에서 /internal/** 호출 차단"
 check "/internal 404" "404" "$(status "$GATEWAY/internal/users/00000000-0000-0000-0000-000000000000" -H "Authorization: Bearer $user_token")"

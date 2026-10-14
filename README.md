@@ -16,7 +16,7 @@ script/db-check.sh            # 서비스 계정 5개의 실제 인증·스키�
 - 서비스 스키마·계정은 `infra/postgres/init.sh`가 빈 DB에서 처음 한 번 만들고, 테이블 변경은 Flyway가 관리한다(`*/src/main/resources/db/migration`).
 - `.env`의 DB 비밀번호는 초기화 스크립트와 서비스 접속 설정에 함께 사용된다. 기존 볼륨의 계정 비밀번호는 `.env`를 바꿔도 자동 갱신되지 않는다.
 - Flyway 도입 전의 DB가 있으면 데이터를 백업하고 기존 스키마와 마이그레이션 이력을 먼저 확인한다. 기존 볼륨을 자동으로 삭제하지 않는다.
-- MASTER 계정 만들기: 가입 후 `script/promote-master.sh <username>` 실행, 다시 로그인
+- MASTER 계정: user-service가 기동할 때 `.env`의 `MASTER_USERNAME`/`MASTER_PASSWORD`(기본 `master` / `Master!2026`)로 만든다. 이미 있으면 그대로 둔다. 가입한 계정을 승격하려면 `script/promote-master.sh <username>` 실행 후 다시 로그인한다.
 
 ## 기존 환경과 병행하기
 
@@ -41,7 +41,9 @@ curl -s localhost:8080/api/v1/users/sample/admin -H "Authorization: Bearer $TOKE
 curl -s localhost:8080/api/v1/users/sample/me                                        # 401 UNAUTHORIZED (토큰 없음)
 curl -s localhost:8080/internal/users/x          -H "Authorization: Bearer $TOKEN"   # 404 (외부 차단)
 
-script/promote-master.sh hong01    # MASTER로 승격 후 다시 로그인하면 admin API가 200
+MASTER=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"master","password":"Master!2026"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
+curl -s localhost:8080/api/v1/users/sample/admin -H "Authorization: Bearer $MASTER"  # 200 (기동 시 만든 MASTER)
 
 docker compose logs -f user-service                                                  # 로그 보기
 docker compose exec gateway-service curl -s http://user-service:8081/actuator/health # 내부 헬스 체크

@@ -95,6 +95,8 @@ services:
       <<: *service-env
       JWT_SECRET: ${JWT_SECRET}
       USER_DB_PASSWORD: ${USER_DB_PASSWORD}
+      MASTER_USERNAME: ${MASTER_USERNAME:-}
+      MASTER_PASSWORD: ${MASTER_PASSWORD:-}
 
   hub-service:
     <<: *db-service

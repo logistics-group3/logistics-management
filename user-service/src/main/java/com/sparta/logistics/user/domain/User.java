@@ -75,4 +75,11 @@ public class User extends BaseEntity {
                               AffiliationType affiliationType, String affiliationName) {
         return new User(username, encodedPassword, name, slackId, affiliationType, affiliationName);
     }
+
+    /** 기동 시 환경 변수로 만드는 초기 관리자. 가입 API로는 MASTER를 만들 수 없으므로 이 경로만 MASTER로 시작한다. */
+    public static User master(String username, String encodedPassword, String slackId) {
+        User user = new User(username, encodedPassword, "마스터", slackId, AffiliationType.HUB, "스파르타 물류 본사");
+        user.role = Role.MASTER;
+        return user;
+    }
 }
