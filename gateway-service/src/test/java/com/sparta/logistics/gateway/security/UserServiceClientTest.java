@@ -7,7 +7,9 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -26,6 +28,23 @@ class UserServiceClientTest {
         StepVerifier.create(client.fetch(userId))
                 .expectError(TimeoutException.class)
                 .verify(Duration.ofSeconds(2));
+    }
+
+    @Test
+    @DisplayName("I-01 응답 본문(감싸지 않은 DTO)을 그대로 읽고, 쓰지 않는 필드는 무시한다")
+    void readsUnwrappedBody() {
+        String body = """
+                {"userId":"%s","username":"hong01","role":"MASTER","isDeliveryManager":true,"hubId":null,"slackId":"U01"}
+                """.formatted(userId);
+        WebClient ok = WebClient.builder()
+                .exchangeFunction(request -> Mono.just(ClientResponse.create(HttpStatus.OK)
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .body(body)
+                        .build()))
+                .build();
+
+        assertThat(new UserServiceClient(ok, Duration.ofSeconds(1)).fetch(userId).block())
+                .contains(new UserSnapshot(userId, "hong01", "MASTER", true));
     }
 
     @Test

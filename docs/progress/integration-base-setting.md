@@ -9,7 +9,7 @@ Notion 팀 의견을 공통 인프라 통합 브랜치에 반영한다 (PR A, �
 - [x] 스텝 15 소유자 검증 헬퍼: `UserContextTest` 5개, `UserContextWebTest` 7개 통과
 - [x] 스텝 16 common 조건부 자동 설정: 자동 설정 6개, 슬라이스 등록, common 34·user 17 테스트 통과 (ADR 0009)
 - [x] 스텝 17 정렬 허용 목록·QueryDSL 도우미: QuerydslSupport, SortAllowList, InvalidSortException → 400 VALIDATION_ERROR(sort). common 48개 통과
-- [ ] 스텝 18 내부 API DTO 반환
+- [x] 스텝 18 내부 API DTO 반환: I-01·Gateway 클라이언트 변경, 200 본문 테스트 추가, gateway 24·user 17 통과 (ADR 0010)
 - [ ] 스텝 19 MASTER 계정 자동 생성
 - [ ] 스텝 20 에러 코드 규칙·통합 문서
 - [ ] 스텝 21 새로 시작 안내·잔여 수정, 전체 검증, PR

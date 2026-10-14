@@ -1,11 +1,9 @@
 package com.sparta.logistics.gateway.security;
 
-import com.sparta.logistics.common.response.ApiResponse;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -13,12 +11,10 @@ import reactor.core.publisher.Mono;
 
 /**
  * user-service 내부 API(I-01) 호출. Gateway는 WebFlux 기반이라 블로킹 Feign 대신 WebClient를 쓴다.
+ * 내부 API는 DTO를 감싸지 않고 그대로 반환한다(ADR 0010).
  */
 @RequiredArgsConstructor
 public class UserServiceClient {
-
-    private static final ParameterizedTypeReference<ApiResponse<UserSnapshot>> TYPE = new ParameterizedTypeReference<>() {
-    };
 
     private final WebClient webClient;
     private final Duration timeout;
@@ -27,8 +23,8 @@ public class UserServiceClient {
         return webClient.get()
                 .uri("/internal/users/{userId}", userId)
                 .retrieve()
-                .bodyToMono(TYPE)
-                .map(envelope -> Optional.ofNullable(envelope.data()))
+                .bodyToMono(UserSnapshot.class)
+                .map(Optional::of)
                 // 연결·응답 타임아웃과 별개로, 인스턴스 선택부터 본문 해석까지 전체에 상한을 둔다
                 .timeout(timeout)
                 .onErrorResume(WebClientResponseException.class, e -> e.getStatusCode() == HttpStatus.NOT_FOUND

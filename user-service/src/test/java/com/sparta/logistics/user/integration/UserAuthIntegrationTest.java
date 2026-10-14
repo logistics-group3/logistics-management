@@ -120,18 +120,19 @@ class UserAuthIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @DisplayName("I-01 응답 필드명이 SA 6.3과 같다(isDeliveryManager 포함)")
+    @DisplayName("I-01은 DTO를 감싸지 않고 반환하며 필드명이 SA 6.3과 같다(isDeliveryManager 포함)")
     void internalUserContract() throws Exception {
         SignupResult result = authService.signup(signup("itapi01"));
 
         mockMvc.perform(get("/internal/users/{userId}", result.userId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.userId").value(result.userId().toString()))
-                .andExpect(jsonPath("$.data.username").value("itapi01"))
-                .andExpect(jsonPath("$.data.role").value("USER"))
-                .andExpect(jsonPath("$.data.isDeliveryManager").value(false))
-                .andExpect(jsonPath("$.data.hubId").doesNotExist())
-                .andExpect(jsonPath("$.data.slackId").value("U01"));
+                .andExpect(jsonPath("$.userId").value(result.userId().toString()))
+                .andExpect(jsonPath("$.username").value("itapi01"))
+                .andExpect(jsonPath("$.role").value("USER"))
+                .andExpect(jsonPath("$.isDeliveryManager").value(false))
+                .andExpect(jsonPath("$.hubId").doesNotExist())
+                .andExpect(jsonPath("$.slackId").value("U01"))
+                .andExpect(jsonPath("$.data").doesNotExist());
     }
 
     @Test

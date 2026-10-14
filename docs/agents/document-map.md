@@ -17,9 +17,9 @@ KMH의 문서 지도·계약 로그 아이디어와 KEJ의 IDE/Docker 병행 안
 |---|---|---|
 | Config Server | 서비스 설정 | 클라이언트는 config import 실패 시 기동 실패 |
 | Gateway | JWT·사용자 재확인, `X-User-*` 헤더 정리·주입, 내부 API 외부 차단 | MVC 서비스는 외부에 직접 노출하지 않는다 |
-| user-service | 가입·로그인·내부 사용자 조회 | Gateway가 실제 role·탈퇴 상태를 재확인한다 |
+| user-service | 가입·로그인·내부 사용자 조회(I-01, DTO 그대로 반환) | Gateway가 실제 role·탈퇴 상태를 재확인한다 |
 | common-core | 역할·헤더 이름·응답·오류 계약 | Gateway(WebFlux)와 common(MVC)이 공유한다 |
-| common | Audit·현재 사용자·역할 검사·Feign·페이지 규칙 | 업무 서비스는 API별 비즈니스 인가·정렬 허용 목록을 구현한다 |
+| common | Audit·현재 사용자·역할·소유자 검사·Feign·페이지 규칙·정렬 허용 목록 도우미 | 업무 서비스는 API별 비즈니스 인가와 허용 정렬 필드를 정한다 |
 | PostgreSQL 초기화 | 스키마·전용 계정 | 빈 볼륨에서 한 번, 테이블 변경은 Flyway |
 
 ## 계약 변경 기록
