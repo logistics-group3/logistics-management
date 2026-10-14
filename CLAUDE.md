@@ -15,6 +15,7 @@
 | 루트 `CLAUDE.md` (이 파일) | 대전제·필수 규칙, 서비스 간 공통 계약 |
 | `{모듈}/CLAUDE.md` | 그 모듈의 **세부 규칙**(도메인 규칙·상태 전이·컬럼 길이 등). 첫 줄 `@agent.md`로 agent.md를 함께 불러온다 |
 | `{모듈}/agent.md` | 서비스 정보·제공/의존 API 계약·구현 현황·**결정 필요 사항과 충돌을 주고받는 커뮤니케이션 로그** |
+| `.claude/skills/` | 작업 **절차**(학습 `learn-*`, 구현 `impl-*`). 규칙 본문은 담지 않고 위 문서를 가리킨다. 이 프로젝트는 학습이 주 목적이므로 기능 구현은 `impl-service` 절차(계층별 설명 + 구현 노트)를 따른다 |
 
 대상 모듈: `common/`, `gateway-service/`, `user-service/`, `hub-service/`, `company-service/`, `order-service/`, `delivery-service/`
 

@@ -74,6 +74,7 @@ docker compose up -d --build    # 전체 기동 (빈 캐시 첫 빌드 약 4분)
 | [CLAUDE.md](CLAUDE.md) | 전 서비스 공통 구현 규칙 (사람·AI 공용) |
 | `{모듈}/CLAUDE.md` | 그 서비스의 세부 규칙 (도메인 규칙, 상태 전이, 컬럼 길이) |
 | `{모듈}/agent.md` | 그 서비스의 API 계약, 구현 현황, 결정·논의 로그 (`OPEN` → `DECIDED` → `DONE`) |
+| `.claude/skills/` | AI 학습·구현 skill: `/impl-service`, `/learn-explain`, `/learn-review`, `/learn-note` ([설명](Docs/README.md#ai-학습구현-skill-claudeskills)) |
 
 ## 협업 방식
 

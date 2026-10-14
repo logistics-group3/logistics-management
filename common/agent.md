@@ -87,3 +87,10 @@
 - 관련: `README.md`, `Docs/README.md`, `Docs/07-트러블슈팅.md`, `Docs/team/`, `CLAUDE.md` §8-2
 - 내용: 루트 `README.md`가 비어 있었고, 실행 방법·열린 논의 목록이 여러 문서에 사본으로 있어 낡을 위험이 있었다. 설계 문서(01~05)에 날짜가 박힌 구현 현황이 섞여 있었다.
 - 결정: 루트 `README.md`(소개·아키텍처·빠른 실행·문서 지도·팀)를 작성했다. `Docs/README.md`에 "정보별 기준 위치 한 곳" 갱신 규칙을 두고, 열린 논의 사본 목록(06, 팀 공유 개요)은 `agent.md` 조회 명령으로 대체했다. 트러블슈팅 기록용 `Docs/07-트러블슈팅.md`를 신설해 기존 버그 기록을 TS-001~005로 옮겼다. 팀 공유 개요는 `Docs/team/프로젝트-개요.md`로 이동했다. `Docs` 폴더명(소문자 `docs` 여부)은 리뷰 후 채택 브랜치에 맞춰 결정한다.
+
+### COMMON-008 AI 학습·구현 skill 추가 (`.claude/skills/`)
+- 상태: DONE
+- 작성: 권민혁 / 2026-10-14
+- 관련: `.claude/skills/{impl-service,learn-explain,learn-review,learn-note}`, `Docs/team/구현-노트/`, `Docs/team/학습-노트/`
+- 내용: 학습이 주 목적인 프로젝트에서 AI가 구현을 맡으면 무엇을 왜 만들었는지 남지 않는 문제가 있다. 팀원 모두가 같은 절차로 AI를 쓰도록 skill을 공유한다.
+- 결정: 분류는 접두어로 나눈다 — 학습 `learn-*`(explain·review·note), 구현 `impl-*`(service). `impl-service`는 계층별로 멈추고 설명하며(지시자가 요청하면 주제 단위로 설명 생략), 마지막에 처리 과정·핵심을 `Docs/team/구현-노트/{서비스}.md`에 남긴다. 다른 서비스 계약 요청은 별도 skill 없이 `impl-service` 1단계에 포함했다. skill에는 규칙 본문을 복사하지 않고 루트·모듈 `CLAUDE.md`를 가리킨다.
