@@ -2,6 +2,7 @@ package com.sparta.logistics.gateway.security;
 
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.gateway.support.ErrorResponseWriter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
@@ -13,13 +14,10 @@ import reactor.core.publisher.Mono;
  * role 불일치·탈퇴는 401 TOKEN_ROLE_MISMATCH, user-service 장애는 503.
  */
 @Slf4j
+@RequiredArgsConstructor
 public class JsonAuthenticationEntryPoint implements ServerAuthenticationEntryPoint {
 
     private final ErrorResponseWriter errorWriter;
-
-    public JsonAuthenticationEntryPoint(ErrorResponseWriter errorWriter) {
-        this.errorWriter = errorWriter;
-    }
 
     @Override
     public Mono<Void> commence(ServerWebExchange exchange, AuthenticationException ex) {

@@ -4,6 +4,7 @@ import com.sparta.logistics.common.response.ApiResponse;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Mono;
 /**
  * user-service 내부 API(I-01) 호출. Gateway는 WebFlux 기반이라 블로킹 Feign 대신 WebClient를 쓴다.
  */
+@RequiredArgsConstructor
 public class UserServiceClient {
 
     private static final ParameterizedTypeReference<ApiResponse<UserSnapshot>> TYPE = new ParameterizedTypeReference<>() {
@@ -20,11 +22,6 @@ public class UserServiceClient {
 
     private final WebClient webClient;
     private final Duration timeout;
-
-    public UserServiceClient(WebClient webClient, Duration timeout) {
-        this.webClient = webClient;
-        this.timeout = timeout;
-    }
 
     public Mono<Optional<UserSnapshot>> fetch(UUID userId) {
         return webClient.get()

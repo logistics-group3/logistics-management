@@ -3,6 +3,7 @@ package com.sparta.logistics.gateway.security;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,13 +16,10 @@ import reactor.core.publisher.Mono;
  * Note: JWT는 발급 뒤에 바뀐 권한이나 탈퇴를 모른다. 그래서 Spring Security의 JWT → Authentication 변환 지점에 재확인을
  * 끼워 넣는다. 통과하면 저장된 사용자 정보(UserSnapshot)를 principal로 담아 6단계 헤더 주입에 넘긴다.
  */
+@RequiredArgsConstructor
 public class UserVerifyingJwtConverter implements Converter<Jwt, Mono<AbstractAuthenticationToken>> {
 
     private final UserLookup userLookup;
-
-    public UserVerifyingJwtConverter(UserLookup userLookup) {
-        this.userLookup = userLookup;
-    }
 
     @Override
     public Mono<AbstractAuthenticationToken> convert(Jwt jwt) {

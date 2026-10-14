@@ -4,6 +4,7 @@ import com.sparta.logistics.common.exception.ErrorCode;
 import com.sparta.logistics.common.exception.ErrorResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -13,13 +14,10 @@ import reactor.core.publisher.Mono;
 
 /** SA 6.1 에러 형식으로 Gateway가 직접 응답한다. 서비스와 같은 ErrorResponse(common-core)를 써서 형식이 어긋나지 않는다. */
 @Component
+@RequiredArgsConstructor
 public class ErrorResponseWriter {
 
     private final ObjectMapper objectMapper;
-
-    public ErrorResponseWriter(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
 
     public Mono<Void> write(ServerWebExchange exchange, ErrorCode errorCode) {
         if (exchange.getResponse().isCommitted()) {

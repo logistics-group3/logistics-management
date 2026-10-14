@@ -1,6 +1,7 @@
 package com.sparta.logistics.gateway.support;
 
 import com.sparta.logistics.common.exception.CommonErrorCode;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatusCode;
@@ -19,13 +20,10 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Component
 @Order(-2)
+@RequiredArgsConstructor
 public class GatewayErrorWebExceptionHandler implements ErrorWebExceptionHandler {
 
     private final ErrorResponseWriter errorWriter;
-
-    public GatewayErrorWebExceptionHandler(ErrorResponseWriter errorWriter) {
-        this.errorWriter = errorWriter;
-    }
 
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {

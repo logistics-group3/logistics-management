@@ -3,6 +3,7 @@ package com.sparta.logistics.gateway.security;
 import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.gateway.support.ErrorResponseWriter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -20,15 +21,12 @@ import reactor.core.publisher.Mono;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@RequiredArgsConstructor
 public class UserHeaderSanitizingFilter implements WebFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final ErrorResponseWriter errorWriter;
-
-    public UserHeaderSanitizingFilter(ErrorResponseWriter errorWriter) {
-        this.errorWriter = errorWriter;
-    }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
