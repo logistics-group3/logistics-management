@@ -1,5 +1,6 @@
 package com.sparta.logistics.gateway.security;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,9 +18,11 @@ public class UserServiceClient {
     };
 
     private final WebClient webClient;
+    private final Duration timeout;
 
-    public UserServiceClient(WebClient webClient) {
+    public UserServiceClient(WebClient webClient, Duration timeout) {
         this.webClient = webClient;
+        this.timeout = timeout;
     }
 
     public Mono<Optional<UserSnapshot>> fetch(UUID userId) {
@@ -28,6 +31,8 @@ public class UserServiceClient {
                 .retrieve()
                 .bodyToMono(TYPE)
                 .map(envelope -> Optional.ofNullable(envelope.data()))
+                // 연결·응답 타임아웃과 별개로, 인스턴스 선택부터 본문 해석까지 전체에 상한을 둔다
+                .timeout(timeout)
                 .onErrorResume(WebClientResponseException.class, e -> e.getStatusCode() == HttpStatus.NOT_FOUND
                         ? Mono.just(Optional.empty())
                         : Mono.error(e));

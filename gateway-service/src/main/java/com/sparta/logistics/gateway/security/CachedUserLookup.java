@@ -33,8 +33,12 @@ public class CachedUserLookup implements UserLookup {
                 .buildAsync();
     }
 
+    /**
+     * Note: 같은 사용자의 동시 요청은 하나의 Future를 공유한다. Mono.fromFuture는 기본적으로 구독이 취소되면 Future도 취소하므로,
+     * 클라이언트 하나가 연결을 끊으면 같은 Future를 기다리던 다른 요청까지 실패한다. suppressCancel=true로 취소를 전달하지 않는다.
+     */
     @Override
     public Mono<Optional<UserSnapshot>> find(UUID userId) {
-        return Mono.fromFuture(() -> cache.get(userId, (key, executor) -> loader.apply(key).toFuture()));
+        return Mono.fromFuture(() -> cache.get(userId, (key, executor) -> loader.apply(key).toFuture()), true);
     }
 }

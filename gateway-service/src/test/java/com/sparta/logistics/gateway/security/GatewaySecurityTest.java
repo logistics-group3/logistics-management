@@ -11,6 +11,7 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
@@ -46,7 +47,10 @@ import reactor.core.publisher.Mono;
                 "auth.user-cache-ttl=60s",
                 "spring.cloud.gateway.server.webflux.routes[0].id=echo",
                 "spring.cloud.gateway.server.webflux.routes[0].uri=forward:/echo",
-                "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/api/**"
+                "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/api/**",
+                "spring.cloud.gateway.server.webflux.routes[1].id=missing",
+                "spring.cloud.gateway.server.webflux.routes[1].uri=lb://missing-service",
+                "spring.cloud.gateway.server.webflux.routes[1].predicates[0]=Path=/missing/**"
         })
 class GatewaySecurityTest {
 
@@ -56,6 +60,9 @@ class GatewaySecurityTest {
 
     @Autowired
     private WebTestClient client;
+
+    @org.springframework.boot.test.web.server.LocalServerPort
+    private int port;
 
     @MockitoBean
     private UserLookup userLookup;
@@ -74,13 +81,16 @@ class GatewaySecurityTest {
     }
 
     private static String token(String secret, String role, Instant expiresAt) throws Exception {
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        return sign(secret, new JWTClaimsSet.Builder()
                 .subject(USER_ID.toString())
                 .claim("username", "hong01")
                 .claim("role", role)
                 .issueTime(Date.from(expiresAt.minusSeconds(3600)))
                 .expirationTime(Date.from(expiresAt))
-                .build();
+                .build());
+    }
+
+    private static String sign(String secret, JWTClaimsSet claims) throws Exception {
         SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
         jwt.sign(new MACSigner(secret.getBytes(StandardCharsets.UTF_8)));
         return jwt.serialize();
@@ -191,5 +201,94 @@ class GatewaySecurityTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody().jsonPath("$['X-User-Role']").doesNotExist();
+    }
+
+    @Test
+    @DisplayName("exp가 없거나 role이 없는 토큰은 서명이 맞아도 401 (필수 claim 검증)")
+    void requiresClaims() throws Exception {
+        String noExp = sign(SECRET, new JWTClaimsSet.Builder().subject(USER_ID.toString())
+                .claim("username", "hong01").claim("role", "USER").issueTime(new Date()).build());
+        String noRole = sign(SECRET, new JWTClaimsSet.Builder().subject(USER_ID.toString())
+                .claim("username", "hong01").issueTime(new Date())
+                .expirationTime(Date.from(Instant.now().plusSeconds(3600))).build());
+
+        for (String token : new String[] {noExp, noRole}) {
+            client.get().uri("/api/v1/hubs")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .exchange()
+                    .expectStatus().isUnauthorized()
+                    .expectBody().jsonPath("$.code").isEqualTo("UNAUTHORIZED");
+        }
+        verify(userLookup, never()).find(any());
+    }
+
+    @Test
+    @DisplayName("만료 직후(1초 전) 토큰도 허용 오차 없이 401")
+    void noClockSkew() throws Exception {
+        client.get().uri("/api/v1/hubs")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(SECRET, "USER", Instant.now().minusSeconds(1)))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @DisplayName("소문자로 보낸 x-user-role 위조 헤더도 지운다")
+    void stripsLowercaseHeaders() throws Exception {
+        given(userLookup.find(USER_ID)).willReturn(Mono.just(Optional.of(STORED_USER)));
+
+        client.get().uri("/api/v1/users/sample/me")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken("USER"))
+                .header("x-user-role", "MASTER")
+                .header("x-username", "evil")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$['X-User-Role']").isEqualTo("USER")
+                .jsonPath("$['X-Username']").isEqualTo("hong01");
+    }
+
+    @Test
+    @DisplayName("/internal/** 은 토큰이 없어도 401이 아니라 404")
+    void blocksInternalWithoutToken() {
+        client.get().uri("/internal/users/" + USER_ID)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("경로 우회 시도는 방화벽이 막고 SA 형식의 400으로 응답한다")
+    void rejectsPathTraversal() throws Exception {
+        for (String path : new String[] {"/api/v1/auth/login/../../users/sample/me", "/api/v1/users/..%2f..%2finternal/users/x", "/api/v1/auth/login;/x"}) {
+            client.get().uri(URI.create("http://localhost:" + port + path))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken("USER"))
+                    .exchange()
+                    .expectStatus().isBadRequest()
+                    .expectBody().jsonPath("$.code").isEqualTo("INVALID_REQUEST");
+        }
+    }
+
+    @Test
+    @DisplayName("라우트가 없는 경로는 SA 형식의 404")
+    void noRoute() throws Exception {
+        given(userLookup.find(USER_ID)).willReturn(Mono.just(Optional.of(STORED_USER)));
+
+        client.get().uri("/nope")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken("USER"))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("NOT_FOUND").jsonPath("$.path").isEqualTo("/nope");
+    }
+
+    @Test
+    @DisplayName("대상 서비스 인스턴스가 없으면 SA 형식의 503 SERVICE_UNAVAILABLE")
+    void noInstance() throws Exception {
+        given(userLookup.find(USER_ID)).willReturn(Mono.just(Optional.of(STORED_USER)));
+
+        client.get().uri("/missing/anything")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken("USER"))
+                .exchange()
+                .expectStatus().isEqualTo(503)
+                .expectBody().jsonPath("$.code").isEqualTo("SERVICE_UNAVAILABLE");
     }
 }

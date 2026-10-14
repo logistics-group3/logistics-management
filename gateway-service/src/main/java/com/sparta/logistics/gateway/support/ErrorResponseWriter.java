@@ -24,6 +24,9 @@ public class ErrorResponseWriter {
     }
 
     public Mono<Void> write(ServerWebExchange exchange, GatewayErrorCode errorCode) {
+        if (exchange.getResponse().isCommitted()) {
+            return Mono.empty();
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("status", errorCode.status().value());
         body.put("code", errorCode.name());

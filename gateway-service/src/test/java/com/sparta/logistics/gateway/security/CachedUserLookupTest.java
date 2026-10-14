@@ -62,4 +62,21 @@ class CachedUserLookupTest {
         assertThat(lookup.find(userId).block()).isEmpty();
         assertThat(calls).hasValue(2);
     }
+
+    @Test
+    @DisplayName("같은 사용자의 동시 요청 중 하나가 취소돼도 다른 요청은 결과를 받는다")
+    void cancelDoesNotBreakOthers() {
+        CachedUserLookup lookup = new CachedUserLookup(id -> {
+            calls.incrementAndGet();
+            return Mono.delay(java.time.Duration.ofMillis(200))
+                    .map(ignored -> Optional.of(new UserSnapshot(id, "hong01", "USER", false)));
+        }, Duration.ofSeconds(60), nanos::get);
+
+        reactor.core.Disposable first = lookup.find(userId).subscribe();
+        Mono<Optional<UserSnapshot>> second = lookup.find(userId);
+        first.dispose();
+
+        assertThat(second.block(Duration.ofSeconds(2))).map(UserSnapshot::role).contains("USER");
+        assertThat(calls).hasValue(1);
+    }
 }
