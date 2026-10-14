@@ -34,15 +34,16 @@
 | [team/구현-노트/](team/구현-노트/README.md) | 서비스·API별 구현 처리 과정과 핵심 (`impl-service` skill이 작성) |
 | [team/학습-노트/](team/학습-노트/README.md) | 팀원별 일일 학습 기록 (`/learn-note`로 작성) |
 
-### AI 학습·구현 skill (`.claude/skills/`)
-Claude Code에서 `/이름`으로 호출한다. 요청 내용이 맞으면 AI가 알아서 고르기도 한다 (`learn-note`는 직접 호출만).
+### AI 학습·구현 skill 가이드 (`skills/`)
+| 문서 | 내용 |
+| --- | --- |
+| [skills/README.md](skills/README.md) | skill 개념·호출 방법, 분류(학습 `learn-` / 구현 `impl-`), 언제 무엇을 쓰나, skill 추가 방법 |
+| [skills/impl-service.md](skills/impl-service.md) | 구현 — AI가 계층별로 멈추며 설명하고 구현 노트(처리 과정·핵심)를 남긴다. 반복 설명은 주제별 생략 가능 |
+| [skills/learn-explain.md](skills/learn-explain.md) | 학습 — 개념·코드·설계 이유를 우리 코드에 연결해 설명, 확인 질문 |
+| [skills/learn-review.md](skills/learn-review.md) | 학습 — 직접 짠 코드를 힌트 → 방향 → 정답 순으로 리뷰 |
+| [skills/learn-note.md](skills/learn-note.md) | 학습 — 하루 학습 노트와 트러블슈팅 기록 (직접 호출만) |
 
-| skill | 분류 | 언제 |
-| --- | --- | --- |
-| `impl-service` | 구현 | AI에게 기능 구현을 맡길 때. 계층별로 멈추며 설명하고, 구현 노트(처리 과정·핵심)를 남긴다. 반복 설명은 "○○ 설명은 그만"으로 주제별 생략 |
-| `learn-explain` | 학습 | 개념·코드·설계 이유가 궁금할 때. 우리 코드 위치와 연결해 설명하고 확인 질문을 낸다 |
-| `learn-review` | 학습 | 직접 짠 코드를 커밋 전에 점검할 때. 힌트 → 방향 → 정답 순으로 단계적으로 알려 준다 |
-| `learn-note` | 학습 | 하루 작업을 마칠 때. 학습 노트와 트러블슈팅을 기록한다 |
+절차 원본은 `.claude/skills/{이름}/SKILL.md`이고, `skills/`는 팀원용 사용 설명서다.
 
 ### 원본 (`reference/`)
 | 문서 | 내용 |
@@ -61,6 +62,7 @@ Claude Code에서 `/이름`으로 호출한다. 요청 내용이 맞으면 AI가
 | 구현 현황, 열린 논의(`OPEN`), 결정 | 각 모듈 `agent.md` §5·로그 | 날짜가 박힌 사본 목록을 만들지 않는다 |
 | 실행 방법 | 루트 `README.md`(빠른 실행) / 04(상세·문제 해결) | `CLAUDE.md` §8-2는 요약만 |
 | 문제 해결 기록 | 07-트러블슈팅 | 링크만 |
+| AI skill 절차 | `.claude/skills/{이름}/SKILL.md` | `skills/`는 사용 설명서 (SKILL.md 동작을 바꾸면 함께 수정) |
 
 - 결정이 설계를 바꾸면 `SA_Document.md` → 01~05 정리본 → `CLAUDE.md` 순으로 함께 고친다.
 - 01~05에는 구현 진행 상황을 적지 않는다. SA에 없어서 구현하면서 정한 세부 값(예: 03의 U-01 검증 규칙)만 "구현 시 정한 내용"으로 남긴다.

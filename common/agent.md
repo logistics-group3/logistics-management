@@ -94,3 +94,10 @@
 - 관련: `.claude/skills/{impl-service,learn-explain,learn-review,learn-note}`, `Docs/team/구현-노트/`, `Docs/team/학습-노트/`
 - 내용: 학습이 주 목적인 프로젝트에서 AI가 구현을 맡으면 무엇을 왜 만들었는지 남지 않는 문제가 있다. 팀원 모두가 같은 절차로 AI를 쓰도록 skill을 공유한다.
 - 결정: 분류는 접두어로 나눈다 — 학습 `learn-*`(explain·review·note), 구현 `impl-*`(service). `impl-service`는 계층별로 멈추고 설명하며(지시자가 요청하면 주제 단위로 설명 생략), 마지막에 처리 과정·핵심을 `Docs/team/구현-노트/{서비스}.md`에 남긴다. 다른 서비스 계약 요청은 별도 skill 없이 `impl-service` 1단계에 포함했다. skill에는 규칙 본문을 복사하지 않고 루트·모듈 `CLAUDE.md`를 가리킨다.
+
+### COMMON-009 skill 사용 가이드 `Docs/skills/` 추가
+- 상태: DONE
+- 작성: 권민혁 / 2026-10-14
+- 관련: `Docs/skills/`, `.claude/skills/`, COMMON-008
+- 내용: `SKILL.md`는 AI용 절차라 팀원이 읽고 사용법을 익히기 어렵다.
+- 결정: `Docs/skills/`에 사람용 사용 설명서(개요 README + skill별 문서: 목적·호출 예시·진행 흐름·결과물·팁)를 둔다. 절차 원본은 `SKILL.md`이며 어긋나면 `SKILL.md`가 우선한다. `SKILL.md`의 동작을 바꾸면 설명서도 함께 고친다.
