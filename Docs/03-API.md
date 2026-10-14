@@ -99,9 +99,9 @@
 | U-07 | PATCH | `/api/v1/users/{userId}/role` | 권한·배송담당자 지정 | MASTER | Body(선택): role, isDeliveryManager, hubId(배송담당자 지정 시 필수) | 200 UserResponse |
 | U-08 | DELETE | `/api/v1/users/{userId}` | 사용자 비활성화 (논리 삭제) | MASTER | Path: userId | 200 |
 
-> 구현 현황 (2026-10-13): U-01, U-02, U-03, U-08, I-01 구현 완료 (공통 인프라 단계). U-08 선구현은 USER-003에서 리뷰 확인 중.
+> 구현 여부는 `user-service/agent.md` §5(구현 현황)에서 관리한다. 아래는 SA에 정해지지 않아 구현하면서 정한 세부 사항이다.
 >
-> | 필드 | 실제 구현 |
+> | 항목 | 구현 시 정한 내용 |
 > | --- | --- |
 > | U-01 요청 검증 | `username` 필수·4~10자, `password` 필수, `name` 필수·50자 이하, `slackId` 50자 이하, `affiliationType` `COMPANY`/`HUB`, `affiliationName` 100자 이하. 그 외 형식 규칙은 미정(USER-002) |
 > | U-02 응답 | `accessToken`, `tokenType`(`Bearer`), `expiresIn`(**초** 단위, 기본 3600) |

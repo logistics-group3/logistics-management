@@ -114,14 +114,11 @@ config server(포트 미정)·front 3000은 **추후 도입**.
 - **JWT 계약** (user-service 발급 ↔ gateway 검증): HS256, 키는 `JWT_SECRET`(Base64, 32바이트 이상), `sub` = userId(UUID), claim `username`, `role`(MASTER/USER), `iat`, `exp`, 만료 `JWT_EXPIRATION_MS`(기본 60분). JWT 키 관리 방식은 팀 논의 후 변경될 수 있음 (USER-001).
 - **권한 변경 반영 지연**: Gateway가 I-01 결과를 userId 기준 **60초 캐시**하므로 권한 변경·탈퇴는 최대 60초 늦게 반영된다 (상세: `gateway-service/CLAUDE.md`).
 
-### 8-2. 실행 방법
-- 최초 1회: `cp .env.example .env` 후 `JWT_SECRET` 채우기 (`openssl rand -base64 32`)
-- 전체 실행: `docker compose up -d --build` (Dockerfile이 멀티 스테이지라 컨테이너 안에서 Gradle 빌드, 호스트에 JDK 불필요). `script/run.sh`는 같은 동작의 단축 명령. 확장: `docker compose up -d --scale order-service=2`
+### 8-2. 실행 방법 (요약 — 상세는 루트 `README.md` 빠른 실행, `Docs/04-인프라-구성도.md` 실행 방법·자주 겪는 문제)
+- 최초 1회 `cp .env.example .env` 후 `JWT_SECRET` 채우기 → 전체 실행 `docker compose up -d --build` (컨테이너 안에서 빌드, 호스트 JDK 불필요)
 - IDE에서 일부 서비스만 실행: `docker compose up -d postgres eureka-server` 후 IDE에서 실행 (yml이 루트 `.env`를 자동으로 읽음)
-- 확인: Eureka `http://localhost:8761`, Swagger `http://localhost:8080/swagger-ui.html`(우측 상단에서 서비스 선택)
-- 새로 뜬 인스턴스가 Gateway·Feign에 반영되기까지 최대 수십 초 걸릴 수 있다 (Eureka 갱신 5초 + LB 캐시 5초로 단축해 둠)
-- 초기 MASTER: `.env`의 `MASTER_USERNAME`/`MASTER_PASSWORD` (기본 `master` / `master_local_pw`)로 로그인
-- Windows Git Bash의 curl로 한글이 든 JSON을 `-d '...'`로 보내면 UTF-8이 깨져 400이 난다 → UTF-8 파일로 저장 후 `--data-binary @file.json` 사용 (Swagger·Postman은 문제없음)
+- 확인: Swagger `http://localhost:8080/swagger-ui.html`, 초기 MASTER는 `.env`의 `MASTER_USERNAME`/`MASTER_PASSWORD`. 새 인스턴스 반영까지 수십 초 걸릴 수 있다
+- Windows Git Bash curl로 한글 JSON을 보낼 때는 UTF-8 파일 + `--data-binary @file.json` (`-d '...'`는 깨져서 400)
 
 ## 9. 인프라 규칙
 - PostgreSQL 컨테이너 1개 + **서비스별 스키마 + 전용 계정**(자기 스키마 권한만). `currentSchema` 또는 `hibernate.default_schema`로 지정.
