@@ -3,7 +3,7 @@
 # user-service 세부 규칙
 
 > 루트 `CLAUDE.md`(대전제·공통 규칙)를 전제로 한다. 서비스 정보·API 계약·커뮤니케이션 로그는 위에서 불러온 `agent.md`에 있다.
-> 원본: `Docs/reference/SA문서.md`, 루트 `CLAUDE.md` §3-2, §8-1
+> 원본: `Docs/reference/SA_Document.md`, 루트 `CLAUDE.md` §3-2, §8-1
 
 ## 1. 회원·권한
 - **회원가입 검증**: SA 기준 — username 4~10자. 그 외 형식 규칙은 추후 결정 (USER-002). 가입 시 권한은 항상 `USER`.

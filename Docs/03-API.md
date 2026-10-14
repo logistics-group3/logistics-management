@@ -1,6 +1,6 @@
 # 03. API 명세
 
-> 근거: [SA문서 §2 API](reference/SA문서.md) · 구현 컨벤션: 루트 `CLAUDE.md` §6, §8-1
+> 근거: [SA문서 §2 API](reference/SA_Document.md) · 구현 컨벤션: 루트 `CLAUDE.md` §6, §8-1
 
 ## 공통 규약
 

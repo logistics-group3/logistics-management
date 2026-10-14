@@ -1,6 +1,6 @@
 # CLAUDE.md — 스파르타 물류 MSA 프로젝트
 
-> 원본 설계 문서: `Docs/reference/SA문서.md` (최종 근거). 주제별 정리본(개요·ERD·API·인프라·시스템 구조)은 `Docs/` 참고.
+> 원본 설계 문서: `Docs/reference/SA_Document.md` (최종 근거). 주제별 정리본(개요·ERD·API·인프라·시스템 구조)은 `Docs/` 참고.
 > 이 파일은 **모든 서비스에 적용되는 대전제와 필수 규칙**만 담는다. 서비스별 세부 규칙은 각 모듈의 `CLAUDE.md`에 있다.
 > 규칙이 애매하거나 정해지지 않은 사항은 임의로 정하지 말고 사용자에게 확인한다.
 
@@ -24,7 +24,7 @@
 4. `common` 모듈과 루트 공유 파일(`build.gradle`, `settings.gradle`, `docker-compose.yml`, `Dockerfile`, `.env.example`, `infra/`, 이 `CLAUDE.md`)은 모든 서비스에 영향을 준다 → 변경 전 `common/agent.md`에 기록한다.
 5. 작업 중 내린 결정·발견한 충돌은 해당 `agent.md` 로그에 남긴다. 결정이 규칙을 바꾸면 해당 규칙 문서(SA 문서, 루트·모듈 `CLAUDE.md`)도 함께 수정한다.
 6. 로그 작성: 맨 아래에만 추가(Git 충돌 최소화), ID는 `{서비스}-{번호}`(예: `HUB-003`), 상태는 `OPEN`(논의 필요) → `DECIDED`(결정 내용 기록) → `DONE`(코드 반영).
-7. 우선순위: `Docs/reference/SA문서.md` > 루트 `CLAUDE.md` > 모듈 `CLAUDE.md` / `agent.md`. 둘이 어긋나면 작업을 멈추고 로그에 `OPEN`으로 기록한다.
+7. 우선순위: `Docs/reference/SA_Document.md` > 루트 `CLAUDE.md` > 모듈 `CLAUDE.md` / `agent.md`. 둘이 어긋나면 작업을 멈추고 로그에 `OPEN`으로 기록한다.
 8. 서비스 세부 규칙은 해당 모듈 `CLAUDE.md` 한 곳에만 둔다 (루트·agent.md에 중복 기재 금지). 여러 서비스가 함께 지켜야 하는 계약만 루트에 둔다.
 
 ## 0-1. 진행 단계
@@ -82,7 +82,7 @@ config server(포트 미정)·front 3000은 **추후 도입**.
 - 응답 형식: 성공 `{status, message, data}` / 에러 `{status, code, message, path, timestamp}`
 - 페이징: `page`(0부터), `size`(10/30/50만 허용), `sort`(기본 `createdAt,DESC`)
 - 에러 코드: `VALIDATION_ERROR`, `INVALID_REQUEST`, `MANAGER_HUB_MISMATCH`(400) / `UNAUTHORIZED`, `TOKEN_ROLE_MISMATCH`, `LOGIN_FAILED`(401) / `FORBIDDEN`(403) / `{리소스}_NOT_FOUND`, `DELIVERY_MANAGER_NOT_FOUND`(404) / `DUPLICATE_USERNAME`, `STOCK_INSUFFICIENT`, `INVALID_STATUS_TRANSITION`, `HUB_CHANGE_NOT_ALLOWED`, `ORDER_NOT_DELETABLE`(409) / `SERVICE_UNAVAILABLE`(503)
-- API 목록(U/H/C/P/O/D-xx)과 내부 API(I-01~I-14)의 상세 명세는 `Docs/reference/SA문서.md` §2를 따른다. 서비스별 제공·의존 API 요약은 각 `agent.md` §2·§3.
+- API 목록(U/H/C/P/O/D-xx)과 내부 API(I-01~I-14)의 상세 명세는 `Docs/reference/SA_Document.md` §2를 따른다. 서비스별 제공·의존 API 요약은 각 `agent.md` §2·§3.
 
 ## 7. 상태 전이 → `order-service/CLAUDE.md`(주문), `delivery-service/CLAUDE.md`(배송)
 - **상태 전이 검증은 Entity 메서드에 둔다.** 위반 시 409 `INVALID_STATUS_TRANSITION`.

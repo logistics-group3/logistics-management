@@ -3,7 +3,7 @@
 # delivery-service 세부 규칙
 
 > 루트 `CLAUDE.md`(대전제·공통 규칙)를 전제로 한다. 서비스 정보·API 계약·커뮤니케이션 로그는 위에서 불러온 `agent.md`에 있다.
-> 원본: `Docs/reference/SA문서.md` §5 배송 상태 전이, 루트 `CLAUDE.md` §3-7, §7
+> 원본: `Docs/reference/SA_Document.md` §5 배송 상태 전이, 루트 `CLAUDE.md` §3-7, §7
 
 ## 1. 배송 구조
 - **주문 1건 = 배송 1건.** 배송 생성(I-09)·삭제(I-13)는 내부 API로만 제공하며 **orderId 기준 멱등** (루트 §5).

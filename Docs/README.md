@@ -1,6 +1,6 @@
 # 스파르타 물류 MSA — 설계 문서
 
-> 이 디렉터리의 문서는 [`reference/SA문서.md`](reference/SA문서.md)를 주제별로 나눠 정리한 것이다.
+> 이 디렉터리의 문서는 [`reference/SA_Document.md`](reference/SA_Document.md)를 주제별로 나눠 정리한 것이다.
 > **내용이 어긋나면 SA 문서가 우선**하며, SA 문서를 고치면 여기 문서도 함께 고친다.
 > 구현 규칙 요약은 루트 [`CLAUDE.md`](../CLAUDE.md), 서비스별 결정·충돌 기록은 각 모듈의 `agent.md`를 본다.
 
@@ -21,7 +21,7 @@
 
 | 문서 | 내용 |
 | --- | --- |
-| [reference/SA문서.md](reference/SA문서.md) | SA 원본 — **최종 근거** |
+| [reference/SA_Document.md](reference/SA_Document.md) | SA 원본 — **최종 근거** |
 | [reference/공통 인프라 개발 범위.md](<reference/공통 인프라 개발 범위.md>) | 공통 인프라 구축 단계(10/13~10/14)의 범위·완료 기준 |
 
 ## 다이어그램 보는 법

@@ -3,7 +3,7 @@
 # order-service 세부 규칙
 
 > 루트 `CLAUDE.md`(대전제·공통 규칙)를 전제로 한다. 서비스 정보·API 계약·커뮤니케이션 로그는 위에서 불러온 `agent.md`에 있다.
-> 원본: `Docs/reference/SA문서.md` §5, 루트 `CLAUDE.md` §3-7, §5
+> 원본: `Docs/reference/SA_Document.md` §5, 루트 `CLAUDE.md` §3-7, §5
 
 ## 1. 주문 규칙
 - **주문은 한 번에 한 품목**. 요청(수령)업체 관리자 본인 또는 MASTER만 그 업체 명의로 주문 가능.

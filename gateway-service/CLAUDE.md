@@ -3,7 +3,7 @@
 # gateway-service 세부 규칙
 
 > 루트 `CLAUDE.md`(대전제·공통 규칙)를 전제로 한다. 서비스 정보·API 계약·커뮤니케이션 로그는 위에서 불러온 `agent.md`에 있다.
-> 원본: `Docs/reference/SA문서.md`, 루트 `CLAUDE.md` §3-1, §8-1
+> 원본: `Docs/reference/SA_Document.md`, 루트 `CLAUDE.md` §3-1, §8-1
 
 ## 1. 인증 처리
 - WebFlux 기반이므로 `common` 모듈을 의존하지 않는다.

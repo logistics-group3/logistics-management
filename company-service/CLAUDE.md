@@ -3,7 +3,7 @@
 # company-service 세부 규칙
 
 > 루트 `CLAUDE.md`(대전제·공통 규칙)를 전제로 한다. 서비스 정보·API 계약·커뮤니케이션 로그는 위에서 불러온 `agent.md`에 있다.
-> 원본: `Docs/reference/SA문서.md`, 루트 `CLAUDE.md` §3-7
+> 원본: `Docs/reference/SA_Document.md`, 루트 `CLAUDE.md` §3-7
 
 ## 1. 업체
 - 업체는 허브 1곳 소속, 생산·수령 구분 없음.

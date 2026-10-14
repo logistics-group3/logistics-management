@@ -73,3 +73,10 @@
 - 관련: 루트 `CLAUDE.md`, 각 모듈 `CLAUDE.md`·`agent.md` §4
 - 내용: 루트 `CLAUDE.md`(207줄)에 서비스 세부 규칙이 모여 있어 어느 모듈을 작업하든 전부 읽히고, `agent.md` §4와 같은 내용이 중복돼 한쪽만 고치면 어긋날 위험이 있었다.
 - 결정: 루트 `CLAUDE.md`는 대전제·필수 규칙·서비스 간 공통 계약(orderId 멱등, 도메인 불변식, JWT 계약, Feign 타임아웃 등)만 둔다. 서비스 세부 규칙(재고·Saga·상태 전이·배정·컬럼 길이 등)은 각 모듈 `CLAUDE.md`로 옮겼다. 모듈 `CLAUDE.md` 첫 줄 `@agent.md`로 agent.md를 함께 불러오며, `agent.md` §4는 모듈 `CLAUDE.md`를 가리키는 안내로 바꿨다. `Docs/`가 참조하는 루트 섹션 번호(§4·§5·§6·§7·§8·§11)는 유지했다. 규칙 내용 자체의 변경은 없다.
+
+### COMMON-006 SA 원본 파일명 변경 (`SA문서.md` → `SA_Document.md`)
+- 상태: DONE
+- 작성: 권민혁 / 2026-10-14
+- 관련: `Docs/reference/SA_Document.md`, 루트·모듈 `CLAUDE.md`, `Docs/`
+- 내용: SA 원본 파일명을 영문으로 바꿨다 (내용 변경 없음).
+- 결정: 최종 근거는 `Docs/reference/SA_Document.md`. 루트·모듈 `CLAUDE.md`, `Docs/`, 팀 공유 개요의 경로 참조를 새 이름으로 갱신했다. COMMON-004 등 이전 로그의 옛 경로는 기록으로 남긴다.

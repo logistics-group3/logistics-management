@@ -1,6 +1,6 @@
 # 02. ERD
 
-> 근거: [SA문서 §3 ERD DIAGRAM](reference/SA문서.md) · 컬럼 길이: 루트 `CLAUDE.md` §11 (임의 지정, 필요 시 조정)
+> 근거: [SA문서 §3 ERD DIAGRAM](reference/SA_Document.md) · 컬럼 길이: 루트 `CLAUDE.md` §11 (임의 지정, 필요 시 조정)
 
 ## 공통 규칙
 
