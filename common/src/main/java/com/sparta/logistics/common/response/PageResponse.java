@@ -29,6 +29,9 @@ public record PageResponse<T>(
     }
 
     private static String format(Sort sort) {
+        if (sort.isUnsorted()) {
+            return null;
+        }
         return sort.stream()
                 .map(order -> order.getProperty() + "," + order.getDirection())
                 .collect(Collectors.joining(";"));

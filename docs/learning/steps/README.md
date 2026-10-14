@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 10-1 | [common 예외·입력 규칙 보강](step-10-1-common-errors-input.md) | fix: common 예외 처리와 입력 규칙 보강 |
 | 리뷰 1 | [공통 인프라 교차 검토](review-01-common-infra.md) | docs: 공통 인프라 교차 검토 결과 추가 |
 | 9 | [Gateway를 Spring Security로 전환](step-09-gateway-spring-security.md) | refactor: Gateway 인증을 Spring Security WebFlux로 전환 |
 | 8 | [springdoc, QueryDSL](step-08-springdoc-querydsl.md) | feat: springdoc 문서 통합과 QueryDSL 공통 설정 추가 |

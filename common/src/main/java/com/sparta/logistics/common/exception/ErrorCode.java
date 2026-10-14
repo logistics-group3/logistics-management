@@ -1,6 +1,6 @@
 package com.sparta.logistics.common.exception;
 
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 
 /**
  * Note: 에러 코드를 enum 하나가 아니라 인터페이스로 둔 이유. common에는 공통 코드(CommonErrorCode)만 두고,
@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
  */
 public interface ErrorCode {
 
-    HttpStatus status();
+    HttpStatusCode status();
 
     /** 응답의 {@code code}. 대문자 스네이크 케이스. enum 구현이면 상수 이름을 그대로 쓴다. */
     String code();
