@@ -41,9 +41,9 @@ script/run.sh
 ### 3.2 필요한 서비스만
 ```bash
 script/run.sh hub-service order-service
-# 같은 동작: docker compose up -d --build hub-service order-service
+# 직접 하려면: docker compose build hub-service order-service && docker compose up -d hub-service order-service
 ```
-이름을 지정한 서비스와 그 `depends_on`(postgres, config-server, eureka-server)만 뜬다. 주문 생성처럼 다른 서비스를 호출하는 기능은 호출 대상도 함께 띄운다. 대상이 없으면 `503 SERVICE_UNAVAILABLE`이다.
+이름을 지정한 서비스와 그 `depends_on`(postgres, config-server, eureka-server)만 뜬다. 다시 빌드하는 것은 지정한 서비스뿐이다. `docker compose up -d --build hub-service`는 의존 서비스까지 다시 빌드하고, 빌드할 때마다 이미지 ID가 바뀌어 config-server와 eureka-server 컨테이너도 다시 만든다. 주문 생성처럼 다른 서비스를 호출하는 기능은 호출 대상도 함께 띄운다. 대상이 없으면 `503 SERVICE_UNAVAILABLE`이다.
 
 | 하려는 것 | 함께 필요한 서비스(인프라·gateway·user 외) |
 |---|---|
@@ -71,7 +71,7 @@ docker compose stop hub-service          # 도커로 떠 있었다면 내린다
 - Docker 안의 Gateway가 IDE로 띄운 서비스에 닿지 못하면 IDE 실행 설정에 `EUREKA_PREFER_IP=true`를 넣거나 Gateway도 IDE로 띄운다. IDE 서비스가 기본값(호스트 이름)으로 Eureka에 등록하면 컨테이너가 그 이름을 찾지 못할 수 있다(미확인, 환경마다 다르다).
 
 ## 4. 바꾼 것만 다시 올리기
-`up -d --build {서비스}`는 이미지가 바뀌면 기존 컨테이너를 알아서 교체한다. 먼저 내릴 필요가 없다.
+`script/run.sh {서비스}`는 그 서비스 이미지만 다시 빌드하고 컨테이너를 교체한다. 먼저 내릴 필요가 없다.
 
 | 바꾼 것 | 할 일 |
 |---|---|
