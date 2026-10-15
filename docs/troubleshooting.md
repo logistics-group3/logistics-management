@@ -77,3 +77,92 @@
 - 원인: 스크립트가 JSON을 `python3`으로 읽는다. Python을 설치하지 않은 Windows에서는 `python3`이 Microsoft Store로 연결되는 실행 파일(`AppData/Local/Microsoft/WindowsApps/python3`)이라 아무것도 출력하지 않는다. 그래서 Eureka 등록 목록이 빈 값이 된다. 로그인 401은 준비 확인용으로 없는 계정을 보낸 결과라 정상이다.
 - 해결: Python 3를 설치하고 "앱 실행 별칭"에서 Store 연결을 끈 뒤 `python3 --version`이 버전을 출력하는지 확인한다. 설치 전에는 같은 항목을 curl로 직접 호출해 확인한다(`docs/progress/feat-user-management.md` 메모).
 - 배운 점: 셸 스크립트가 쓰는 외부 명령(python3, jq 등)은 실행 전에 있는지 확인하고, 없으면 그 이유로 실패하게 만드는 편이 원인 찾기가 빠르다.
+
+### TS-007 Mockito verify의 인자에서 다른 verify를 호출하면 검증이 중단됨
+
+- 서비스·작성: order-service / Junhyun An / 2026-10-15
+- 문제: `OrderServiceTest`의 보상 검증 6개가 `UnfinishedVerificationException`으로 실패했다. `verify(gateway).deleteByOrderId(captureCreatedOrderId())`에서 인자 헬퍼도 `verify`를 호출했다.
+- 원인: 바깥 `verify`를 시작한 뒤 인자를 평가하면서 다른 `verify`가 실행돼, 첫 검증을 마치기 전에 다음 검증을 시작했다.
+- 해결: 주문 ID를 지역 변수로 먼저 캡처한 뒤 별도 문장으로 삭제 호출을 검증했다. 업무 코드는 변경하지 않았고 application 단위 테스트 23개가 통과했다.
+- 배운 점: Mockito 검증을 포함하는 헬퍼는 다른 `verify`의 인자 안에서 실행하지 않는다.
+
+### TS-008 HTTP 테스트 드라이버가 503을 재전송해 재시도 횟수가 두 배로 측정됨
+
+- 서비스·작성: order-service / Junhyun An / 2026-10-15
+- 문제: Feign·보상 호출이 예상 3회 대신 6회, 1회 대신 2회로 관측됐다. 서로 다른 orderId가 두 묶음으로 나타났다.
+- 원인: TestRestTemplate이 선택한 Apache HTTP 클라이언트가 주문 API의 503 응답을 자동 재전송했다. `HttpRequestRetryExec` 로그에서 1초 후 요청 재실행을 확인했다.
+- 해결: 테스트 드라이버에 `SimpleClientHttpRequestFactory`를 지정했다. 내부 Feign 정책은 유지했고 HTTP 통합 테스트 13개가 통과했다.
+- 배운 점: 최초 주문 요청의 재시도와 하위 API 재시도를 구분해야 한다. 기대 호출 횟수를 늘려 테스트를 통과시키지 않는다.
+
+### TS-009 지정 서비스 기동 시 의존 PostgreSQL도 재생성됨
+
+- 서비스·작성: order-service 로컬 실행 / Junhyun An / 2026-10-15
+- 문제: `script/run.sh order-service` 실행 중 PostgreSQL 컨테이너도 재생성됐다.
+- 원인: 스크립트의 `docker compose up -d order-service`는 의존 서비스도 조정한다. PostgreSQL 재생성을 촉발한 정확한 구성·이미지 차이는 미확인이다.
+- 확인: 기존 pgdata 볼륨 재사용·초기화 생략, `.env` 해시 유지, 나머지 7개 컨테이너 ID·시작 시각 유지, 비즈니스 서비스 5개와 Gateway health UP을 확인했다. 볼륨 삭제·초기화 명령은 실행하지 않았다.
+- 후속 실행 방법: 의존 서비스가 이미 정상인 경우 주문 이미지 빌드 뒤 `docker compose up -d --no-deps --no-build order-service`로 대상만 교체한다. 공동 스크립트의 기본 동작은 별도 팀 검토 대상으로 두고 이번에 수정하지 않았다.
+
+### TS-010 Slack 통합 테스트에서 공통 사용자 헤더 상수를 찾지 못함
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: `:order-service:compileTestJava`가 `cannot find symbol: UserHeaders.IS_DELIVERY_MANAGER`로 실패했다.
+- 원인: 새 테스트가 공통 클래스에 없는 상수 이름을 참조했다. 정본 이름은 `UserHeaders.DELIVERY_MANAGER`다.
+- 해결: 공통 계약을 확인하고 테스트의 참조를 수정했다. 주문 108개 테스트와 전체 빌드가 통과했다.
+- 배운 점: 공통 헤더 이름은 추측하지 않고 `common-core`의 `UserHeaders`를 확인한다. 문자열을 새로 만들거나 공통 계약을 바꾸어 우회하지 않는다.
+
+### TS-011 실제 검색 size 기본값은 10인데 Swagger에는 20이 표시됨
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: OpenAPI 계약 테스트가 `expected: 10 but was: 20`으로 실패했다. 실제 검색 API는 공통 리졸버를 거쳐 size=10을 사용했다.
+- 원인: Springdoc의 Pageable 문서 기본값이 커스텀 SearchPageableArgumentResolver의 기본값을 자동으로 반영하지 않았다.
+- 해결: 조회 Controller에 `@PageableDefault(size=10, sort="createdAt", direction=DESC)`를 명시하고 OpenAPI의 파라미터 목록·size 기본값을 회귀 테스트로 확인했다. 공통 리졸버는 바꾸지 않았다.
+- 배운 점: 실행 결과뿐 아니라 Swagger가 안내하는 입력 계약도 실제 API와 맞는지 검증한다.
+
+### TS-012 검색 테스트 데이터가 기존 커밋 실패 테스트의 임시 유니크 제약과 충돌함
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: 전체 빌드에서 OrderCreationIntegrationTest의 `ALTER TABLE ... UNIQUE (orderer_id, request_note)`가 DuplicateKeyException으로 실패했다. API 호출 전 임시 제약 생성 단계의 실패였다.
+- 원인: 새 HTTP 검색 테스트가 동일 주문자·요청사항의 정상 주문을 여러 건 만들고 공유 Testcontainers DB에 남겼다. 실행 순서에 따라 이 데이터가 기존 테스트의 임시 제약과 충돌했다.
+- 해결: 새 테스트가 생성한 주문 UUID만 기록하고 `@AfterEach`의 finally에서 해당 fixture 행을 정리한다. 전체 테이블이나 다른 테스트의 데이터는 삭제하지 않는다.
+- 확인: 전체 build 성공, 주문 152개·전체 XML 250개, 실패·오류·skip 0. Swagger 계약 테스트도 함께 통과했다.
+- 배운 점: HTTP 테스트는 서버 스레드에서 별도 트랜잭션을 쓰므로 테스트 메서드의 롤백만으로 격리되지 않는다. 공유 DB를 쓰면 자신이 만든 데이터의 수명도 관리한다.
+
+### TS-013 POST 401 테스트에서 응답 본문이 null로 전달됨
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: OrderCancellationHttpIntegrationTest에서 미인증 POST의 상태는 401이었지만 body가 null이어서 ObjectMapper.readTree가 `argument "content" is null`로 실패했다.
+- 원인: 테스트 드라이버 차이로 확인했다. SimpleClientHttpRequestFactory에서는 본문이 null이고 같은 API를 JdkClientHttpRequestFactory로 호출하면 공통 UNAUTHORIZED 본문을 읽었다. HttpURLConnection 내부의 정확한 본문 누락 경로는 미확인이다.
+- 해결: 해당 테스트 드라이버를 Java 17 HttpClient 기반 JdkClientHttpRequestFactory로 바꾸고 연결 1초·읽기 10초 제한을 유지했다. 서비스의 인증·예외 응답 코드는 변경하지 않았다.
+- 확인: HTTP/Feign 취소 테스트 18개와 전체 build 통과. I-11 1회·I-12 통신 실패 최대 3회·I-12 5xx 1회도 함께 확인해 드라이버의 상태 코드 재전송이 섞이지 않음을 검증했다.
+
+### TS-014 주문 Entity와 Spring @Order의 이름 충돌로 테스트 컴파일 실패
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: 커밋 뒤 예외를 주입하는 테스트에서 domain.Order와 Spring의 Order 애너테이션을 함께 import해 `reference to Order is ambiguous`가 발생했다.
+- 원인: 두 타입의 단순 이름이 같아 Java가 Entity와 애너테이션을 구분할 수 없었다.
+- 해결: Entity import를 유지하고 테스트 aspect의 순서는 `@org.springframework.core.annotation.Order(...)`로 명시했다. 제품 코드의 타입 이름과 트랜잭션 설정은 바꾸지 않았다.
+- 확인: 생성 기록 PostgreSQL 통합 테스트 15개와 전체 build 통과. 실제 커밋 뒤 예외·잠금 대기·롤백·생성 이벤트 1회 검증을 포함한다.
+
+### TS-015 DTO 변환 메서드 오버로드 뒤 Mockito 인자 타입 추론이 모호해짐
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: 최초 응답 스냅샷용 OrderResult.from 오버로드를 추가한 뒤 기존 테스트의 `OrderResult.from(invocation.getArgument(0))`가 `reference to from is ambiguous`로 컴파일에 실패했다.
+- 원인: Mockito getArgument의 제네릭 반환 타입과 두 from 오버로드가 겹쳐 Java가 Order와 OrderCreationSnapshot 중 인자 타입을 확정하지 못했다.
+- 해결: 테스트에서 `invocation.getArgument(0, Order.class)`로 실제 Writer 인자 타입을 명시했다. 제품 코드의 DTO 변환 계약은 유지했다.
+- 확인: 주문 347개와 전체 build 통과. 타입을 명시한 기존 생성 서비스 테스트도 포함한다.
+
+### TS-016 삭제 스모크의 장애 주입 DDL이 요청과 순환 대기를 만듦
+
+- 서비스·작성: order Gateway 격리 검증 / Junhyun An 작업 / 2026-10-15
+- 문제: 정상 삭제는 통과했으나 로컬 커밋 실패 시나리오에서 드라이버가 20초 후 TimeoutError를 냈다. I-13 HTTP 대역 내부에서 p_order_deletions에 CHECK를 추가하도록 작성했다.
+- 원인: O-06은 주문·진행 기록을 읽은 트랜잭션에서 I-13 응답을 기다린다. 대역의 ALTER TABLE은 그 트랜잭션의 테이블 잠금이 끝나기를 기다려 서로 진행하지 못했다. 제품의 재요청 로직이 아니라 장애 주입 위치의 문제였다.
+- 해결: CHECK를 DELETE 요청 전에 설치했다. 대역은 원격 삭제 응답만 처리하고, 로컬 완료 기록 저장에서 CHECK가 실패하게 했다. 격리 서버의 Feign 타임아웃도 명시했다.
+- 확인: Gateway에서 첫 요청 500·재요청 200, 재요청의 I-10 생략·I-13 반복과 로컬 삭제 완료를 확인했다. 초기 정리에서 대기 중이던 자체 JVM은 종료를 재확인했고 최종 실행의 임시 JVM·DB도 정리했다.
+
+### TS-017 I-13의 void Feign 반환이 202도 삭제 완료로 받아들임
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: I-13 대역이 200·202를 반환하는 회귀 테스트에서 O-06이 503 대신 200으로 완료돼 두 테스트가 실패했다.
+- 원인: 기존 DeliveryDeleteClient의 void 반환은 정상 2xx 처리 후 종료해 명세의 204 여부를 검사하지 않았다. 특히 202는 접수 상태이므로 삭제 완료를 뜻하지 않는다.
+- 해결: infrastructure에서 ResponseEntity<Void>를 받고 Adapter에서 204를 확인한다. 다른 2xx는 SERVICE_UNAVAILABLE로 올려 로컬 삭제를 롤백하고 진행 기록을 보존한다. application의 DeliveryGateway와 생성 보상 재시도 횟수는 유지했다.
+- 확인: 두 회귀 테스트를 포함한 전체 build 성공. 주문 421개·전체 XML 519개, 실패·오류·skip 0이다.

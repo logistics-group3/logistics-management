@@ -5,7 +5,7 @@
 # 스파르타 물류 SA 문서
 
 > MSA 기반 국내 B2B 물류 관리 및 배송 시스템 — System Architecture
-작성일: 2026-10-12 · 최종 수정: 2026-10-13 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
+작성일: 2026-10-12 · 최종 수정: 2026-10-15 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
 >
 
 **변경 이력**
@@ -16,6 +16,10 @@
 | v1.1 | 2026-10-12 | [SA 제작 미팅](https://app.notion.com/p/SA-3f77bd823b7580eaaab5f0f9e1248abf?pvs=21) 결정 반영: 출고 허브 결정 방식(요청업체 허브 우선, 부족분은 가까운 허브 순으로 모아서 출고), 주문 권한(요청업체 관리자 본인), Gateway 권한 캐시 60초, PK는 UUID로 확정, Kafka는 고도화 단계로 이동, docker-compose 형식 복구 |
 | v1.2 | 2026-10-13 | 추가 요구사항 반영: 배송담당자 소속 허브(`p_users.hub_id`)와 출발지 허브 기준 배정 검증, 배송담당자 없음(`DELIVERY_MANAGER_NOT_FOUND`)·소속 허브 불일치(`MANAGER_HUB_MISMATCH`) 에러 추가, user → hub 호출 추가, I-12 응답·재시도 표현 정리 |
 | v2.0 | 2026-10-13 | 멘토 피드백 반영: 재고 관리 전체를 고도화로 이동(공급업체가 항상 출고), 배송을 집하·허브 이동·업체 배송 3구간으로 재설계, 배송담당자 자동 배정(없으면 주문 실패), 담당자·상태 변경 API를 구간 단위로 통합(D-04 POST 재배정, D-05 구간 상태 변경), 주문 `total_price` 저장, 배송에 업체 간 배송 컬럼 추가, 시스템 구조도 유즈케이스별 분리, 인프라도에 기술 스택 표시, Feign 타임아웃 connect 5초·read 20초, Saga 방식 비교와 팀 논의 정리 |
+| v2.0 주문 보강 | 2026-10-15 | 주문 담당자 승인으로 취소 진행 기록·중복 실행 보호·미확정 결과 수동 복구를 추가했다. 공개 주문 상태는 유지한다([order ADR 0006](../services/order/decisions/0006-order-cancellation-progress.md)). |
+| v2.0 생성 보강 | 2026-10-15 | 주문 담당자의 O-01 보강 요청으로 생성 진행 기록·커밋 재확인·미확정 결과 보존을 추가했다([order ADR 0007](../services/order/decisions/0007-order-creation-progress.md)). |
+| v2.0 생성 멱등성 | 2026-10-15 | 주문 담당자의 요청으로 O-01 필수 Idempotency-Key·사용자별 키 UNIQUE·요청 지문·최초 응답 재사용을 추가했다([order ADR 0008](../services/order/decisions/0008-order-idempotency-key.md)). |
+| v2.0 삭제 보강 | 2026-10-15 | 주문 담당자 승인으로 O-06 삭제 조건·진행 기록을 보존한다. 배송 삭제 후 로컬 롤백에도 같은 DELETE로 진행한다([order ADR 0009](../services/order/decisions/0009-order-deletion-progress.md)). |
 
 ---
 
@@ -531,6 +535,8 @@ erDiagram
 
 ```mermaid
 erDiagram
+    p_orders ||--o{ p_order_cancellations : "취소 시도"
+    p_orders ||--o| p_order_deletions : "삭제 진행"
     p_orders {
         uuid order_id PK "서비스에서 선발급"
         uuid orderer_id "논리 참조: 주문자"
@@ -544,6 +550,32 @@ erDiagram
         uuid delivery_id UK "논리 참조: 배송"
         varchar request_note "(500) 요청사항"
         varchar status "(20) ORDERED 또는 CANCELED"
+    }
+    p_order_creations {
+        uuid order_creation_id PK "생성 시도 ID"
+        uuid order_id UK "선발급 주문 ID, FK 없음"
+        uuid orderer_id "논리 참조: 주문자"
+        varchar idempotency_key "(128) 사용자와 복합 UNIQUE"
+        varchar request_hash "(67) v1 SHA-256 요청 지문"
+        jsonb response_snapshot "최초 생성 응답"
+        uuid delivery_id "확인된 배송, NULL 허용"
+        varchar status "(20) 생성 진행 상태"
+        varchar failure_reason "(30) 복구 필요 사유"
+    }
+    p_order_cancellations {
+        uuid order_cancellation_id PK "취소 시도 ID"
+        uuid order_id FK "같은 서비스의 주문"
+        uuid delivery_id "논리 참조: 배송"
+        varchar status "(20) 취소 진행 상태"
+        varchar failure_reason "(30) 복구 필요 사유"
+    }
+    p_order_deletions {
+        uuid order_deletion_id PK "삭제 진행 ID"
+        uuid order_id FK,UK "같은 서비스의 주문"
+        uuid delivery_id "논리 참조: 배송"
+        varchar eligibility "(20) 취소 또는 배송 완료 확인"
+        varchar status "(20) 삭제 진행 상태"
+        varchar failure_reason "(30) 실패·결과 확인 사유"
     }
 ```
 
@@ -731,6 +763,56 @@ erDiagram
 | Audit 컬럼 6개 |  |  | 공통 |
 - 인덱스: `orderer_id`, `supplier_company_id`, `receiver_company_id`, `created_at`
 - 배송 진행 상태는 delivery-service가 관리하므로 주문에는 중복 저장하지 않는다.
+
+**`p_order_cancellations` — 취소 진행 기록** (2026-10-15 주문 담당자 승인, order ADR 0006)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `order_cancellation_id` | UUID | PK | 취소 시도 식별자, 원격 호출 전에 선발급 |
+| `status` | VARCHAR(20) | NOT NULL, CHECK | `PROCESSING`, `COMPLETED`, `ABORTED`, `RECOVERY_REQUIRED` |
+| `failure_reason` | VARCHAR(30) | NULL, CHECK | `DELIVERY_RESULT_UNKNOWN`, `ORDER_COMMIT_UNKNOWN`, `REVERT_FAILED`. RECOVERY_REQUIRED일 때만 필수 |
+| `order_id` | UUID | NOT NULL, FK | 같은 order_schema의 p_orders 참조 |
+| `delivery_id` | UUID | NOT NULL, 논리 참조 | 취소 대상 배송 |
+| Audit 컬럼 6개 | | | 공통 |
+
+- 미해결 시도 부분 유니크: `order_id WHERE deleted_at IS NULL AND status IN ('PROCESSING', 'RECOVERY_REQUIRED')`.
+- 조회 인덱스: `order_id`, `delivery_id` (활성 행). 공개 주문 상태와 분리하며 기록을 자동 만료시키지 않는다.
+- 완료·중단 기록도 이력으로 남긴다. delivery 테이블에는 물리 FK를 만들지 않는다.
+
+**`p_order_creations` — 생성 진행 기록** (2026-10-15 주문 담당자 요청, order ADR 0007·0008)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `order_creation_id` | UUID | PK | 생성 시도 식별자 |
+| `status` | VARCHAR(20) | NOT NULL, CHECK | `PROCESSING`, `COMPLETED`, `ABORTED`, `RECOVERY_REQUIRED` |
+| `failure_reason` | VARCHAR(30) | NULL, CHECK | `DELIVERY_RESULT_UNKNOWN`, `ORDER_COMMIT_UNKNOWN`, `DELIVERY_DELETE_FAILED`. RECOVERY_REQUIRED일 때만 필수 |
+| `order_id` | UUID | NOT NULL, UNIQUE, FK 없음 | 선발급 주문 ID. 주문 행보다 먼저 저장 |
+| `orderer_id` | UUID | NOT NULL, 논리 참조 | 생성 요청자 |
+| `idempotency_key` | VARCHAR(128), COLLATE "C" | NULL 허용, CHECK | O-01 필수 헤더. 이전 키 없는 기록만 NULL, 대소문자 구분 |
+| `request_hash` | VARCHAR(67) | NULL 허용, CHECK | `v1:` + SHA-256 64자리. 키와 함께 NULL 또는 함께 값 보유 |
+| `response_snapshot` | JSONB | NULL 허용, CHECK | 최초 생성 응답 객체. 키 있는 COMPLETED이면 필수 |
+| `delivery_id` | UUID | NULL, 논리 참조 | 확인된 배송 ID. COMPLETED일 때 필수 |
+| Audit 컬럼 6개 | | | 공통 |
+
+- 조회 인덱스: 활성 행의 `orderer_id`, `delivery_id`; 미해결 활성 행의 `created_at`.
+- 생성 전 기록이므로 p_orders에도 물리 FK를 두지 않는다. 기존 주문의 생성 이력을 역으로 채우지 않으며 새 생성 요청부터 기록한다.
+- `(orderer_id, idempotency_key)` UNIQUE는 논리 삭제 이력도 포함한다. 키를 자동 만료하지 않으며 기존 키 없는 행은 유지한다(V4).
+- 전체 실패 요청 본문 저장·자동 재실행은 별도 범위다. 성공 응답만 주문·COMPLETED와 같은 트랜잭션으로 보관한다.
+
+**`p_order_deletions` — 삭제 진행 기록** (2026-10-15 주문 담당자 승인, order ADR 0009)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `order_deletion_id` | UUID | PK | 삭제 진행 식별자 |
+| `status` | VARCHAR(20) | NOT NULL, CHECK | `PROCESSING`, `COMPLETED`, `RECOVERY_REQUIRED` |
+| `eligibility` | VARCHAR(20) | NOT NULL, CHECK | `ORDER_CANCELED`, `DELIVERY_DELIVERED`. 삭제 전에 확인한 허가 근거 |
+| `failure_reason` | VARCHAR(30) | NULL, CHECK | `DELIVERY_DELETE_FAILED`, `ORDER_WRITE_FAILED`, `ORDER_COMMIT_UNKNOWN`. RECOVERY_REQUIRED에서만 필수 |
+| `order_id` | UUID | NOT NULL, UNIQUE, FK | 같은 order_schema의 p_orders 참조. 삭제 이력 포함 UNIQUE |
+| `delivery_id` | UUID | NOT NULL, 논리 참조 | 삭제할 배송 ID |
+| Audit 컬럼 6개 | | | 공통 |
+
+- 조회 인덱스: 활성 행의 `delivery_id`, 미해결 활성 행의 `created_at`. 자동 만료하지 않는다(V5).
+- 기록이 있으면 같은 삭제 재요청은 최초 허가 근거로 진행한다. 새 취소를 차단하며 생성 멱등키·최초 응답은 유지한다.
 
 ### 5.6 delivery_schema
 
@@ -1718,6 +1800,15 @@ Content-Type: application/json
 | --- | --- | --- |
 | POST | `/api/v1/orders` | 요청업체 관리자 본인, MASTER |
 
+**Request Header**
+
+| 헤더 | 필수 | 설명 |
+| --- | --- | --- |
+| `Idempotency-Key` | O | 새 주문마다 새 키, 재요청에는 같은 키·본문. 1~128자 `[A-Za-z0-9._:-]+`, UUID 권장 |
+
+키는 인증 사용자 ID별로 구분하고 대소문자를 구별한다. 이미 완료된 같은 요청은 최초 생성 응답으로 201을 반환한다.
+주문이 나중에 수정·취소·논리 삭제돼도 생성 응답은 바뀌지 않으며, 현재 주문 상태는 O-03에서 확인한다.
+
 **Request Body**
 
 | 파라미터 | 타입 | 필수 | 설명 |
@@ -1731,6 +1822,7 @@ Content-Type: application/json
 ```json
 POST /api/v1/orders
 Authorization: Bearer {accessToken}
+Idempotency-Key: 8f2d6f94-a287-4b6d-82c9-4828a2a72ef3
 Content-Type: application/json
 
 {
@@ -1744,11 +1836,12 @@ Content-Type: application/json
 
 **처리 흐름** (상세 시퀀스와 보상 처리는 7.1 참고)
 
-1. `orderId` 선발급 (UUID)
-2. 공급·수령업체, 상품 조회 및 검증 (I-07, I-08): 상품이 공급업체 소속인지, 요청자가 요청(수령)업체 관리자 본인인지 확인 (MASTER는 관리자 확인 생략)
-3. 배송 생성 (I-09): 출발 허브 = 공급업체 허브, 목적지 허브 = 요청업체 허브, 집하지 = 공급업체 주소, 배송지 = 요청업체 주소. delivery-service가 구간(집하·허브 이동·업체 배송)을 만들고 구간별 담당자를 자동 배정한다. 담당 허브에 배송담당자가 없으면 404로 즉시 실패
-4. 주문 저장 (`total_price` = 단가 × 수량, 로컬 트랜잭션)
-5. 커밋 후 Slack Incoming Webhook 비동기 발송 (실패해도 주문은 유지)
+1. 헤더·본문 검증 후 파싱한 UUID·수량·요청사항의 지문을 계산한다. 사용자·키로 조회해 완료된 같은 요청은 원래 201, 본문 충돌·미완료·실패는 전용 409로 종료한다.
+2. 새 키이면 `orderId`를 선발급하고 공급·수령업체, 상품 조회 및 검증(I-07, I-08)을 한다. 상품이 공급업체 소속인지, 요청자가 요청업체 관리자 본인인지 확인한다(MASTER는 관리자 확인 생략).
+3. 키·요청 지문을 포함한 PROCESSING 기록을 별도 커밋한다. 같은 사용자·키의 INSERT 경쟁에서 진 요청은 롤백 후 기존 기록을 다시 읽고 종료한다.
+4. 배송 생성(I-09): 출발·목적지 허브와 집하지·배송지는 각각 공급·요청업체 정보다. delivery-service가 구간과 담당자를 배정하며 담당 허브에 배송담당자가 없으면 404로 실패한다.
+5. 주문·COMPLETED·최초 응답 스냅샷을 같은 로컬 트랜잭션으로 저장한다(`total_price` = 단가 × 수량).
+6. 커밋 후 Slack Incoming Webhook을 비동기로 발송한다. 실패해도 주문을 유지하며 완료 요청의 재응답에서는 발송하지 않는다.
 
 주문 1건에는 한 품목만 담는다. 여러 품목은 품목별로 따로 주문한다. 재고는 무한하다고 가정하므로 공급업체는 주문 수량을 항상 출고한다.
 
@@ -1789,6 +1882,15 @@ Content-Type: application/json
 ```
 
 **Error**: 400 `VALIDATION_ERROR`, `INVALID_REQUEST` (상품이 공급업체 소속이 아님, 공급업체 = 수령업체) · 403 `FORBIDDEN` (요청업체 관리자가 아님) · 404 `COMPANY_NOT_FOUND`, `PRODUCT_NOT_FOUND`, `DELIVERY_MANAGER_NOT_FOUND` (구간 담당 허브에 배송담당자 없음) · 503 `SERVICE_UNAVAILABLE`
+
+| 멱등키 관련 409 | 의미·재요청 규칙 |
+| --- | --- |
+| `ORDER_IDEMPOTENCY_KEY_CONFLICT` | 같은 사용자·키에 다른 유효한 본문. 기존 요청 유지 |
+| `ORDER_CREATION_IN_PROGRESS` | 처리 중. 간격을 두고 같은 키·본문으로 결과 확인 |
+| `ORDER_CREATION_ABORTED` | 실패 종료. 같은 키 재실행 없음. 원인 해결 후 별도 새 주문에는 새 키 사용 |
+| `ORDER_CREATION_RECOVERY_REQUIRED` | 복구 대기 또는 생성 기록 삭제. 담당자가 결과를 확인하기 전 새 키로 우회하지 않음 |
+
+헤더 누락·형식 위반도 400 VALIDATION_ERROR다. 최초 업체·상품·권한 검증 실패는 키를 소비하지 않는다. 키는 자동 만료하지 않으며 생성 진행 조회·자동 복구 API는 아직 없다.
 
 #### O-02. 주문 검색
 
@@ -1870,7 +1972,7 @@ Authorization: Bearer {accessToken}
 }
 ```
 
-**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (이미 취소됨, 집하가 시작됨) · 503 `SERVICE_UNAVAILABLE`
+**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (이미 취소됨, 집하가 시작됨, 취소 진행 중·결과 확인 필요) · 500 `INTERNAL_SERVER_ERROR` (주문 저장·복구 실패) · 503 `SERVICE_UNAVAILABLE`
 
 #### O-06. 주문 삭제
 
@@ -1883,8 +1985,12 @@ Authorization: Bearer {accessToken}
 **Response `200 OK`**: `data: null`
 
 - 주문 논리 삭제와 배송·구간 논리 삭제(I-13)를 함께 수행한다. I-13 호출이 실패하면 주문 삭제도 롤백한다.
+- 최초 ORDERED 삭제는 I-10의 deliveryId·orderId 일치와 DELIVERED를 확인한다. CANCELED 주문과 이미 삭제를 시작한 주문은 I-10을 재조회하지 않는다.
+- 삭제 가능 근거를 p_order_deletions에 먼저 커밋한다. 이후 같은 주문 잠금 아래 논리 삭제·I-13·완료 기록을 처리한다. 미해결 취소가 있으면 삭제를 거부하고 삭제 시작 후 새 취소도 막는다.
+- I-13 성공 뒤 주문 DB가 롤백되면 삭제 기록으로 재요청을 이어간다. 새 I-10의 404로 이전 삭제 허가를 잃지 않는다. I-13은 요청당 1회이며 같은 orderId의 반복 삭제는 제공 계약대로 안전해야 한다.
+- 커밋 예외 뒤 주문 삭제·COMPLETED가 확인되면 200을 유지한다. 이미 삭제된 주문의 별도 새 요청은 404다. 삭제는 Slack을 발행하지 않고 생성의 최초 응답도 지우지 않는다.
 
-**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND` · 409 `ORDER_NOT_DELETABLE` · 503 `SERVICE_UNAVAILABLE`
+**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND`·하위 조회 4xx · 409 `ORDER_NOT_DELETABLE` (조건 미충족·미해결 취소·기록 불일치) · 500 `INTERNAL_SERVER_ERROR` (진행 기록·로컬 저장 실패) · 503 `SERVICE_UNAVAILABLE`
 
 ### 6.8 API 상세 — 배송 (delivery-service)
 
@@ -2127,32 +2233,51 @@ sequenceDiagram
     participant U as user-service
     participant S as Slack
 
-    C->>G: POST /api/v1/orders (JWT)
-    G->>O: 인증 후 라우팅 (X-User-* 헤더)
-    O->>O: orderId 선발급
-    O->>CO: 공급·요청업체, 상품 조회 (I-07, I-08)
-    CO-->>O: 업체 허브·주소·관리자, 상품 정보
-    O->>O: 상품-공급업체 소속, 요청업체 관리자 본인 확인 (MASTER 제외)
-    O->>D: 배송 생성 (I-09: orderId, 출발·목적지 허브, 집하지·배송지)
-    D->>H: 공급업체 허브 → 요청업체 허브 경로 조회 (I-03)
-    D->>U: 구간 담당 허브별 배송담당자 (I-14), 수령인 Slack ID (I-01)
-    alt 담당 허브에 배송담당자 없음
-        D-->>O: 404 DELIVERY_MANAGER_NOT_FOUND
-        O-->>C: 404 주문 실패 (저장된 데이터 없음)
-    else 배송 생성 실패 또는 타임아웃
-        D-->>O: 5xx / timeout
-        O->>D: [보상] 배송 삭제 (I-13, orderId)
-        O-->>C: 503 주문 실패
-    else 배송 생성 성공
-        D->>D: 배송 + 구간 저장, 구간별 담당자 배정 (로컬 트랜잭션)
-        D-->>O: 201 deliveryId
-        O->>O: 주문 저장 (total_price 포함, 로컬 트랜잭션)
-        alt 주문 저장 실패
+    C->>G: POST /api/v1/orders (JWT, Idempotency-Key)
+    G->>O: 인증 후 라우팅 (X-User-*, Idempotency-Key)
+    O->>O: 헤더와 본문 검증, 사용자·키 조회
+    alt 기존 키 존재
+        O->>O: 요청 지문과 진행 상태 확인
+        O-->>C: 최초 응답 201 또는 상태별 409
+    else 새 키
+        O->>O: orderId 선발급
+        O->>CO: 공급·요청업체, 상품 조회 (I-07, I-08)
+        CO-->>O: 업체 허브·주소·관리자, 상품 정보
+        O->>O: 상품-공급업체 소속, 요청업체 관리자 본인 확인 (MASTER 제외)
+        O->>O: 키와 지문을 포함한 PROCESSING 커밋 (사용자·키 UNIQUE)
+        Note over O: 동시 INSERT 충돌은 롤백 후 기존 기록 재조회로 종료. 선점한 요청만 I-09 진행
+        O->>D: 배송 생성 (I-09: orderId, 출발·목적지 허브, 집하지·배송지)
+        D->>H: 공급업체 허브 → 요청업체 허브 경로 조회 (I-03)
+        D->>U: 구간 담당 허브별 배송담당자 (I-14), 수령인 Slack ID (I-01)
+        alt 담당 허브에 배송담당자 없음
+            D-->>O: 404 DELIVERY_MANAGER_NOT_FOUND
+            O->>O: ABORTED 기록
+            O-->>C: 404 주문 실패 (업무 데이터 없음)
+        else 배송 생성 실패 또는 타임아웃
+            D-->>O: 5xx / timeout
             O->>D: [보상] 배송 삭제 (I-13, orderId)
-            O-->>C: 500 주문 실패
-        else 저장 성공
-            O-)S: Webhook 발송 (커밋 후 비동기)
-            O-->>C: 201 Created
+            O->>O: RECOVERY_REQUIRED 유지 (지연 생성 확인 필요)
+            O-->>C: 503 주문 실패
+        else 배송 생성 성공
+            D->>D: 배송 + 구간 저장, 구간별 담당자 배정 (로컬 트랜잭션)
+            D-->>O: 201 deliveryId
+            O->>O: 주문과 COMPLETED와 최초 응답을 같은 트랜잭션으로 저장
+            alt 주문 저장 중 예외
+                O->>O: 새 트랜잭션에서 생성 기록 잠금과 주문 재확인
+                alt 커밋 확인
+                    O-->>C: 201 저장된 결과 (이벤트 재발행 없음)
+                else 미저장 확인
+                    O->>D: 배송 삭제 I-13
+                    O->>O: 성공 ABORTED, 실패 RECOVERY_REQUIRED
+                    O-->>C: 최초 실패 코드 유지
+                else 결과 확인 불가
+                    O->>O: RECOVERY_REQUIRED 유지, 자동 삭제 없음
+                    O-->>C: 최초 실패 코드 유지
+                end
+            else 저장 성공
+                O-)S: Webhook 발송 (커밋 후 비동기)
+                O-->>C: 201 Created
+            end
         end
     end
 ```
@@ -2161,12 +2286,15 @@ sequenceDiagram
 
 | 단계 | 실패 상황 | 처리 | 응답 |
 | --- | --- | --- | --- |
+| 멱등키 재확인 | 본문 충돌 / 처리 중 / 실패 / 복구 대기 | 새 실행 없이 전용 오류 | 409 |
 | ① 업체·상품 조회 | 없음 / 타임아웃 | 아무것도 변경하지 않았으므로 즉시 실패 | 404 / 503 |
-| ② 배송 생성 | 구간 담당 허브에 배송담당자 없음 | delivery-service가 저장 전에 확인하므로 남는 데이터가 없다 → 즉시 실패 | 404 |
-| ② 배송 생성 | 실패 / 타임아웃 (생성 여부 모름) | 배송 삭제(I-13). orderId 기준 멱등이라 배송이 없어도 안전 | 503 |
-| ③ 주문 저장 | DB 오류 | 로컬 롤백 후 배송 삭제(I-13) | 500 |
+| ② 배송 생성 | 구간 담당 허브에 배송담당자 없음 | 업무 데이터 없음, 생성 시도 ABORTED 기록 | 404 |
+| ② 배송 생성 | 실패 / 타임아웃 (생성 여부 모름) | I-13 보상 시도. 204 뒤 지연 생성 가능성이 있어 RECOVERY_REQUIRED 유지 | 503 |
+| ③ 주문 저장 | DB 오류 | 새 트랜잭션으로 재확인. 커밋이면 201, 미저장 확인이면 I-13, 결과 불명확이면 삭제하지 않고 복구 대기 | 201 / 최초 실패 |
 | ④ Slack 발송 | 실패 | 주문은 유지, 에러 로그만 기록 (`@TransactionalEventListener(phase = AFTER_COMMIT)`  • `@Async`) | 201 |
-| 보상 자체 실패 | 보상 API 호출 실패 | 최대 3회 재시도. 그래도 실패하면 orderId와 함께 ERROR 로그를 남겨 수동 재처리 (선택: 스케줄러 재시도) | - |
+| 보상 자체 실패 | 보상 API 호출 실패 | 최대 3회 시도 후 orderId·attemptId·사유를 로그와 진행 기록에 남긴다. 자동 복구 작업은 미구현 | 최초 실패 유지 |
+
+생성 기록의 상세 기준은 [order ADR 0007](../services/order/decisions/0007-order-creation-progress.md), 제공 서비스의 기대 계약과 미확정 사항은 [연동 계약](../services/order/integration-contract.md)에 있다.
 
 ### 7.2 주문 취소 흐름
 
@@ -2178,22 +2306,40 @@ sequenceDiagram
     participant D as delivery-service
 
     C->>O: POST /api/v1/orders/{orderId}/cancel
-    O->>O: 주문자 본인 또는 MASTER 확인, status = ORDERED 확인
-    O->>D: 배송 취소 (I-11)
-    alt 집하가 이미 시작됨
-        D-->>O: 409 INVALID_STATUS_TRANSITION
-        O-->>C: 409 취소 불가
+    O->>O: 권한·ORDERED 확인, PROCESSING 기록 커밋
+    O->>D: 배송 취소 I-11 (DB 트랜잭션 밖, 1회)
+    alt 명확한 거절
+        D-->>O: 4xx (집하 시작 등)
+        O->>O: ABORTED 기록
+        O-->>C: 동일 오류 코드
+    else 결과 불확실
+        D-->>O: 타임아웃·5xx·잘못된 성공 응답
+        O->>O: RECOVERY_REQUIRED 기록, 실행권 유지
+        O-->>C: 503 결과 확인 필요
     else 배송 취소 성공
-        D-->>O: 200 (배송·구간 CANCELED)
-        O->>O: 주문 status = CANCELED (로컬 트랜잭션)
-        alt 주문 저장 실패
-            O->>D: [보상] 배송 취소 원복 (I-12)
-            O-->>C: 500 취소 실패 (상태 원복)
+        D-->>O: 200 status=CANCELED
+        O->>O: 주문 CANCELED + 시도 COMPLETED 커밋
+        alt 주문 저장 중 예외
+            O->>O: 새 트랜잭션으로 커밋 결과 확인
+            alt 실제 커밋 완료
+                O-->>C: 200 취소 완료
+            else 롤백 확인
+                O->>D: 배송 취소 원복 I-12
+                O->>O: 원복 성공 ABORTED, 실패 RECOVERY_REQUIRED
+                O-->>C: 500 취소 실패
+            else 결과 확인 불가
+                O->>O: RECOVERY_REQUIRED 유지, 자동 원복 없음
+                O-->>C: 500 결과 확인 필요
+            end
         else 저장 성공
             O-->>C: 200 취소 완료
         end
     end
 ```
+
+같은 주문에 미해결 시도가 있으면 새 취소를 409로 거부한다. 상태 확인·진행 기록과 주문 변경은 짧은 로컬 트랜잭션으로 나누고 원격 호출 중에는 DB 트랜잭션을 유지하지 않는다.
+I-11은 1회 호출하고 I-12는 응답 없는 통신 실패에만 최대 3회 시도한다. 타임아웃 뒤 지연 완료와 새 시도가 겹칠 수 있으므로 진행 기록을 시간만으로 해제하지 않는다.
+상세 실패 분류와 수동 복구 기준은 [주문 예외 처리 설계](../services/order/failure-handling.md)에 있다.
 
 ### 7.3 멱등성 설계
 
@@ -2201,6 +2347,7 @@ sequenceDiagram
 
 | API | 멱등키 | 구현 |
 | --- | --- | --- |
+| O-01 주문 생성 | 인증 사용자 ID + `Idempotency-Key` | `p_order_creations`의 `(orderer_id, idempotency_key) UNIQUE`. 요청 지문 비교, 완료는 최초 응답 201, 충돌·처리 중·실패·복구 대기는 409. 자동 만료 없음 |
 | I-05 재고 할당 (고도화) | `orderId`와 `DECREASE` 조합 | `p_hub_stock_histories`의 `UNIQUE (hub_stock_id, order_id, change_type)`. 해당 주문의 `DECREASE` 이력이 있으면 차감하지 않고 기존 할당 결과 반환 |
 | I-06 재고 복원 (고도화) | `orderId`와 `RESTORE` 조합 | `DECREASE` 이력이 없거나 `RESTORE` 이력이 이미 있으면 no-op. 출고 허브별 `DECREASE` 이력을 그대로 되돌림 |
 | I-09 배송 생성 | `orderId` | `p_deliveries.order_id UNIQUE`. 이미 있으면 기존 배송 반환 |
@@ -2245,9 +2392,12 @@ UPDATE hub_schema.p_hub_stocks
 | 작업 | 처리 | 실패 시 |
 | --- | --- | --- |
 | 업체 삭제 (C-05) | 업체 + 소속 상품 논리 삭제를 한 로컬 트랜잭션으로 처리 | 전체 롤백 |
-| 주문 삭제 (O-06) | 주문 논리 삭제 → 배송·경로 논리 삭제(I-13)를 한 트랜잭션 메서드 안에서 호출 | I-13 실패 시 주문 삭제 롤백. 커밋 실패 시 I-13은 멱등이므로 재시도로 수렴 |
+| 주문 삭제 (O-06) | 삭제 허가 근거 별도 커밋 → 주문 잠금 안에서 논리 삭제·I-13·완료 기록 처리 | 실패 시 로컬 롤백·기록 보존. 같은 DELETE는 저장된 허가로 I-13 반복·로컬 삭제를 완료. 커밋 확인 시 200 유지 |
 | 배송 생성 (I-09) | 배송, 구간 기록, 구간별 담당자 배정을 한 로컬 트랜잭션으로 저장 | 전체 롤백 → order-service가 보상 수행 |
 | 조회 | `@SQLRestriction("deleted_at IS NULL")`로 삭제 데이터 자동 제외 | - |
+
+O-06은 기존 SA 경계를 유지하므로 I-13 동안 주문 잠금·DB 연결을 사용한다. 최초 I-10 조회는 트랜잭션 밖이다. 잠금 안에서 재시도를 중첩하지 않고 I-13을 요청당 1회 호출한다.
+생성·취소의 미확정 작업을 새 시도로 다시 실행하는 것과, 삭제의 같은 종료 동작을 계속하는 것을 구분한다. 운영 복구·자동 스케줄러는 별도 범위다.
 
 ### 7.6 Saga 방식 결정 (멘토 피드백)
 
@@ -2552,6 +2702,72 @@ Table order_schema.p_orders {
   }
 }
 
+Table order_schema.p_order_creations {
+  order_creation_id uuid [pk]
+  status varchar(20) [not null, note: 'PROCESSING, COMPLETED, ABORTED, RECOVERY_REQUIRED']
+  failure_reason varchar(30) [note: 'RECOVERY_REQUIRED일 때만 필수. DELIVERY_RESULT_UNKNOWN, ORDER_COMMIT_UNKNOWN, DELIVERY_DELETE_FAILED']
+  order_id uuid [not null, unique, note: '주문보다 먼저 저장하므로 p_orders로 물리 FK 없음']
+  orderer_id uuid [not null, note: '사용자 논리 참조']
+  idempotency_key varchar(128) [note: 'O-01 필수, 기존 행 NULL 유지. 대소문자 구별, 자동 만료 없음']
+  request_hash varchar(67) [note: 'v1 SHA-256 지문. 키와 함께 NULL 또는 값 보유']
+  response_snapshot jsonb [note: '최초 생성 응답 객체. 키 있는 COMPLETED에서 필수']
+  delivery_id uuid [note: '확인된 배송 논리 참조, COMPLETED일 때 필수']
+  created_at timestamp [not null]
+  created_by varchar(100) [not null]
+  updated_at timestamp [not null]
+  updated_by varchar(100) [not null]
+  deleted_at timestamp
+  deleted_by varchar(100)
+
+  indexes {
+    (orderer_id, idempotency_key) [unique]
+    orderer_id
+    delivery_id
+  }
+  Note: '미해결 생성의 created_at 부분 인덱스·상태 CHECK는 V3, 멱등키·응답 CHECK는 V4 SQL 참고. UNIQUE는 삭제 이력 포함'
+}
+
+Table order_schema.p_order_cancellations {
+  order_cancellation_id uuid [pk]
+  status varchar(20) [not null, note: 'PROCESSING, COMPLETED, ABORTED, RECOVERY_REQUIRED']
+  failure_reason varchar(30) [note: 'RECOVERY_REQUIRED일 때만 필수. DELIVERY_RESULT_UNKNOWN, ORDER_COMMIT_UNKNOWN, REVERT_FAILED']
+  order_id uuid [not null]
+  delivery_id uuid [not null, note: 'delivery_schema 논리 참조. 물리 FK 없음']
+  created_at timestamp [not null]
+  created_by varchar(100) [not null]
+  updated_at timestamp [not null]
+  updated_by varchar(100) [not null]
+  deleted_at timestamp
+  deleted_by varchar(100)
+
+  indexes {
+    order_id
+    delivery_id
+  }
+  Note: '미해결 시도의 부분 유니크 인덱스는 V2 SQL 참고. deleted_at IS NULL AND status IN (PROCESSING, RECOVERY_REQUIRED)'
+}
+Ref: order_schema.p_order_cancellations.order_id > order_schema.p_orders.order_id
+
+Table order_schema.p_order_deletions {
+  order_deletion_id uuid [pk]
+  status varchar(20) [not null, note: 'PROCESSING, COMPLETED, RECOVERY_REQUIRED']
+  eligibility varchar(20) [not null, note: 'ORDER_CANCELED, DELIVERY_DELIVERED']
+  failure_reason varchar(30) [note: 'RECOVERY_REQUIRED에서만 필수. DELIVERY_DELETE_FAILED, ORDER_WRITE_FAILED, ORDER_COMMIT_UNKNOWN']
+  order_id uuid [not null, unique]
+  delivery_id uuid [not null, note: '배송 논리 참조, 물리 FK 없음']
+  created_at timestamp [not null]
+  created_by varchar(100) [not null]
+  updated_at timestamp [not null]
+  updated_by varchar(100) [not null]
+  deleted_at timestamp
+  deleted_by varchar(100)
+  indexes {
+    delivery_id
+  }
+  Note: '같은 주문 잠금 아래 변경. 미해결 created_at 부분 인덱스·상태 CHECK는 V5 SQL 참고'
+}
+Ref: order_schema.p_orders.order_id - order_schema.p_order_deletions.order_id
+
 // ========== delivery-service ==========
 Table delivery_schema.p_deliveries {
   delivery_id uuid [pk]
@@ -2625,6 +2841,9 @@ TableGroup company_service {
 
 TableGroup order_service {
   order_schema.p_orders
+  order_schema.p_order_cancellations
+  order_schema.p_order_creations
+  order_schema.p_order_deletions
 }
 
 TableGroup delivery_service {

@@ -7,6 +7,9 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-15 | [주문 알림용 Slack 채널과 Webhook 설정](qna/2026-10-15-slack-incoming-webhook-setup.md) | 기초 | slack, webhook, configuration, docker | Junhyun An |
+| 2026-10-15 | [주문 Slack 알림은 왜 트랜잭션 커밋 후 비동기로 보내는가](qna/2026-10-15-order-notification-after-commit-async.md) | 중급 | spring, transaction, event, async, slack | Junhyun An |
+| 2026-10-15 | [주문 도메인은 어떤 기능부터 구현하는 것이 좋은가](qna/2026-10-15-order-implementation-order.md) | 중급 | order, domain, jpa, saga, testing | Junhyun An |
 | 2026-10-14 | [JaCoCo로 테스트 커버리지 재기 - 원리, 리포트 읽는 법, 함정](qna/2026-10-14-jacoco-coverage.md) | 중급 | jacoco, coverage, testing | Junhyun An |
 | 2026-10-14 | [Flyway와 JaCoCo는 무엇이고 이 프로젝트에 왜 필요한가](qna/2026-10-14-flyway-and-jacoco.md) | 중급 | flyway, migration, jacoco, coverage | Junhyun An |
 | 2026-10-14 | [서비스 8개가 Gradle 빌드를 한 번만 공유하는 Docker 멀티스테이지 빌드와 BuildKit 캐시](qna/2026-10-14-docker-multistage-buildkit-cache.md) | 중급 | docker, buildkit, gradle | Junhyun An |

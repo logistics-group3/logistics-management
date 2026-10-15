@@ -1,9 +1,21 @@
 # 구현 스텝 기록
 
-공통 인프라를 스텝 단위로 구현하면서 남긴 설명이다. 스텝마다 만든 것, 리뷰 포인트, 검증 결과를 적는다. 전체 리뷰와 블로그 정리의 재료로 쓴다. 질문과 답은 `../qna/`에 따로 둔다. 스텝 13부터는 팀 의견을 공통 인프라 통합 브랜치에 반영한 기록이다. 커밋은 제목으로 찾는다(`git log --grep`).
+공통 인프라와 주문 도메인을 스텝 단위로 구현하면서 남긴 설명이다. 스텝마다 만든 것, 리뷰 포인트, 검증 결과를 적는다. 전체 리뷰와 블로그 정리의 재료로 쓴다. 질문과 답은 `../qna/`에 따로 둔다. 스텝 13~34는 공통 인프라 통합 기록이고, 35부터 주문 도메인 구현을 기록한다. 커밋은 제목으로 찾는다(`git log --grep`).
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 46 | [주문 삭제와 기본 API 마무리](step-46-order-deletion.md) | feat(order): 주문 삭제와 재요청 복구 구현 |
+| 45 | [주문 생성 Idempotency-Key와 최초 응답 재사용](step-45-order-idempotency-key.md) | ed9f8d0 feat(order): 주문 생성 멱등키와 최초 응답 재사용 구현 |
+| 44 | [주문 생성 진행 기록과 커밋 재확인](step-44-order-creation-progress.md) | 39f704a feat(order): 생성 진행 기록과 커밋 결과 재확인 구현 |
+| 43 | [주문 취소 API와 진행 기록](step-43-order-cancellation.md) | 2e5fcc1 feat(order): 주문 취소와 실패 복구 기록 구현 |
+| 42 | [주문 요청사항 수정 API](step-42-order-request-note-update.md) | 6ac9b8a feat(order): 주문 요청사항 수정 API 구현 |
+| 41 | [주문 검색과 단건 조회 API](step-41-order-query-api.md) | 9a41925 feat(order): 주문 검색과 단건 조회 구현 |
+| 40 | [Slack 실제 연결과 컨테이너 설정 반영](step-40-slack-live-connection.md) | af0ba34 docs(order): Slack 실제 연동과 설정 검증 기록 |
+| 39 | [주문 커밋 후 비동기 Slack 알림](step-39-order-slack-after-commit.md) | 7a3f93f feat(order): 커밋 후 비동기 Slack 알림 구현 |
+| 38 | [주문 Feign 어댑터와 Controller 연결](step-38-order-feign-controller.md) | 9b48adc feat(order): 주문 생성 Feign과 Controller 연결 |
+| 37 | [주문 생성 application 흐름과 실패 보상](step-37-order-creation-application.md) | 3b5a39c feat(order): 주문 생성 흐름과 실패 보상 구현 |
+| 36 | [주문 금액 BigDecimal 검토와 원복](step-36-order-money-bigdecimal.md) | 216a768 feat(order): 주문 엔티티와 저장소 기반 구현 |
+| 35 | [주문 Entity·마이그레이션·Repository 기반](step-35-order-foundation.md) | 216a768 feat(order): 주문 엔티티와 저장소 기반 구현 |
 | 34 | [전수검사와 병합 전 수정](step-34-audit-fixes.md) | fix(agents)·fix(config)·docs(agents)·docs(decisions)·fix(script) 6개 |
 | 33 | [문서·AI 지침 범위 최종 확인](step-33-final-check.md) | docs(infra): 문서·AI 지침 범위 최종 확인과 PR 본문 갱신 |
 | 32 | [문서 동기화 검사](step-32-docs-check.md) | chore(ci): 문서 동기화 검사와 PR 검사 워크플로 추가 |

@@ -17,7 +17,7 @@
 | `NOT_FOUND` | 404 | 경로 없음, 외부에서 `/internal/**` 호출 | 구현 |
 | `METHOD_NOT_ALLOWED` | 405 | 지원하지 않는 HTTP 메서드 | 구현 |
 | `NOT_ACCEPTABLE` | 406 | 지원하지 않는 응답 형식 | 구현 |
-| `INVALID_STATUS_TRANSITION` | 409 | 허용되지 않는 상태 변경(order 주문 취소, delivery 구간 상태) | 구현 |
+| `INVALID_STATUS_TRANSITION` | 409 | 허용되지 않는 상태 변경(order 취소된 주문 수정·중복 취소·취소 진행/복구 대기, delivery 구간 상태) | 구현 |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | 지원하지 않는 Content-Type | 구현 |
 | `INTERNAL_SERVER_ERROR` | 500 | 처리하지 못한 예외 | 구현 |
 | `SERVICE_UNAVAILABLE` | 503 | 하위 서비스 호출 실패·타임아웃 | 구현 |
@@ -44,8 +44,12 @@
 ## order-service
 | 코드 | HTTP | 의미 | 상태 |
 |---|---|---|---|
-| `ORDER_NOT_FOUND` | 404 | 주문이 없거나 삭제됨 | 예정 |
-| `ORDER_NOT_DELETABLE` | 409 | 취소 또는 배송 완료 전 주문 삭제 | 예정 |
+| `ORDER_NOT_FOUND` | 404 | 주문이 없거나 삭제됨 | 구현 |
+| `ORDER_IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 사용자·멱등키에 다른 주문 본문 사용 | 구현 |
+| `ORDER_CREATION_IN_PROGRESS` | 409 | 같은 키의 주문 생성 처리 중, 새 실행 없음 | 구현 |
+| `ORDER_CREATION_ABORTED` | 409 | 같은 키의 생성이 실패로 종료됨, 재실행 없음 | 구현 |
+| `ORDER_CREATION_RECOVERY_REQUIRED` | 409 | 생성 결과 확인 필요 또는 생성 기록 논리 삭제, 재실행 없음 | 구현 |
+| `ORDER_NOT_DELETABLE` | 409 | 취소·배송 완료 전 삭제, 미해결 취소 또는 삭제 진행 기록 불일치 | 구현 |
 
 ## delivery-service (`DeliveryErrorCode`)
 | 코드 | HTTP | 의미 | 상태 |
