@@ -40,3 +40,21 @@
 ### 확인 질문
 - 메서드 이름 쿼리를 네이티브 쿼리로 바꾸면 탈퇴자가 섞이는 이유는?
 - hubId로 허브 존재를 확인(I-02)하지 않는 이유는?
+
+## U-05 사용자 검색 (2026-10-15)
+### 처리 과정
+- domain: `UserSearchCondition`(검색 조건), `UserRepository.search(condition, pageable)`.
+- infrastructure: `UserQueryRepository` + `UserQueryRepositoryImpl`(QueryDSL). `UserJpaRepository`가 `UserQueryRepository`도 상속해 Spring Data가 `search` 호출을 Impl로 보낸다.
+- application: `UserQueryService.search`가 `Page<User>`를 `Page<UserResult>`로 바꾼다.
+- presentation: `GET /api/v1/users`, `@RequireRole(Role.MASTER)`, `@ModelAttribute UserSearchRequest`, 공통 `Pageable`(size 10·30·50, 기본 `createdAt,DESC`), `PageResponse`.
+- 테스트: `UserControllerWebMvcTest` 3개(조건 변환, USER 403, 잘못된 role 400), `UserQueryIntegrationTest` 2개(조건·정렬·탈퇴자 제외, `sort=password` 400).
+
+### 핵심
+- 조건 메서드가 값이 없으면 null을 돌려주고, QueryDSL `where`는 null을 무시한다. 조건 조합마다 쿼리를 따로 만들지 않는다.
+- 정렬은 허용 목록(`createdAt`, `username`)으로만 바꾼다(`QuerydslSupport.toOrderSpecifiers`). `password` 같은 필드로 정렬하면 순서로 값을 추측할 수 있다.
+- count 쿼리는 `PageableExecutionUtils`로 필요할 때만 실행한다.
+- `UserSearchCondition`은 application이 아니라 domain에 둔다. domain의 Repository 인터페이스가 받는 타입이라 domain이 application을 알게 되면 의존 방향이 거꾸로 된다.
+
+### 확인 질문
+- `UserQueryRepositoryImpl`이라는 이름에서 `Impl`을 빼면 무슨 일이 생기나?
+- 검색 결과가 0건일 때 count 쿼리는 실행되나?

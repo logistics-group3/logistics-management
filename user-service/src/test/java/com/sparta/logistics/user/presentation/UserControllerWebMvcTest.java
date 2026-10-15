@@ -1,8 +1,11 @@
 package com.sparta.logistics.user.presentation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,11 +19,15 @@ import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.AffiliationType;
 import com.sparta.logistics.user.domain.UserErrorCode;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -99,6 +106,41 @@ class UserControllerWebMvcTest {
     @DisplayName("userId가 UUID 형식이 아니면 VALIDATION_ERROR")
     void rejectsInvalidUserId() throws Exception {
         as(Role.USER, get("/api/v1/users/{userId}", "not-a-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("검색은 쿼리 파라미터를 조건으로 바꾸고 목록 응답 형식(content, page, size, totalElements)으로 감싼다")
+    void search() throws Exception {
+        PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
+        given(userQueryService.search(any(), any())).willReturn(new PageImpl<>(List.of(result()), pageable, 1));
+
+        as(Role.MASTER, get("/api/v1/users")
+                .param("username", "hong").param("role", "USER").param("isDeliveryManager", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].username").value("hong01"))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(10))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+        verify(userQueryService).search(
+                argThat(c -> "hong".equals(c.username()) && c.role() == Role.USER && Boolean.FALSE.equals(c.isDeliveryManager())),
+                any());
+    }
+
+    @Test
+    @DisplayName("검색은 MASTER 전용이라 USER가 부르면 서비스를 호출하지 않고 FORBIDDEN")
+    void searchRequiresMaster() throws Exception {
+        as(Role.USER, get("/api/v1/users"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        verifyNoInteractions(userQueryService);
+    }
+
+    @Test
+    @DisplayName("정의되지 않은 role 값으로 검색하면 VALIDATION_ERROR")
+    void searchRejectsUnknownRole() throws Exception {
+        as(Role.MASTER, get("/api/v1/users").param("role", "ADMIN"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }

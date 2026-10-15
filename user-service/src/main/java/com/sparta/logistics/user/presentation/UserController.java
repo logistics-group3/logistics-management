@@ -1,15 +1,21 @@
 package com.sparta.logistics.user.presentation;
 
 import com.sparta.logistics.common.auth.CurrentUser;
+import com.sparta.logistics.common.auth.RequireRole;
+import com.sparta.logistics.common.auth.Role;
 import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.response.ApiResponse;
+import com.sparta.logistics.common.response.PageResponse;
 import com.sparta.logistics.user.application.UserQueryService;
 import com.sparta.logistics.user.presentation.dto.UserResponse;
+import com.sparta.logistics.user.presentation.dto.UserSearchRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,5 +39,12 @@ public class UserController {
     @GetMapping("/{userId}")
     public ApiResponse<UserResponse> getUser(@CurrentUser UserContext user, @PathVariable UUID userId) {
         return ApiResponse.ok(UserResponse.from(userQueryService.getUser(user, userId)));
+    }
+
+    @Operation(summary = "U-05 사용자 검색")
+    @RequireRole(Role.MASTER)
+    @GetMapping
+    public ApiResponse<PageResponse<UserResponse>> search(@ModelAttribute UserSearchRequest request, Pageable pageable) {
+        return ApiResponse.ok(PageResponse.from(userQueryService.search(request.toCondition(), pageable), UserResponse::from));
     }
 }

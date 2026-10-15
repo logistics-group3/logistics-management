@@ -3,6 +3,8 @@ package com.sparta.logistics.user.domain;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * domain이 필요로 하는 저장소 기능만 선언한다. 구현은 infrastructure의 Spring Data 인터페이스가 맡는다.
@@ -22,6 +24,9 @@ public interface UserRepository {
      * PostgreSQL이 이 조회에 그 인덱스를 쓸 수 있다. 부분 인덱스는 쿼리 조건이 인덱스 조건을 포함할 때만 쓰인다.
      */
     List<User> findAllByHubIdAndDeliveryManagerTrue(UUID hubId);
+
+    /** U-05 검색. 정렬은 createdAt, username만 허용하고 그 밖의 필드는 InvalidSortException(400)이다. */
+    Page<User> search(UserSearchCondition condition, Pageable pageable);
 
     /** 논리 삭제된 사용자까지 포함해 username 사용 여부를 확인한다. */
     boolean existsByUsernameIncludingDeleted(String username);

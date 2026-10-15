@@ -8,9 +8,12 @@ import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.User;
 import com.sparta.logistics.user.domain.UserErrorCode;
 import com.sparta.logistics.user.domain.UserRepository;
+import com.sparta.logistics.user.domain.UserSearchCondition;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,11 @@ public class UserQueryService {
     public UserResult getUser(UserContext user, UUID userId) {
         user.validateSelfOrMaster(userId);
         return UserResult.from(findUser(userId));
+    }
+
+    /** U-05 사용자 검색(MASTER). 정렬 허용 필드는 createdAt, username이다. */
+    public Page<UserResult> search(UserSearchCondition condition, Pageable pageable) {
+        return userRepository.search(condition, pageable).map(UserResult::from);
     }
 
     /** 탈퇴 사용자는 @SQLRestriction으로 조회되지 않아 404가 된다(SA I-01). */

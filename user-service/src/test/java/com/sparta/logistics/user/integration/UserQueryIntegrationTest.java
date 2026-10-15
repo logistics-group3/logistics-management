@@ -20,9 +20,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** 조회 API(U-03, U-04, I-14)를 실제 DB로 확인한다. UserAuthIntegrationTest와 설정이 같아 Spring 컨텍스트를 재사용한다. */
+/** 조회 API(U-03~U-05, I-14)를 실제 DB로 확인한다. UserAuthIntegrationTest와 설정이 같아 Spring 컨텍스트를 재사용한다. */
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {"jwt.secret=test-only-jwt-secret-key-0123456789abcdef", "jwt.expiration-seconds=3600"})
 class UserQueryIntegrationTest extends PostgresIntegrationTest {
@@ -82,6 +83,40 @@ class UserQueryIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    @DisplayName("U-05 검색은 조건을 모두 적용하고 허용한 필드로 정렬하며, 탈퇴자는 결과와 전체 개수에서 뺀다")
+    void searchUsers() throws Exception {
+        UUID hubId = UUID.randomUUID();
+        UUID managerA = signup("itsrchb", "검색대상");
+        UUID managerB = signup("itsrcha", "검색대상");
+        UUID withdrawn = signup("itsrchc", "검색대상");
+        signup("itsrchd", "검색대상");
+        assignDeliveryManager(managerA, hubId);
+        assignDeliveryManager(managerB, hubId);
+        assignDeliveryManager(withdrawn, hubId);
+        softDelete(withdrawn);
+
+        mockMvc.perform(asMaster(get("/api/v1/users"))
+                        .param("name", "검색대상").param("isDeliveryManager", "true").param("hubId", hubId.toString())
+                        .param("sort", "username,ASC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content[0].username").value("itsrcha"))
+                .andExpect(jsonPath("$.data.content[1].username").value("itsrchb"))
+                .andExpect(jsonPath("$.data.sort").value("username,ASC"));
+
+        mockMvc.perform(asMaster(get("/api/v1/users")).param("username", "itsrch").param("size", "10"))
+                .andExpect(jsonPath("$.data.totalElements").value(3));
+    }
+
+    @Test
+    @DisplayName("U-05 정렬 허용 목록에 없는 필드(password)로 정렬하면 VALIDATION_ERROR")
+    void searchRejectsDisallowedSort() throws Exception {
+        mockMvc.perform(asMaster(get("/api/v1/users")).param("sort", "password,ASC"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     @DisplayName("I-14 내부 API는 실제 DB에서 그 허브 배송담당자만 감싸지 않은 배열로 돌려준다")
     void deliveryManagersApi() throws Exception {
         UUID hubId = UUID.randomUUID();
@@ -93,6 +128,12 @@ class UserQueryIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].userId").value(manager.toString()))
                 .andExpect(jsonPath("$[0].slackId").value("U01"));
+    }
+
+    private MockHttpServletRequestBuilder asMaster(MockHttpServletRequestBuilder request) {
+        return request.header(UserHeaders.USER_ID, UUID.randomUUID().toString())
+                .header(UserHeaders.USERNAME, "master01")
+                .header(UserHeaders.ROLE, "MASTER");
     }
 
     private UUID signup(String username) {
