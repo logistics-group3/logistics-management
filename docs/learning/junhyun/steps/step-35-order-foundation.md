@@ -2,7 +2,7 @@
 
 - 날짜: 2026-10-15
 - 브랜치: `feat/order-create`
-- 상태: 기반 구현과 테스트 완료. O-01 API는 미구현, 커밋·푸시는 미수행
+- 상태: 기반 구현과 테스트 완료. 기반 커밋은 `216a768`이며 푸시는 미수행이다. O-01 application 후속 구현은 스텝 37에 있다.
 - 후속 검토: [스텝 36](step-36-order-money-bigdecimal.md)에서 BigDecimal로 전환했다가 사용자 요청으로 원복했다. 현재 금액 타입은 이 단계의 long·BIGINT이며 [ADR 0005](../../../services/order/decisions/0005-order-money-integer-krw.md)를 따른다.
 
 ## 만든 것

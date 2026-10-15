@@ -86,3 +86,53 @@
 Repository·Audit·논리 삭제와 주문 기반의 나머지는 유지했다. 결정 이력은 [ADR 0005](decisions/0005-order-money-integer-krw.md)에 남겼다.
 
 검증: `./gradlew build --console=plain` 성공. 주문 테스트 42개를 다시 실행했고(단위 24개, PostgreSQL 통합 18개), 전체 XML 합계 140개에 실패·오류·skip은 없다. 다른 모듈 테스트는 이전 성공 결과를 재사용했다. 문서·에러 코드·공백·로컬 링크 검사도 통과했다.
+
+## O-01 application 생성 흐름·보상 (2026-10-15)
+
+### 처리 과정
+
+1. 검증한 기반을 `216a768 feat(order): 주문 엔티티와 저장소 기반 구현`으로 커밋했다. 이후 application 변경은 별도 작업으로 진행했다.
+2. `CreateOrderCommandTest`, `OrderServiceTest`를 먼저 작성하고 타입 누락으로 컴파일 실패를 확인했다.
+3. application에 `CompanyReader`, `DeliveryGateway`와 입출력 record를 추가했다. 회사·상품·배송 서비스의 클래스를 공유하지 않는다.
+4. `OrderService`가 ID 선발급 → 업체 조회 → 수령업체 관리자 또는 MASTER 확인 → 상품 소속 확인 → 배송 생성 → 주문 저장을 수행하도록 구현했다.
+5. `OrderWriter`에 로컬 저장 트랜잭션을 분리했다. 실제 PostgreSQL로 flush 실패와 커밋 실패를 각각 재현해 배송 보상을 검증했다.
+
+### 핵심
+
+- **요청을 신뢰하는 범위**: Command에는 업체·상품 ID, 수량, 요청사항만 있다. 주문자 ID는 `UserContext`, 상품명·단가는 I-08 결과에서 가져온다. 기본 요청 오류는 Command 생성 시점에 거부한다.
+- **외부 호출과 DB 경계**: `OrderService.create`는 `Propagation.NEVER`로 기존 DB 트랜잭션 안에서의 호출을 막는다. `OrderWriter.save`는 별도 빈의 `REQUIRES_NEW` 트랜잭션으로 저장하고 프록시가 커밋까지 완료한 뒤 반환한다. 따라서 flush 이후 커밋에서 발생한 오류도 호출자가 보상할 수 있다.
+- **실패별 보상**: 조회 실패와 배송담당자 없음 같은 저장 전 거절은 보상하지 않는다. 배송 5xx·타임아웃·ID 없는 응답은 생성 여부가 불명확하므로 orderId로 삭제한다. 배송 생성 후 Entity 검증·DB 저장·커밋 실패도 삭제 보상한다.
+- **재시도 한 곳에서 관리**: I-13 보상은 `OrderService`가 총 3회 시도한다. 모두 실패하면 orderId와 `COMPENSATION_FAILED`를 ERROR 로그에 남기고 최초 실패 코드를 유지한다. 향후 I-13 Feign 어댑터에는 별도 재시도를 겹치지 않는다. GET·I-09의 Feign 재시도 연결은 다음 단계다.
+- **현재 조립 범위**: `OrderService`는 실제 외부 어댑터가 없으므로 자동 스캔 빈으로 등록하지 않았다. 통합 테스트에서는 `@Import(OrderService.class)`와 외부 Mock 빈으로 조립한다. `OrderWriter`는 실제 Spring 빈이며 실제 어댑터 연결 시 OrderService도 빈으로 등록한다. 운영용 가짜 외부 구현은 없다.
+
+### 검증
+
+| 실행 | 결과 |
+|---|---|
+| application 단위 테스트 | 23개 통과: Command 입력 검증 7개, 생성·권한·실패 보상 16개 |
+| `OrderCreationIntegrationTest` | 4개 통과: 정상 커밋, flush 실패 보상, 지연 제약의 커밋 실패 보상, 기존 트랜잭션 호출 차단 |
+| `./gradlew :order-service:test --console=plain` | 69개 통과, 실패·오류·skip 0 |
+| `./gradlew build --console=plain` | 성공. 전체 XML 합계 167개, 실패·오류·skip 0. 전체 빌드에서는 기존 성공 테스트 결과를 재사용 |
+| `script/docs-check.sh`, `script/error-codes-check.sh`, `git diff --check` | 통과. 변경 파일 공백과 문서 로컬 링크도 확인 |
+
+커밋 실패 테스트는 테스트 컨테이너의 테이블에만 `DEFERRABLE INITIALLY DEFERRED` 제약을 잠시 추가한다. 실제 JDBC commit에서 중복 오류가 발생했고, 배송 삭제 호출 전에 실패한 주문 행이 롤백됐으며 DB 트랜잭션이 없음을 확인했다. 테스트가 끝나면 제약을 제거한다.
+
+### 확인 질문
+
+- `OrderService` 전체에 기본 `@Transactional`을 붙이면 원격 호출과 실패 보상에 어떤 문제가 생기는가?
+- 배송 타임아웃과 `DELIVERY_MANAGER_NOT_FOUND`를 똑같이 처리하면 안 되는 이유는 무엇인가?
+- 보상 API에도 Feign 3회 재시도를 붙이면 실제 호출 횟수는 어떻게 달라지는가?
+
+### 메모
+
+- 수령인 기본값은 SA 5.6의 요청업체명이며, 수령업체 관리자 ID를 배송에 전달한다. 수령인의 Slack ID 조회는 delivery 책임이다.
+- 테스트 작성 중 Mockito 검증을 중첩 호출한 문제는 [TS-006](../../troubleshooting.md)에 기록했다.
+- 실제 Feign 호출, HTTP API, Gateway, Slack 발송은 미구현·미검증이다. 현재 단위·DB 통합 테스트를 서비스 전체 연동 성공으로 해석하지 않는다.
+- 재고 단계와 공통 모듈, 다른 서비스 코드는 추가·변경하지 않았다. 신규 서비스 에러 코드도 없다.
+
+### 근거
+
+- [SA 5.6·6.3·6.7·7.1](../../SA/sparta-logistics-sa.md)
+- [application 규칙](../../agents/rules/service.md), [Feign 규칙](../../agents/rules/feign.md)
+- [Spring Framework 6.2 트랜잭션 전파](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/tx-propagation.html)
+- [PostgreSQL 16 지연 제약](https://www.postgresql.org/docs/16/sql-set-constraints.html)

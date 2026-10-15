@@ -70,3 +70,11 @@
 - 문제: 회원가입 요청 본문에 한글이 있으면 400이 반환됐다.
 - 원인: Git Bash에서 `-d '...'`로 넘긴 한글이 UTF-8로 전달되지 않았다(서버 문제 아님).
 - 해결: UTF-8 파일로 저장해 `--data-binary @file.json`으로 보내거나 Swagger·Postman을 사용한다.
+
+### TS-006 Mockito verify의 인자에서 다른 verify를 호출하면 검증이 중단됨
+
+- 서비스·작성: order-service / Junhyun An / 2026-10-15
+- 문제: `OrderServiceTest`의 보상 검증 6개가 `UnfinishedVerificationException`으로 실패했다. `verify(gateway).deleteByOrderId(captureCreatedOrderId())`에서 인자 헬퍼도 `verify`를 호출했다.
+- 원인: 바깥 `verify`를 시작한 뒤 인자를 평가하면서 다른 `verify`가 실행돼, 첫 검증을 마치기 전에 다음 검증을 시작했다.
+- 해결: 주문 ID를 지역 변수로 먼저 캡처한 뒤 별도 문장으로 삭제 호출을 검증했다. 업무 코드는 변경하지 않았고 application 단위 테스트 23개가 통과했다.
+- 배운 점: Mockito 검증을 포함하는 헬퍼는 다른 `verify`의 인자 안에서 실행하지 않는다.

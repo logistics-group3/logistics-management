@@ -4,8 +4,9 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
-| 36 | [주문 금액 BigDecimal 검토와 원복](step-36-order-money-bigdecimal.md) | 원복 완료·미커밋 |
-| 35 | [주문 Entity·마이그레이션·Repository 기반](step-35-order-foundation.md) | 미커밋 |
+| 37 | [주문 생성 application 흐름과 실패 보상](step-37-order-creation-application.md) | 미커밋 |
+| 36 | [주문 금액 BigDecimal 검토와 원복](step-36-order-money-bigdecimal.md) | 216a768 feat(order): 주문 엔티티와 저장소 기반 구현 |
+| 35 | [주문 Entity·마이그레이션·Repository 기반](step-35-order-foundation.md) | 216a768 feat(order): 주문 엔티티와 저장소 기반 구현 |
 | 34 | [전수검사와 병합 전 수정](step-34-audit-fixes.md) | fix(agents)·fix(config)·docs(agents)·docs(decisions)·fix(script) 6개 |
 | 33 | [문서·AI 지침 범위 최종 확인](step-33-final-check.md) | docs(infra): 문서·AI 지침 범위 최종 확인과 PR 본문 갱신 |
 | 32 | [문서 동기화 검사](step-32-docs-check.md) | chore(ci): 문서 동기화 검사와 PR 검사 워크플로 추가 |
