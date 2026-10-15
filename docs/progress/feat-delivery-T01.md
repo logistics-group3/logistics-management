@@ -1,19 +1,20 @@
 # feat/delivery-T01
 
 ## 지금 하는 일
-T01 배송 도메인 기반 구축 (구간 모델 확정, 마이그레이션 전)
+T01 배송 도메인 기반 구축 (테이블·엔티티 완료, 상태 전이 전)
 
 ## 진행 상태
 - [x] `delivery-service/docs/` 작업 규칙, 태스크 목록, T01 문서 작성 (문서만 변경)
 - [x] `docs/domain/` 정리(이모지, 옛 경로, 저장소 상태 반영)와 결정 로그 규칙, 결정 로그 11 추가 (문서만 변경)
 - [x] 개인 훅(`.claude/hooks/context-guard.sh`, `post-compact.sh`) 단독 실행 테스트 통과. context-guard는 실제 세션에서 142k 토큰에 발동 확인(10/15), post-compact는 압축 전이라 미확인
 - [x] ADR 0003 채택(SA v2.0 3구간), 0001 대체됨 (문서만 변경)
-- [ ] 마이그레이션, 엔티티·상태 전이, 에러 코드, Repository
+- [x] V1 마이그레이션과 엔티티, CHECK 검증 통합 테스트 (`:delivery-service:test` 2개 통과)
+- [ ] 상태 전이, 에러 코드, Repository
 - 면접 포인트: 상태 전이를 서비스가 아니라 엔티티 메서드에서 검증하는 이유, 배송 상태를 구간 상태에서 계산하는 이유
 
 ## 다음 단계
-1. SA 5.6과 ADR 0003을 보고 `V1__create_delivery_tables.sql`을 작성한다.
-2. Delivery, DeliveryRoute 엔티티와 상태 전이 메서드, 3구간·2구간 단위 테스트.
+1. impl-service 2단계: Delivery 생성 팩토리(3구간·2구간), 구간 상태 변경 → 배송 상태 연쇄, 취소. 단위 테스트는 `workflow.md` 7절 기준.
+2. 3단계: DeliveryErrorCode, Repository, 멱등성 통합 테스트.
 
 세부 작업과 커밋 기록은 [`delivery-service/docs/tasks/T01.md`](../../delivery-service/docs/tasks/T01.md)에 있다.
 

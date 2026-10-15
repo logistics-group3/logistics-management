@@ -374,7 +374,7 @@ erDiagram
 |---|---|---|---|
 | delivery_id | UUID | PK | |
 | order_id | UUID | NOT NULL, UNIQUE | 주문 1 = 배송 1, **멱등 키** |
-| status | VARCHAR(30) | NOT NULL | §3-1 8개 상태 |
+| status | VARCHAR(30) | NOT NULL, CHECK | §3-1 8개 상태 |
 | supplier_company_id / receiver_company_id | UUID | NOT NULL | 공급업체 / 요청업체 |
 | departure_hub_id / destination_hub_id | UUID | NOT NULL | 생성 시점 값 |
 | pickup_address / delivery_address | VARCHAR(255) | NOT NULL | 집하지 / 배송지 |
@@ -389,12 +389,12 @@ erDiagram
 | delivery_route_id | UUID | PK | |
 | delivery_id | UUID | NOT NULL, FK | |
 | sequence | INT | NOT NULL | 1부터 진행 순서 |
-| route_type | VARCHAR(20) | NOT NULL | `PICKUP` / `HUB_TRANSFER` / `LAST_MILE` |
+| route_type | VARCHAR(20) | NOT NULL, CHECK | `PICKUP` / `HUB_TRANSFER` / `LAST_MILE` |
 | departure_hub_id | UUID | NULL | 집하는 NULL |
 | arrival_hub_id | UUID | NULL | 업체 배송은 NULL |
 | expected_distance_km / expected_duration_minutes | DECIMAL(8,2) / INT | NULL | 허브 이동만 (I-03 값) |
 | actual_distance_km / actual_duration_minutes | DECIMAL(8,2) / INT | NULL | 도착 시 입력 (허브 이동은 필수) |
-| status | VARCHAR(20) | NOT NULL DEFAULT 'WAITING' | `WAITING` / `MOVING` / `ARRIVED` / `CANCELED` |
+| status | VARCHAR(20) | NOT NULL DEFAULT 'WAITING', CHECK | `WAITING` / `MOVING` / `ARRIVED` / `CANCELED` |
 | manager_id | UUID | NOT NULL | 구간 담당자 |
 
 `UNIQUE (delivery_id, sequence)` · 인덱스: `manager_id`, `status` · 값 객체 `RouteInfo(distanceKm, durationMinutes)` × 2
