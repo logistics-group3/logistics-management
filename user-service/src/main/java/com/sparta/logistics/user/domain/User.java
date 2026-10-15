@@ -100,6 +100,24 @@ public class User extends BaseEntity {
         }
     }
 
+    public void changeRole(Role role) {
+        this.role = role;
+    }
+
+    /** U-07 배송담당자 지정 또는 소속 허브 변경. 소속도 그 허브로 함께 바꾼다(SA U-07). */
+    public void assignDeliveryManager(UUID hubId, String hubName) {
+        this.deliveryManager = true;
+        this.hubId = hubId;
+        this.affiliationType = AffiliationType.HUB;
+        this.affiliationName = hubName;
+    }
+
+    /** U-07 배송담당자 해제. 소속 허브만 지우고 소속 정보는 그대로 둔다(SA U-07). */
+    public void releaseDeliveryManager() {
+        this.deliveryManager = false;
+        this.hubId = null;
+    }
+
     /** 기동 시 환경 변수로 만드는 초기 관리자. 가입 API로는 MASTER를 만들 수 없으므로 이 경로만 MASTER로 시작한다. */
     public static User master(String username, String encodedPassword, String slackId) {
         User user = new User(username, encodedPassword, "마스터", slackId, AffiliationType.HUB, "스파르타 물류 본사");

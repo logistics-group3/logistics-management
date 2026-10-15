@@ -75,3 +75,26 @@
 ### 확인 질문
 - `updateProfile`에서 null 대신 `Optional`을 받으면 무엇이 좋아지고 무엇이 불편해지나?
 - 논리 삭제한 사용자의 기존 토큰은 언제 막히나?
+
+## U-07 권한·배송담당자 지정 (2026-10-15)
+### 처리 과정
+- domain: `User.changeRole`, `assignDeliveryManager(hubId, hubName)`(소속을 HUB·허브명으로), `releaseDeliveryManager()`(hub_id만 지움).
+- infrastructure: `HubClient`(`@FeignClient(name = "hub-service", path = "/internal", configuration = IdempotentRetryConfig.class)`), `HubClientAdapter`(application의 `HubReader` 구현), `client/dto/HubResponse(hubId, name)`.
+- application: `UserRoleService.changeRole`(트랜잭션 없음: 자기 role 변경 거절 → 허브 조회) → `UserService.applyRoleChange`(트랜잭션: 사용자 조회와 변경, 비담당자에게 hubId만 보낸 경우 거절).
+- presentation: `PATCH /api/v1/users/{userId}/role`, `ChangeRoleRequest`의 `@AssertTrue`로 요청만 보고 판단할 수 있는 조합을 검사한다.
+- 테스트: `UserTest` 5개(배송담당자 소속 고정 2개 포함), `UserServiceTest` 4개, `UserRoleServiceTest` 5개, `UserControllerWebMvcTest` 3개, `UserCommandIntegrationTest` 2개(HubReader 목).
+
+### 핵심
+- 원격 호출(I-02)은 DB 트랜잭션 밖에서 한다. 트랜잭션 안에서 부르면 응답을 기다리는 동안 DB 커넥션을 붙잡아 커넥션 풀이 바닥날 수 있다. 같은 클래스 안에서 `@Transactional` 메서드를 부르면 프록시를 거치지 않으므로 클래스를 둘로 나눴다.
+- application은 `HubReader` 인터페이스만 안다. 테스트에서 목으로 바꿔 hub-service 없이 검증하고, 호출 방식을 바꿔도 application은 그대로다.
+- 검증을 세 곳에 나눴다. 요청만 보면 되는 조합은 Request(`@AssertTrue`), 현재 사용자(MASTER) 정보만 필요한 자기 role 변경은 원격 호출 전 `UserRoleService`, 대상 사용자 상태가 필요한 조합은 `UserService`.
+- hub가 404 `HUB_NOT_FOUND`로 응답하면 `FeignErrorDecoder`가 같은 코드의 `BusinessException`으로 바꿔 그대로 클라이언트에 전달된다. 응답이 없으면 503이다.
+- 권한이 바뀐 사용자의 기존 토큰은 Gateway 권한 재확인 캐시(60초)가 지나면 401 `TOKEN_ROLE_MISMATCH`가 된다. 확인 결과 변경 직후에는 200이었다.
+
+### 확인 질문
+- `UserRoleService`에 `@Transactional`을 붙이면 무엇이 달라지나?
+- 허브 조회는 성공했는데 DB 변경 직전에 그 허브가 삭제되면 어떻게 되나? 막아야 하나?
+
+### 메모
+- 진행 방식: 사용자 요청으로 I-14 presentation부터 U-07, 샘플 정리까지 계층마다 멈추지 않고 한 번에 구현했다.
+- hub-service가 I-02를 아직 구현하지 않아, 허브를 지정하면 hub의 기본 404 `NOT_FOUND`가 전달된다(Gateway 경유 확인). hub 구현 후 `HUB_NOT_FOUND`와 실제 허브명 저장을 다시 확인한다.

@@ -17,7 +17,9 @@ import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.user.application.UserQueryService;
+import com.sparta.logistics.user.application.UserRoleService;
 import com.sparta.logistics.user.application.UserService;
+import com.sparta.logistics.user.application.dto.ChangeRoleCommand;
 import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.AffiliationType;
 import com.sparta.logistics.user.domain.UserErrorCode;
@@ -47,6 +49,8 @@ class UserControllerWebMvcTest {
     private UserQueryService userQueryService;
     @MockitoBean
     private UserService userService;
+    @MockitoBean
+    private UserRoleService userRoleService;
 
     private final UUID userId = UUID.randomUUID();
 
@@ -179,6 +183,39 @@ class UserControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.userId").value(userId.toString()));
         verify(userService).update(eq(userId), argThat(c -> "U09".equals(c.slackId()) && c.name() == null));
+    }
+
+    @Test
+    @DisplayName("배송담당자 지정은 isDeliveryManager JSON 이름을 그대로 받아 Command로 넘긴다")
+    void changeRole() throws Exception {
+        UUID hubId = UUID.randomUUID();
+        given(userRoleService.changeRole(any(), eq(userId), any())).willReturn(result());
+
+        as(Role.MASTER, patch("/api/v1/users/{userId}/role", userId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"isDeliveryManager\":true,\"hubId\":\"" + hubId + "\"}"))
+                .andExpect(status().isOk());
+        verify(userRoleService).changeRole(any(), eq(userId), eq(new ChangeRoleCommand(null, true, hubId)));
+    }
+
+    @Test
+    @DisplayName("배송담당자로 지정하면서 hubId를 빠뜨리면 VALIDATION_ERROR")
+    void changeRoleRequiresHubIdWhenAssigning() throws Exception {
+        as(Role.MASTER, patch("/api/v1/users/{userId}/role", userId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"isDeliveryManager\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[0].reason").value("배송담당자로 지정하려면 hubId가 필요합니다."));
+        verifyNoInteractions(userRoleService);
+    }
+
+    @Test
+    @DisplayName("배송담당자를 해제하면서 hubId를 함께 보내면 VALIDATION_ERROR")
+    void changeRoleRejectsHubIdWhenReleasing() throws Exception {
+        as(Role.MASTER, patch("/api/v1/users/{userId}/role", userId).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"isDeliveryManager\":false,\"hubId\":\"" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].reason").value("배송담당자를 해제할 때는 hubId를 보낼 수 없습니다."));
+        verifyNoInteractions(userRoleService);
     }
 
     @Test

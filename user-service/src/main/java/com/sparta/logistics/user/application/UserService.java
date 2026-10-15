@@ -3,6 +3,8 @@ package com.sparta.logistics.user.application;
 import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
+import com.sparta.logistics.user.application.dto.ChangeRoleCommand;
+import com.sparta.logistics.user.application.dto.HubInfo;
 import com.sparta.logistics.user.application.dto.UpdateUserCommand;
 import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.User;
@@ -25,6 +27,29 @@ public class UserService {
     public UserResult update(UUID userId, UpdateUserCommand command) {
         User user = findUser(userId);
         user.updateProfile(command.name(), command.slackId(), command.affiliationType(), command.affiliationName());
+        return UserResult.from(user);
+    }
+
+    /**
+     * U-07의 DB 변경 부분. 허브 조회는 UserRoleService가 트랜잭션 밖에서 끝내고 결과(hub)만 넘긴다.
+     * hub가 null이면 hubId를 보내지 않은 요청이다.
+     */
+    @Transactional
+    public UserResult applyRoleChange(UUID userId, ChangeRoleCommand command, HubInfo hub) {
+        User user = findUser(userId);
+        if (command.role() != null) {
+            user.changeRole(command.role());
+        }
+        if (Boolean.FALSE.equals(command.isDeliveryManager())) {
+            user.releaseDeliveryManager();
+        } else if (hub != null) {
+            if (command.isDeliveryManager() == null && !user.isDeliveryManager()) {
+                // 배송담당자가 아닌 사용자에게 hubId만 보낸 요청은 지정인지 실수인지 모호하다(user 결정 0001).
+                throw new BusinessException(CommonErrorCode.VALIDATION_ERROR,
+                        "배송담당자가 아닌 사용자의 소속 허브를 바꾸려면 isDeliveryManager를 true로 함께 보내야 합니다.");
+            }
+            user.assignDeliveryManager(hub.hubId(), hub.name());
+        }
         return UserResult.from(user);
     }
 

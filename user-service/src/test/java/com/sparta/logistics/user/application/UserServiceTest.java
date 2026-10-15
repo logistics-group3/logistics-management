@@ -12,6 +12,8 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.user.UserFixture;
+import com.sparta.logistics.user.application.dto.ChangeRoleCommand;
+import com.sparta.logistics.user.application.dto.HubInfo;
 import com.sparta.logistics.user.application.dto.UpdateUserCommand;
 import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.AffiliationType;
@@ -37,6 +39,7 @@ class UserServiceTest {
 
     private final User hong = UserFixture.user("hong01", "hashed");
     private final UserContext master = new UserContext(UUID.randomUUID(), "master", Role.MASTER, false);
+    private final HubInfo seoul = new HubInfo(UUID.randomUUID(), "서울특별시 센터");
 
     @Test
     @DisplayName("사용자 정보를 수정하면 바뀐 값을 담아 돌려준다")
@@ -58,6 +61,54 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.update(userId, new UpdateUserCommand("김철수", null, null, null)))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("배송담당자로 지정하면 허브와 소속이 함께 바뀐다")
+    void assignDeliveryManager() {
+        given(userRepository.findById(hong.getId())).willReturn(Optional.of(hong));
+
+        UserResult result = userService.applyRoleChange(hong.getId(), new ChangeRoleCommand(null, true, seoul.hubId()), seoul);
+
+        assertThat(result.isDeliveryManager()).isTrue();
+        assertThat(result.hubId()).isEqualTo(seoul.hubId());
+        assertThat(result.affiliationName()).isEqualTo("서울특별시 센터");
+    }
+
+    @Test
+    @DisplayName("이미 배송담당자면 hubId만 보내 소속 허브를 바꿀 수 있다")
+    void changeHubOfDeliveryManager() {
+        hong.assignDeliveryManager(UUID.randomUUID(), "부산광역시 센터");
+        given(userRepository.findById(hong.getId())).willReturn(Optional.of(hong));
+
+        UserResult result = userService.applyRoleChange(hong.getId(), new ChangeRoleCommand(null, null, seoul.hubId()), seoul);
+
+        assertThat(result.hubId()).isEqualTo(seoul.hubId());
+        assertThat(result.affiliationName()).isEqualTo("서울특별시 센터");
+    }
+
+    @Test
+    @DisplayName("배송담당자가 아닌 사용자에게 hubId만 보내면 VALIDATION_ERROR")
+    void hubIdOnlyForNonManager() {
+        given(userRepository.findById(hong.getId())).willReturn(Optional.of(hong));
+
+        assertThatThrownBy(() -> userService.applyRoleChange(hong.getId(), new ChangeRoleCommand(null, null, seoul.hubId()), seoul))
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.VALIDATION_ERROR);
+        assertThat(hong.isDeliveryManager()).isFalse();
+    }
+
+    @Test
+    @DisplayName("배송담당자를 해제하면 소속 허브가 비고, 권한도 함께 바꿀 수 있다")
+    void releaseAndChangeRole() {
+        hong.assignDeliveryManager(seoul.hubId(), seoul.name());
+        given(userRepository.findById(hong.getId())).willReturn(Optional.of(hong));
+
+        UserResult result = userService.applyRoleChange(hong.getId(), new ChangeRoleCommand(Role.MASTER, false, null), null);
+
+        assertThat(result.isDeliveryManager()).isFalse();
+        assertThat(result.hubId()).isNull();
+        assertThat(result.role()).isEqualTo(Role.MASTER);
     }
 
     @Test

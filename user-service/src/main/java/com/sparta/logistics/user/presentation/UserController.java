@@ -7,7 +7,9 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.response.ApiResponse;
 import com.sparta.logistics.common.response.PageResponse;
 import com.sparta.logistics.user.application.UserQueryService;
+import com.sparta.logistics.user.application.UserRoleService;
 import com.sparta.logistics.user.application.UserService;
+import com.sparta.logistics.user.presentation.dto.ChangeRoleRequest;
 import com.sparta.logistics.user.presentation.dto.UpdateUserRequest;
 import com.sparta.logistics.user.presentation.dto.UserResponse;
 import com.sparta.logistics.user.presentation.dto.UserSearchRequest;
@@ -34,6 +36,7 @@ public class UserController {
 
     private final UserQueryService userQueryService;
     private final UserService userService;
+    private final UserRoleService userRoleService;
 
     /** Note: "/me"와 "/{userId}"가 둘 다 맞아 보여도 Spring MVC는 변수 없는 경로를 더 구체적인 것으로 보고 먼저 고른다. */
     @Operation(summary = "U-03 내 정보 조회")
@@ -60,6 +63,14 @@ public class UserController {
     @PatchMapping("/{userId}")
     public ApiResponse<UserResponse> update(@PathVariable UUID userId, @Valid @RequestBody UpdateUserRequest request) {
         return ApiResponse.ok(UserResponse.from(userService.update(userId, request.toCommand())));
+    }
+
+    @Operation(summary = "U-07 권한·배송담당자 지정")
+    @RequireRole(Role.MASTER)
+    @PatchMapping("/{userId}/role")
+    public ApiResponse<UserResponse> changeRole(@CurrentUser UserContext user, @PathVariable UUID userId,
+                                                @Valid @RequestBody ChangeRoleRequest request) {
+        return ApiResponse.ok(UserResponse.from(userRoleService.changeRole(user, userId, request.toCommand())));
     }
 
     @Operation(summary = "U-08 사용자 비활성화(논리 삭제)")
