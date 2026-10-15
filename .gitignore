@@ -1,0 +1,43 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### VS Code ###
+.vscode/
+
+### Mac ###
+.DS_Store
+
+### Env ###
+.env
+.env.*
+!.env.example
+
+### Secrets ###
+*.pem
+*.key
+*.p12
+*.jks
+
+### 에이전트 설정 ###
+# 개인 설정
+CLAUDE.local.md
+.claude/settings.local.json
+# script/setup-agents.sh가 .agents/skills, docs/agents/rules에서 만드는 결과물과 그 목록
+.claude/skills/
+.claude/rules/
+.claude/.setup-agents-files
+# Claude Code가 만드는 임시 worktree
+.claude/worktrees/

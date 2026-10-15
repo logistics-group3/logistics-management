@@ -1,0 +1,96 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: 5000
+            # Note: 주문 생성처럼 내부 호출이 이어지는 요청이 Gateway에서 먼저 끊기지 않게 하위 서비스 read 타임아웃(20초)보다 길게 둔다.
+            response-timeout: 60s
+          # Note: lb:// 는 Eureka에 등록된 서비스 이름으로 인스턴스를 찾아 라운드로빈으로 분산한다. 인스턴스를 늘려도 Gateway 설정은 바뀌지 않는다.
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/auth/**, /api/v1/users/**
+            - id: hub-service
+              uri: lb://hub-service
+              predicates:
+                - Path=/api/v1/hubs/**, /api/v1/hub-routes/**
+            - id: company-service
+              uri: lb://company-service
+              predicates:
+                - Path=/api/v1/companies/**, /api/v1/products/**
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+                - Path=/api/v1/orders/**
+            - id: delivery-service
+              uri: lb://delivery-service
+              predicates:
+                - Path=/api/v1/deliveries/**
+            # 서비스별 OpenAPI 문서. Gateway Swagger UI가 /{서비스}/v3/api-docs 로 불러온다.
+            - id: user-service-docs
+              uri: lb://user-service
+              predicates:
+                - Path=/user-service/v3/api-docs
+              filters:
+                - RewritePath=/user-service/v3/api-docs, /v3/api-docs
+            - id: hub-service-docs
+              uri: lb://hub-service
+              predicates:
+                - Path=/hub-service/v3/api-docs
+              filters:
+                - RewritePath=/hub-service/v3/api-docs, /v3/api-docs
+            - id: company-service-docs
+              uri: lb://company-service
+              predicates:
+                - Path=/company-service/v3/api-docs
+              filters:
+                - RewritePath=/company-service/v3/api-docs, /v3/api-docs
+            - id: order-service-docs
+              uri: lb://order-service
+              predicates:
+                - Path=/order-service/v3/api-docs
+              filters:
+                - RewritePath=/order-service/v3/api-docs, /v3/api-docs
+            - id: delivery-service-docs
+              uri: lb://delivery-service
+              predicates:
+                - Path=/delivery-service/v3/api-docs
+              filters:
+                - RewritePath=/delivery-service/v3/api-docs, /v3/api-docs
+
+jwt:
+  secret: ${JWT_SECRET}
+
+auth:
+  # 인증 없이 통과시키는 경로(SA 8.3 3단계)
+  whitelist:
+    - /api/v1/auth/signup
+    - /api/v1/auth/login
+    - /actuator/health
+    - /swagger-ui.html
+    - /swagger-ui/**
+    - /webjars/**
+    - /v3/api-docs/**
+    - /*/v3/api-docs/**
+  # 권한 재확인 결과 캐시 시간(SA 8.2, 팀 결정 60초)
+  user-cache-ttl: 60s
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: user-service
+        url: /user-service/v3/api-docs
+      - name: hub-service
+        url: /hub-service/v3/api-docs
+      - name: company-service
+        url: /company-service/v3/api-docs
+      - name: order-service
+        url: /order-service/v3/api-docs
+      - name: delivery-service
+        url: /delivery-service/v3/api-docs

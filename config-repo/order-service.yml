@@ -1,0 +1,15 @@
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/logistics?currentSchema=order_schema
+    username: order_app
+    password: ${ORDER_DB_PASSWORD:order_local_pw}
+  jpa:
+    properties:
+      hibernate:
+        default_schema: order_schema
+  flyway:
+    # 마이그레이션 이력 테이블(flyway_schema_history)과 테이블을 이 서비스 스키마에 만든다
+    schemas: order_schema

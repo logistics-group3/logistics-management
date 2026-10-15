@@ -1,0 +1,34 @@
+# 코드 경로 → 함께 고쳐야 할 문서. script/docs-check.sh가 읽는다.
+# 형식: <bash glob 패턴><TAB><문서 경로(쉼표로 여러 개)><TAB><문서에서 확인할 부분>
+# glob의 *는 /도 포함해 맞춘다. 테스트 코드(*/src/test/*)는 검사하지 않는다.
+# 매핑된 코드를 바꿨는데 문서를 고치지 않았으면 실패한다. 문서 영향이 없으면 PR에 skip-docs 라벨을 붙이고 이유를 쓴다.
+
+user-service/src/main/java/*/presentation/*	docs/services/user/README.md	2. 제공 API, 4. 구현 현황
+user-service/src/main/java/*/infrastructure/client/*	docs/services/user/README.md	3. 호출하는 다른 서비스 API
+user-service/src/main/resources/db/migration/*	docs/services/user/README.md	4. 구현 현황
+user-service/src/main/java/*ErrorCode.java	docs/error-codes.md	user 표
+hub-service/src/main/java/*/presentation/*	docs/services/hub/README.md	2. 제공 API, 4. 구현 현황
+hub-service/src/main/java/*/infrastructure/client/*	docs/services/hub/README.md	3. 호출하는 다른 서비스 API
+hub-service/src/main/resources/db/migration/*	docs/services/hub/README.md	4. 구현 현황
+hub-service/src/main/java/*ErrorCode.java	docs/error-codes.md	hub 표
+company-service/src/main/java/*/presentation/*	docs/services/company/README.md	2. 제공 API, 4. 구현 현황
+company-service/src/main/java/*/infrastructure/client/*	docs/services/company/README.md	3. 호출하는 다른 서비스 API
+company-service/src/main/resources/db/migration/*	docs/services/company/README.md	4. 구현 현황
+company-service/src/main/java/*ErrorCode.java	docs/error-codes.md	company 표
+order-service/src/main/java/*/presentation/*	docs/services/order/README.md	2. 제공 API, 4. 구현 현황
+order-service/src/main/java/*/infrastructure/client/*	docs/services/order/README.md	3. 호출하는 다른 서비스 API
+order-service/src/main/resources/db/migration/*	docs/services/order/README.md	4. 구현 현황
+order-service/src/main/java/*ErrorCode.java	docs/error-codes.md	order 표
+delivery-service/src/main/java/*/presentation/*	docs/services/delivery/README.md	2. 제공 API, 4. 구현 현황
+delivery-service/src/main/java/*/infrastructure/client/*	docs/services/delivery/README.md	3. 호출하는 다른 서비스 API
+delivery-service/src/main/resources/db/migration/*	docs/services/delivery/README.md	4. 구현 현황
+delivery-service/src/main/java/*ErrorCode.java	docs/error-codes.md	delivery 표
+gateway-service/src/main/*	docs/services/gateway/README.md	2. 제공 API, 4. 구현 현황
+config-repo/gateway-service.yml	docs/services/gateway/README.md	1. 서비스 정보(라우트, 화이트리스트)
+common/src/main/*	docs/services/common/README.md	2. 제공 기능
+common-core/src/main/*	docs/services/common/README.md	2. 제공 기능
+common-core/src/main/*ErrorCode.java	docs/error-codes.md	공통 표
+.env.example	docs/guides/config-security.md	2. 비밀값 목록
+docker-compose*.yml	docs/guides/local-run.md	2. 무엇이 뜨나, 4. 바꾼 것만 다시 올리기
+settings.gradle	README.md,AGENTS.md	모듈 구성 표, 프로젝트(모듈과 포트)
+.agents/skills/*/SKILL.md	.agents/skills/README.md	스킬 목록
