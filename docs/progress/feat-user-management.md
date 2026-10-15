@@ -1,4 +1,4 @@
-# feat/user-read
+# feat/user-management
 
 ## 지금 하는 일
 user-service 남은 API(U-03~U-08, I-14) 구현·검증·커밋 완료, PR 대기
@@ -16,12 +16,12 @@ user-service 남은 API(U-03~U-08, I-14) 구현·검증·커밋 완료, PR 대�
 - [x] 문서: `docs/services/user/README.md`, `docs/services/user/notes.md`, `docs/troubleshooting.md` TS-006
 - [ ] `script/run.sh --check` 자동 E2E: 이 PC에 Python이 없어 미실행(TS-006). 같은 항목을 curl로 직접 확인함
 - [x] 커밋: API별 7개로 나눴다(2026-10-15). 중간 커밋마다 `:user-service:test` 통과를 확인했다
-- [ ] PR. `script/e2e-check.sh`, `docs/guides/local-run.md`, `docs/troubleshooting.md`는 공용이라 팀 전체 리뷰
+- [ ] PR(dev 대상). `script/e2e-check.sh`, `docs/guides/local-run.md`, `docs/troubleshooting.md`는 공용이라 팀 전체 리뷰
 - 면접 포인트: 원격 호출을 트랜잭션 밖으로 뺀 이유와 self-invocation, 권한 검사와 조회 순서가 정보 노출에 주는 영향, QueryDSL 동적 조건과 정렬 허용 목록
 
 ## 다음 단계
 1. 사용자 리뷰 의견을 반영한다.
-2. PR을 올린다. 브랜치 이름이 범위보다 좁으므로 `feat/user-management` 등으로 바꿀지 PR 전에 정한다.
+2. PR 리뷰를 반영한다. 브랜치는 범위에 맞게 `feat/user-read`에서 `feat/user-management`로 바꿨다.
 3. hub-service가 I-02를 구현하면 U-07 허브 지정을 Gateway 경유로 다시 확인한다(HUB_NOT_FOUND, 허브명 저장).
 
 ## 직접 해보기
