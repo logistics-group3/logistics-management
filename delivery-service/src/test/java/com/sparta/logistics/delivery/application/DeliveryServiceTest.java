@@ -13,7 +13,7 @@ import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.delivery.DeliveryFixture;
 import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
-import com.sparta.logistics.delivery.application.dto.DeliveryResult;
+import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.application.dto.UpdateRecipientCommand;
 import com.sparta.logistics.delivery.domain.Delivery;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
@@ -57,7 +57,7 @@ class DeliveryServiceTest {
     @Test
     @DisplayName("D-05 구간 담당자 본인이면 구간 상태를 바꾸고 배송 상태가 따라 바뀐다")
     void changeRouteStatusByManager() {
-        DeliveryResult result = deliveryService.changeRouteStatus(manager(SUPPLIER_MANAGER), delivery.getId(), routeId(0), MOVING);
+        DeliveryResponse result = deliveryService.changeRouteStatus(manager(SUPPLIER_MANAGER), delivery.getId(), routeId(0), MOVING);
 
         assertThat(result.delivery().status()).isEqualTo(DeliveryStatus.PICKING_UP);
         assertThat(result.routes().get(0).status()).isEqualTo(RouteStatus.MOVING);
@@ -101,7 +101,7 @@ class DeliveryServiceTest {
 
         assertThatThrownBy(() -> deliveryService.updateRecipient(manager(SUPPLIER_MANAGER), delivery.getId(), command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.FORBIDDEN);
-        DeliveryResult result = deliveryService.updateRecipient(manager(RECEIVER_MANAGER), delivery.getId(), command);
+        DeliveryResponse result = deliveryService.updateRecipient(manager(RECEIVER_MANAGER), delivery.getId(), command);
         assertThat(result.delivery().recipientName()).isEqualTo("부산수산도매 2창고");
     }
 

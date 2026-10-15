@@ -1,6 +1,6 @@
 package com.sparta.logistics.delivery.presentation.dto;
 
-import com.sparta.logistics.delivery.domain.DeliverySearchCondition;
+import com.sparta.logistics.delivery.application.dto.DeliverySearchCondition;
 import com.sparta.logistics.delivery.domain.DeliveryStatus;
 import java.util.UUID;
 

@@ -1,9 +1,9 @@
 package com.sparta.logistics.delivery.application;
 
 import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.delivery.application.dto.ActiveRouteCount;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
-import com.sparta.logistics.delivery.domain.ActiveRouteCount;
 import com.sparta.logistics.delivery.domain.Delivery;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 public class DeliveryCreationService {
 
     private final DeliveryRepository deliveryRepository;
+    private final DeliveryQueryRepository deliveryQueryRepository;
     private final HubRouteReader hubRouteReader;
     private final DeliveryManagerReader deliveryManagerReader;
     private final RecipientReader recipientReader;
@@ -84,7 +85,7 @@ public class DeliveryCreationService {
         Set<UUID> allCandidates = candidatesByHub.values().stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toSet());
-        Map<UUID, Long> counts = deliveryRepository.countActiveRoutes(allCandidates).stream()
+        Map<UUID, Long> counts = deliveryQueryRepository.countActiveRoutes(allCandidates).stream()
                 .collect(Collectors.toMap(ActiveRouteCount::managerId, ActiveRouteCount::count));
         return new ManagerAssigner(candidatesByHub, counts);
     }

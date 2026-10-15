@@ -1,5 +1,6 @@
 package com.sparta.logistics.delivery.application.dto;
 
+import com.querydsl.core.annotations.QueryProjection;
 import com.sparta.logistics.delivery.domain.DeliveryRoute;
 import com.sparta.logistics.delivery.domain.RouteInfo;
 import com.sparta.logistics.delivery.domain.RouteStatus;
@@ -21,6 +22,11 @@ public record DeliveryRouteResult(
         RouteStatus status,
         UUID managerId
 ) {
+
+    @QueryProjection
+    public DeliveryRouteResult {
+    }
+
 
     public static DeliveryRouteResult from(DeliveryRoute route) {
         Optional<RouteInfo> expected = Optional.ofNullable(route.getExpected());

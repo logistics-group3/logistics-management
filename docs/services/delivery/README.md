@@ -48,6 +48,8 @@ I-03, I-14는 2026-10-15 기준 제공 서비스에 아직 없다. delivery는 S
 - [ ] Gateway 경유 호출 확인(user I-14, hub I-03 구현 후)
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
+- 조회(D-01, D-02, I-10, 담당 건수)는 QueryDSL `@QueryProjection`으로 DTO를 바로 읽고, 명령은 JPA(`findById`, `save`)로 Entity를 다룬다(2026-10-15, 계약 변경 없음). 이유는 `delivery-service/docs/domain/delivery-decision-log.md` 17
+- 응답은 Result 하나면 그대로, 여러 Result를 합칠 때만 `Response`(D-02~D-05 `DeliveryResponse`)로 응답한다. 외부·내부 API JSON 구조는 바뀌지 않았다(2026-10-15 MockMvc 비교). 이유는 결정 로그 18
 
 ## 5. 협업 로그
 

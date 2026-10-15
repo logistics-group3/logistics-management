@@ -1,7 +1,7 @@
 # feat/delivery-T01
 
 ## 지금 하는 일
-T01~T05 구현 기준선 커밋 완료, 사용자가 직접 리뷰·수정 중
+T01~T05 구현, 리뷰 수정 1차(조회·명령 분리, 응답 DTO 정리) 커밋, 리뷰 계속
 
 ## 진행 상태
 - [x] `delivery-service/docs/` 작업 규칙, 태스크 목록, T01 문서 작성 (문서만 변경)
@@ -16,7 +16,7 @@ T01~T05 구현 기준선 커밋 완료, 사용자가 직접 리뷰·수정 중
 
 ## 다음 단계
 1. 사용자가 전체 코드를 직접 리뷰하며 주석·코드를 고친다(기준선 커밋 `feat(delivery): 배송 API 구현 (T01~T05)` 이후). 수정은 `refactor(delivery): ... (T01)`처럼 별도 커밋으로 남기고 `tasks/T01.md`에 기록한다.
-2. 리뷰에서 나온 후보: 구간 생성 파라미터가 헷갈림(`addRoute(PICKUP, null, departureHubId, ...)`) → 유형별 팩토리(`pickup`, `hubTransfer`, `lastMile`)로 바꾸기.
+2. 리뷰 수정 1차 완료(결정 로그 17, 18, `delivery-service/AGENTS.md` "delivery 코드 규칙"). 남은 후보: 구간 생성 파라미터가 헷갈림(`addRoute(PICKUP, null, departureHubId, ...)`) → 유형별 팩토리, `DeliveryStatus.from` 가독성, 외부 호출 인터페이스 3개(Reader)를 서비스당 하나로.
 3. HUB-001(hub I-03), USER-001(user I-14) 답을 받으면 `script/run.sh`로 Gateway 경유 I-09 → D-05 흐름을 확인한다.
 
 검증(2026-10-15, 이 세션에서 직접 실행): `./gradlew :delivery-service:test` 37개 통과, `./gradlew build` 통과, `script/docs-check.sh` OK, `script/error-codes-check.sh` PASS.

@@ -25,6 +25,8 @@
 | 14 | 테스트 기준 | 없으면 잡지 못하는 버그가 있는 테스트만. 상태 전이·멱등·배정·Saga 분기·권한 필터 중심, 단순 확인 테스트는 쓰지 않음 |
 | 15 | enum 컬럼 타입 | PostgreSQL enum 타입을 검토하고 구현까지 했다가 팀 규칙(VARCHAR + CHECK)으로 되돌림 |
 | 16 | 구현하며 정한 것(D-01~05, I-09~13) | cascade PERSIST만, 생성은 트랜잭션 밖 오케스트레이션 + 유니크 위반 시 기존 배송 반환, 수령인 404면 Slack ID NULL, 원복은 취소 상태일 때만, 에러 코드는 `DeliveryErrorCode` |
+| 17 | 조회와 명령 저장소 분리 | 조회는 QueryDSL `@QueryProjection` DTO를 바로 반환(Result로 다시 감싸지 않음), 명령은 JPA로 Entity. 조회 DTO가 application에 있어 팀 레이어 규칙과 다름 |
+| 18 | 1:1 복사 Response 없애기 | Result 하나면 그대로 응답, 여러 Result를 합칠 때만 `Response`(`DeliveryResponse`). delivery만의 코드 규칙으로 `delivery-service/AGENTS.md`에 둠 |
 
 ---
 
@@ -211,6 +213,29 @@ SA에 같은 용도의 내부 API가 이미 있으면 그 이름을 따른다.
 - I-09~I-12 응답은 하나의 DTO(`deliveryId, orderId, status`)로 맞췄다. SA보다 필드가 많을 뿐 빠진 것은 없다.
 
 **결론** — 위대로 구현했다. 요약은 [`docs/services/delivery/notes.md`](../../../docs/services/delivery/notes.md), 계약 차이는 [`docs/services/delivery/README.md`](../../../docs/services/delivery/README.md) 2절이다.
+
+## 17. 조회와 명령 저장소 분리 (2026-10-15)
+
+**왜** — 기준선 코드는 하나의 `DeliveryRepository`가 저장(`saveAndFlush`)과 조회(`search`, `countActiveRoutes`)를 함께 맡았고, 조회도 Entity를 읽은 뒤 서비스에서 DTO로 바꿨다. 나는 조회 성향이면 QueryDSL 프로젝션으로 DTO를 바로 내보내고, 생성·변경·삭제 성향이면 JPA(`findById`, `save`)로 Entity를 다루도록 명확히 나누는 것을 선호한다.
+
+**어떻게**
+- 명령: domain `DeliveryRepository`는 `save`, `saveAndFlush`, `findById`, `findByOrderId`만 둔다. `infrastructure/persistence/DeliveryJpaRepository`가 Spring Data로 구현한다(팀 규칙 그대로). 리뷰 중 JPA 인터페이스를 application으로 옮긴 것은 실수라 되돌렸다.
+- 조회: `application/DeliveryQueryRepository` 인터페이스를 두고 `infrastructure/persistence/DeliveryQueryRepositoryImpl`(QueryDSL)이 구현한다. 검색, 단건(배송 + 구간을 쿼리 두 번), I-10 상태, 담당 건수를 모두 DTO로 돌려준다.
+- `@QueryProjection` DTO를 어디에 둘지 세 안을 비교했다. infrastructure DTO를 application Result로 다시 바꾸는 안은 계층 규칙을 지키지만, 조회에서 값을 조작하지도 않는데 한 번 더 감싸는 것은 의미가 없다고 봤다. `Projections.constructor`는 어노테이션이 없지만 생성자 인자가 틀려도 컴파일에서 잡지 못한다.
+- 그래서 application/dto의 Result record에 `@QueryProjection`을 붙여 그대로 반환한다. application이 QueryDSL 어노테이션(`querydsl-core`)에 의존하게 되어 팀 레이어 규칙("application은 JPA·QueryDSL에 의존하지 않는다")과 다르다. common이 이미 `querydsl-jpa`를 api로 내보내 의존 추가는 없다.
+- 조회 범위 판단(배송담당자는 담당 구간이 있는 배송만)도 Entity 메서드 대신 구간 DTO로 한다. 쓰는 곳이 없어진 `Delivery.hasRouteManagedBy`, `DeliveryRoute.isManagedBy`는 지웠다.
+
+**결론** — 조회는 프로젝션 DTO 직행, 명령은 JPA Entity. 확인: `./gradlew :delivery-service:test` 37개 통과(통합 테스트가 프로젝션 검색, 단건 조립, 논리 삭제·취소 구간 제외 집계를 실제 DB로 확인), `./gradlew build` 통과. 팀 규칙과 다른 점은 PR에 적는다.
+
+## 18. 값을 바꾸지 않는 변환 없애기: delivery 코드 규칙 (2026-10-15)
+
+**왜** — 코드를 읽어 보니 데이터를 옮기기만 하는 곳이 많아 가독성이 떨어졌다. D-01은 프로젝션 DTO(13필드)를 `DeliverySummaryResponse`로 그대로 복사했고, D-02는 Result 두 개를 래퍼로 묶었다가 `DeliveryResponse`와 `RouteResponse`로 다시 복사했다.
+
+**어떻게** — 변환을 하나씩 따졌다. Feign DTO → 배송 용어는 다른 서비스 이름을 막는 의미가 있다. Request → Command는 웹 검증을 application에 넘기지 않는 분리다. Result → Response(조회·명령 응답)는 1:1 복사라 얻는 것이 없었다. 팀 `controller.md`는 "Result를 그대로 응답하지 않는다"고 정해 이 복사가 생겼다. 응답 형식만 맞으면 된다고 보고, 공통 규칙을 바꾸는 대신 배송 담당자로서 delivery만의 코드 규칙으로 정했다.
+
+**결론** — `DeliveryResponse`, `DeliverySummaryResponse`, `DeliveryStatusResponse`를 지우고 컨트롤러가 Result를 그대로 응답한다. `DeliveryResult`는 `@JsonUnwrapped`로 배송 필드를 최상위로 펼쳐 기존 응답 모양을 복사 코드 없이 유지한다. 바꾸기 전후 D-01, D-02, D-03, I-10, I-11 응답 JSON 구조를 MockMvc로 저장해 비교했고 같았다. 규칙은 `delivery-service/AGENTS.md` "delivery 코드 규칙"에 있다.
+
+이어서 이름 기준을 정했다. Result 하나를 감싸는 Response는 낭비지만, 여러 Result를 합쳐야 응답이 되는 경우에는 그 조합을 `Response`라고 부른다. 배송과 구간을 합치던 `DeliveryResult`를 `DeliveryResponse`로 바꿨다. 합치는 일이 서비스 안에서 일어나서(D-02 구간으로 권한 확인, D-03~D-05 Entity) presentation으로 옮기면 서비스가 재료를 넘길 묶음이 하나 더 필요하므로 `application/dto`에 둔다.
 
 ## 남은 일
 

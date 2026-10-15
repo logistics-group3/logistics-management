@@ -5,7 +5,7 @@ import com.sparta.logistics.delivery.application.DeliveryQueryService;
 import com.sparta.logistics.delivery.application.DeliveryService;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
 import com.sparta.logistics.delivery.presentation.dto.CreateDeliveryRequest;
-import com.sparta.logistics.delivery.presentation.dto.DeliveryStatusResponse;
+import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -35,28 +35,28 @@ public class InternalDeliveryController {
 
     /** I-09 배송 생성. 새로 만들면 201, 같은 orderId 배송이 이미 있으면 200과 기존 값 */
     @PostMapping
-    public ResponseEntity<DeliveryStatusResponse> create(@Valid @RequestBody CreateDeliveryRequest request) {
+    public ResponseEntity<DeliveryStatusResult> create(@Valid @RequestBody CreateDeliveryRequest request) {
         CreateDeliveryResult result = deliveryCreationService.create(request.toCommand());
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)
-                .body(DeliveryStatusResponse.from(result.delivery()));
+                .body(result.delivery());
     }
 
     /** I-10 배송 조회 */
     @GetMapping("/{deliveryId}")
-    public DeliveryStatusResponse get(@PathVariable UUID deliveryId) {
-        return DeliveryStatusResponse.from(deliveryQueryService.getDeliveryStatus(deliveryId));
+    public DeliveryStatusResult get(@PathVariable UUID deliveryId) {
+        return deliveryQueryService.getDeliveryStatus(deliveryId);
     }
 
     /** I-11 배송 취소 */
     @PostMapping("/{deliveryId}/cancel")
-    public DeliveryStatusResponse cancel(@PathVariable UUID deliveryId) {
-        return DeliveryStatusResponse.from(deliveryService.cancel(deliveryId));
+    public DeliveryStatusResult cancel(@PathVariable UUID deliveryId) {
+        return deliveryService.cancel(deliveryId);
     }
 
     /** I-12 취소 원복(보상) */
     @PostMapping("/{deliveryId}/cancel-revert")
-    public DeliveryStatusResponse revertCancel(@PathVariable UUID deliveryId) {
-        return DeliveryStatusResponse.from(deliveryService.revertCancel(deliveryId));
+    public DeliveryStatusResult revertCancel(@PathVariable UUID deliveryId) {
+        return deliveryService.revertCancel(deliveryId);
     }
 
     /** I-13 배송 삭제(주문 삭제·생성 보상). 대상이 없어도 204 */

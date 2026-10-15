@@ -12,7 +12,7 @@ import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.delivery.DeliveryFixture;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
-import com.sparta.logistics.delivery.domain.ActiveRouteCount;
+import com.sparta.logistics.delivery.application.dto.ActiveRouteCount;
 import com.sparta.logistics.delivery.domain.Delivery;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
@@ -40,6 +40,8 @@ class DeliveryCreationServiceTest {
 
     @Mock
     private DeliveryRepository deliveryRepository;
+    @Mock
+    private DeliveryQueryRepository deliveryQueryRepository;
     @Mock
     private HubRouteReader hubRouteReader;
     @Mock
@@ -73,7 +75,7 @@ class DeliveryCreationServiceTest {
         given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_B, MANAGER_A));
         given(deliveryManagerReader.findIdsByHub(RECEIVER_HUB)).willReturn(List.of(MANAGER_C));
         // A는 담당 1건, B는 0건: 집하는 B. B가 1건이 되어 A와 동점이므로 허브 이동은 userId가 앞선 A
-        given(deliveryRepository.countActiveRoutes(anyCollection())).willReturn(List.of(new ActiveRouteCount(MANAGER_A, 1L)));
+        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of(new ActiveRouteCount(MANAGER_A, 1L)));
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.of("U02BCDEF3GH"));
 
         CreateDeliveryResult result = deliveryCreationService.create(command);
@@ -90,7 +92,7 @@ class DeliveryCreationServiceTest {
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
         givenNoExistingDelivery(command);
         given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
-        given(deliveryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
+        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.empty());
 
         deliveryCreationService.create(command);
@@ -124,7 +126,7 @@ class DeliveryCreationServiceTest {
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
         given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty(), Optional.of(winner));
         given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
-        given(deliveryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
+        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.empty());
         given(deliveryRepository.saveAndFlush(any())).willThrow(new DataIntegrityViolationException("uk_p_deliveries_order_id"));
 

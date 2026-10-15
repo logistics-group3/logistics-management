@@ -135,11 +135,6 @@ public class Delivery extends BaseEntity {
         return routes.get(routes.size() - 1);
     }
 
-    /** 이 사용자가 담당하는 구간이 하나라도 있는가. 배송담당자의 조회 범위(SA 8.4)다. */
-    public boolean hasRouteManagedBy(UUID userId) {
-        return routes.stream().anyMatch(route -> route.isManagedBy(userId));
-    }
-
     /** D-05 구간 상태 변경. 목표 상태는 MOVING, ARRIVED만 있다. 그 밖의 값은 허용되지 않는 전이다. */
     public void changeRouteStatus(UUID routeId, RouteStatus target, RouteInfo actual) {
         switch (target) {

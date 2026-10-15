@@ -9,9 +9,9 @@ import com.sparta.logistics.common.response.PageResponse;
 import com.sparta.logistics.delivery.application.DeliveryQueryService;
 import com.sparta.logistics.delivery.application.DeliveryService;
 import com.sparta.logistics.delivery.presentation.dto.ChangeRouteStatusRequest;
-import com.sparta.logistics.delivery.presentation.dto.DeliveryResponse;
+import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.presentation.dto.DeliverySearchRequest;
-import com.sparta.logistics.delivery.presentation.dto.DeliverySummaryResponse;
+import com.sparta.logistics.delivery.application.dto.DeliverySummaryResult;
 import com.sparta.logistics.delivery.presentation.dto.ReassignManagerRequest;
 import com.sparta.logistics.delivery.presentation.dto.UpdateDeliveryRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,23 +41,22 @@ public class DeliveryController {
 
     @Operation(summary = "D-01 배송 검색")
     @GetMapping
-    public ApiResponse<PageResponse<DeliverySummaryResponse>> search(
+    public ApiResponse<PageResponse<DeliverySummaryResult>> search(
             @CurrentUser UserContext user, @ModelAttribute DeliverySearchRequest request, Pageable pageable) {
-        return ApiResponse.ok(PageResponse.from(
-                deliveryQueryService.search(user, request.toCondition(), pageable), DeliverySummaryResponse::from));
+        return ApiResponse.ok(PageResponse.from(deliveryQueryService.search(user, request.toCondition(), pageable)));
     }
 
     @Operation(summary = "D-02 배송 단건 조회")
     @GetMapping("/{deliveryId}")
     public ApiResponse<DeliveryResponse> get(@CurrentUser UserContext user, @PathVariable UUID deliveryId) {
-        return ApiResponse.ok(DeliveryResponse.from(deliveryQueryService.getDelivery(user, deliveryId)));
+        return ApiResponse.ok(deliveryQueryService.getDelivery(user, deliveryId));
     }
 
     @Operation(summary = "D-03 배송지·수령인 수정")
     @PatchMapping("/{deliveryId}")
     public ApiResponse<DeliveryResponse> update(@CurrentUser UserContext user, @PathVariable UUID deliveryId,
                                                 @Valid @RequestBody UpdateDeliveryRequest request) {
-        return ApiResponse.ok(DeliveryResponse.from(deliveryService.updateRecipient(user, deliveryId, request.toCommand())));
+        return ApiResponse.ok(deliveryService.updateRecipient(user, deliveryId, request.toCommand()));
     }
 
     @Operation(summary = "D-04 구간 담당자 재배정")
@@ -65,8 +64,7 @@ public class DeliveryController {
     @PostMapping("/{deliveryId}/routes/{routeId}/manager")
     public ApiResponse<DeliveryResponse> reassignManager(@PathVariable UUID deliveryId, @PathVariable UUID routeId,
                                                          @Valid @RequestBody ReassignManagerRequest request) {
-        return ApiResponse.ok(DeliveryResponse.from(
-                deliveryService.reassignManager(deliveryId, routeId, request.managerId())));
+        return ApiResponse.ok(deliveryService.reassignManager(deliveryId, routeId, request.managerId()));
     }
 
     @Operation(summary = "D-05 구간 상태 변경")
@@ -74,7 +72,6 @@ public class DeliveryController {
     public ApiResponse<DeliveryResponse> changeRouteStatus(@CurrentUser UserContext user, @PathVariable UUID deliveryId,
                                                            @PathVariable UUID routeId,
                                                            @Valid @RequestBody ChangeRouteStatusRequest request) {
-        return ApiResponse.ok(DeliveryResponse.from(
-                deliveryService.changeRouteStatus(user, deliveryId, routeId, request.toCommand())));
+        return ApiResponse.ok(deliveryService.changeRouteStatus(user, deliveryId, routeId, request.toCommand()));
     }
 }

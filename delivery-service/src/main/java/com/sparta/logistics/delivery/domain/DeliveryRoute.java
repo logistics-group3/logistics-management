@@ -100,9 +100,6 @@ public class DeliveryRoute extends BaseEntity {
         return routeType.managingHubId(departureHubId, arrivalHubId);
     }
 
-    public boolean isManagedBy(UUID userId) {
-        return managerId.equals(userId);
-    }
 
     /** WAITING → MOVING */
     void start() {

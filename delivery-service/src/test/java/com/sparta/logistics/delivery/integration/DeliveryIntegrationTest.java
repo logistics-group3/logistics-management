@@ -17,14 +17,15 @@ import com.sparta.logistics.delivery.application.DeliveryQueryService;
 import com.sparta.logistics.delivery.application.DeliveryService;
 import com.sparta.logistics.delivery.application.HubRouteReader;
 import com.sparta.logistics.delivery.application.RecipientReader;
+import com.sparta.logistics.delivery.application.DeliveryQueryRepository;
+import com.sparta.logistics.delivery.application.dto.ActiveRouteCount;
 import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
-import com.sparta.logistics.delivery.application.dto.DeliveryResult;
+import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
+import com.sparta.logistics.delivery.application.dto.DeliverySearchCondition;
 import com.sparta.logistics.delivery.application.dto.DeliverySummaryResult;
-import com.sparta.logistics.delivery.domain.ActiveRouteCount;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
-import com.sparta.logistics.delivery.domain.DeliverySearchCondition;
 import com.sparta.logistics.delivery.domain.RouteInfo;
 import com.sparta.logistics.delivery.domain.RouteStatus;
 import java.math.BigDecimal;
@@ -73,6 +74,8 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
     private DeliveryQueryService deliveryQueryService;
     @Autowired
     private DeliveryRepository deliveryRepository;
+    @Autowired
+    private DeliveryQueryRepository deliveryQueryRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
@@ -144,7 +147,7 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
         UUID deletedOrder = UUID.randomUUID();
         create(deletedOrder);                        // 삭제 → 0건
 
-        DeliveryResult result = deliveryQueryService.getDelivery(master(), moving);
+        DeliveryResponse result = deliveryQueryService.getDelivery(master(), moving);
         UUID pickup = result.routes().get(0).deliveryRouteId();
         UserContext master = master();
         deliveryService.changeRouteStatus(master, moving, pickup, new ChangeRouteStatusCommand(RouteStatus.MOVING, null, null));
@@ -154,7 +157,7 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
         deliveryService.cancel(canceled);
         deliveryService.deleteByOrderId(deletedOrder);
 
-        assertThat(deliveryRepository.countActiveRoutes(List.of(busy, idle, UUID.randomUUID())))
+        assertThat(deliveryQueryRepository.countActiveRoutes(List.of(busy, idle, UUID.randomUUID())))
                 .containsExactlyInAnyOrder(new ActiveRouteCount(busy, 3L), new ActiveRouteCount(idle, 2L));
     }
 
@@ -222,4 +225,5 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
     private static UserContext master() {
         return new UserContext(UUID.randomUUID(), "master01", Role.MASTER, false);
     }
+
 }

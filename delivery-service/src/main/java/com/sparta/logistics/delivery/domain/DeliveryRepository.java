@@ -1,14 +1,15 @@
 package com.sparta.logistics.delivery.domain;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
-/** 배송 애그리거트 저장소. 구간은 배송을 통해서만 저장·조회한다. 구현은 infrastructure/persistence. */
+/**
+ * 배송 명령(생성·변경·삭제)용 저장소. Entity를 읽고 저장하는 일만 한다.
+ * 조회 화면용 데이터는 application/DeliveryQueryRepository가 DTO로 바로 읽는다(결정 로그 17).
+ */
 public interface DeliveryRepository {
+
+    Delivery save(Delivery delivery);
 
     /** 배송과 구간을 저장하고 바로 INSERT한다. order_id 유니크 위반을 호출한 곳에서 잡기 위해 쓴다. */
     Delivery saveAndFlush(Delivery delivery);
@@ -16,9 +17,4 @@ public interface DeliveryRepository {
     Optional<Delivery> findById(UUID id);
 
     Optional<Delivery> findByOrderId(UUID orderId);
-
-    Page<Delivery> search(DeliverySearchCondition condition, Pageable pageable);
-
-    /** 후보별 담당 건수(WAITING·MOVING 구간 수, 논리 삭제 제외). 담당 구간이 없는 후보는 결과에 없다. */
-    List<ActiveRouteCount> countActiveRoutes(Collection<UUID> managerIds);
 }
