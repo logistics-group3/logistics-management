@@ -25,12 +25,13 @@
 
 | API | 제공 서비스 | 용도 | 재시도 |
 |---|---|---|---|
-| I-01 `GET /internal/users/{userId}` | user | 업체 관리자 지정 시 사용자 확인 | GET이라 가능 |
-| I-02 `GET /internal/hubs/{hubId}` | hub | 소속 허브 확인 | GET이라 가능 |
+| I-01 `GET /internal/users/{userId}` | user | 업체 관리자 지정 시 사용자 확인. `UserClient` 구현 | GET이라 가능(`IdempotentRetryConfig`) |
+| I-02 `GET /internal/hubs/{hubId}` | hub | 소속 허브 확인. `HubClient` 구현, hub 쪽은 아직 미구현(hub 협업 로그 HUB-001) | GET이라 가능(`IdempotentRetryConfig`) |
 
 ## 4. 구현 현황
 
-- [ ] 업체·상품 Entity와 Flyway 마이그레이션
+- [x] 업체·상품 Entity와 Flyway 마이그레이션
+- [x] 업체·상품 검색(QueryDSL), user·hub FeignClient
 - [ ] C-01~C-05, P-01~P-05
 - [ ] I-07, I-08 내부 API
 
