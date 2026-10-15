@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface UserJpaRepository extends JpaRepository<User, UUID>, UserRepository {
+public interface UserJpaRepository extends JpaRepository<User, UUID>, UserRepository, UserQueryRepository {
 
     /**
      * Note: User에는 @SQLRestriction("deleted_at IS NULL")이 붙어 있어서 JPQL과 메서드 이름 쿼리는 탈퇴자를 보지 못한다.

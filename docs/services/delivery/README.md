@@ -16,24 +16,40 @@
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| D-01~D-05 | `/api/v1/deliveries/**` | 로그인, 구간 담당자, MASTER | 예정 |  |
-| I-09~I-13 | `/internal/deliveries/**` | order | 예정 | 배송 생성·삭제는 내부 API로만 제공(SA 6.2) |
+| D-01 | `GET /api/v1/deliveries` | 로그인. 배송담당자는 담당 구간이 있는 배송만 | 구현 | 정렬 `createdAt`, `status` |
+| D-02 | `GET /api/v1/deliveries/{deliveryId}` | 로그인. 배송담당자는 담당 구간이 있는 배송만(아니면 403) | 구현 |  |
+| D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 업체 배송 구간 담당자, MASTER | 구현 | 두 필드 모두 없으면 400 `VALIDATION_ERROR`(SA에 없는 규칙) |
+| D-04 | `POST /api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | MASTER | 구현 |  |
+| D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 그 구간 담당자, MASTER | 구현 | `status`에 `WAITING`·`CANCELED`를 보내면 409 `INVALID_STATUS_TRANSITION` |
+| I-09 | `POST /internal/deliveries` | order | 구현 | 새로 만들면 201, 같은 orderId면 200 + 기존 값. 응답에 `orderId`도 담는다(SA는 deliveryId, status) |
+| I-10 | `GET /internal/deliveries/{deliveryId}` | order | 구현 |  |
+| I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order | 구현 | 응답 `deliveryId, orderId, status`. 이미 취소면 200 |
+| I-12 | `POST /internal/deliveries/{deliveryId}/cancel-revert` | order | 구현 | 응답 `deliveryId, orderId, status`. 취소 상태가 아니면 no-op 200 |
+| I-13 | `DELETE /internal/deliveries/orders/{orderId}` | order | 구현 | 204. 대상이 없어도 204 |
+
+배송 생성·삭제는 내부 API로만 제공한다(SA 6.2). 요청·응답 상세는 [`delivery-api.md`](../../../delivery-service/docs/domain/delivery-api.md).
 
 ## 3. 호출하는 다른 서비스 API
 
 | API | 제공 서비스 | 용도 | 재시도 |
 |---|---|---|---|
-| I-01 `GET /internal/users/{userId}` | user | 재배정 대상 확인 | GET이라 가능 |
-| I-03 `GET /internal/hub-routes` | hub | 허브 이동 구간 정보 | GET이라 가능 |
-| I-14 `GET /internal/users/delivery-managers?hubId=` | user | 담당자 자동 배정 후보 | GET이라 가능 |
+| I-01 `GET /internal/users/{userId}` | user | I-09 수령인 Slack ID(404면 NULL로 진행), D-04 재배정 대상 확인 | 가능(`IdempotentRetryConfig`) |
+| I-03 `GET /internal/hub-routes?departureHubId=&arrivalHubId=` | hub | 허브 이동 구간 예상 거리·시간. 같은 허브면 부르지 않는다 | 가능(`IdempotentRetryConfig`) |
+| I-14 `GET /internal/users/delivery-managers?hubId=` | user | 담당자 자동 배정 후보. 구간 담당 허브마다 1번 | 가능(`IdempotentRetryConfig`) |
+
+I-03, I-14는 2026-10-15 기준 제공 서비스에 아직 없다. delivery는 SA 6.3 계약대로 Feign 클라이언트를 만들어 두었다.
 
 ## 4. 구현 현황
 
-- [ ] 배송·구간 Entity와 Flyway 마이그레이션
-- [ ] I-09 배송 생성과 담당자 자동 배정
-- [ ] D-01~D-05, I-10~I-13
+- [x] 배송·구간 Entity와 Flyway 마이그레이션(V1, 2026-10-15)
+- [x] 상태 전이(구간 상태 → 배송 상태), 취소·원복, 재배정 규칙을 Entity 메서드로(2026-10-15)
+- [x] I-09 배송 생성과 담당자 자동 배정, orderId 멱등(동시 요청 포함)
+- [x] D-01~D-05, I-10~I-13
+- [ ] Gateway 경유 호출 확인(user I-14, hub I-03 구현 후)
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
+- 조회(D-01, D-02, I-10, 담당 건수)는 QueryDSL `@QueryProjection`으로 DTO를 바로 읽고, 명령은 JPA(`findById`, `save`)로 Entity를 다룬다(2026-10-15, 계약 변경 없음). 이유는 `delivery-service/docs/domain/delivery-decision-log.md` 17
+- 응답은 Result 하나면 그대로, 여러 Result를 합칠 때만 `Response`(D-02~D-05 `DeliveryResponse`)로 응답한다. 외부·내부 API JSON 구조는 바뀌지 않았다(2026-10-15 MockMvc 비교). 이유는 결정 로그 18
 
 ## 5. 협업 로그
 

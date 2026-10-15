@@ -34,6 +34,7 @@
 | 에이전트 공통 규칙 | 루트 `AGENTS.md`, `docs/agents/` | 팀 규칙이 바뀔 때 |
 | 레이어별 코드 규칙 | `docs/agents/rules/` | 코드 규칙이 바뀔 때 |
 | 모듈 작업 지침 | `{module}/AGENTS.md` | 모듈 규칙이 바뀔 때 |
+| delivery 작업 규칙·태스크 기록 | `delivery-service/docs/` | 태스크를 시작할 때, 커밋할 때 |
 | 공용 스킬 | `.agents/skills/` | PR 리뷰에서 추가·수정·삭제를 판단한다 |
 | 학습 노트 | `docs/learning/<이름>/` | 각자 |
 | 브랜치 작업 인계 | `docs/progress/<브랜치명의 /를 -로 바꾼 이름>.md` | 작업을 시작·전환·종료할 때(`handoff` 스킬) |
