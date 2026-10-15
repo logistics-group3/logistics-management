@@ -6,7 +6,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 담당자 | 미정 |
+| 담당자 | 권민혁 |
 | 포트 | 8081 |
 | 스키마·DB 계정 | `user_schema` / `user_app` |
 | 책임 | 회원가입, 로그인(JWT 발급), 사용자 관리, 배송담당자 지정(소속 허브 포함) |
@@ -18,7 +18,9 @@
 |---|---|---|---|---|
 | U-01 | `POST /api/v1/auth/signup` | Public | 구현 |  |
 | U-02 | `POST /api/v1/auth/login` | Public | 구현 | JWT HS256 60분, claim `sub`(userId), `username`, `role` |
-| U-03~U-08 | `/api/v1/users/**` | 로그인·본인·MASTER | 예정 |  |
+| U-03 | `GET /api/v1/users/me` | 로그인 | 구현 |  |
+| U-04 | `GET /api/v1/users/{userId}` | 본인, MASTER | 구현 | 권한 검사를 조회보다 먼저 해 USER는 없는 ID에도 403(존재 여부 비노출) |
+| U-05~U-08 | `/api/v1/users/**` | MASTER | 예정 |  |
 | I-01 | `GET /internal/users/{userId}` | gateway, company, delivery | 구현 | DTO 그대로 반환(ADR 0010). 탈퇴 시 404 `USER_NOT_FOUND` |
 | I-14 | `GET /internal/users/delivery-managers?hubId=` | delivery | 예정 |  |
 | 샘플 | `GET /api/v1/users/sample/me`, `/admin` | 로그인, MASTER | 구현 | 공통 인프라 검증용. 업무 API가 대체하면 정리한다 |
@@ -33,7 +35,8 @@
 
 - [x] U-01 회원가입, U-02 로그인, I-01 내부 조회 (통합 테스트, E2E)
 - [x] 기동 시 MASTER 계정 자동 생성(`MASTER_USERNAME`/`MASTER_PASSWORD`)
-- [ ] U-03~U-08 사용자 관리
+- [x] U-03 내 정보 조회, U-04 단건 조회 (단위·WebMvc·통합 테스트, Gateway 경유 호출)
+- [ ] U-05~U-08 사용자 관리
 - [ ] I-14 허브별 배송담당자 목록
 
 ## 5. 협업 로그
