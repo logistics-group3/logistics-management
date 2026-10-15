@@ -49,7 +49,7 @@
 | `ORDER_CREATION_IN_PROGRESS` | 409 | 같은 키의 주문 생성 처리 중, 새 실행 없음 | 구현 |
 | `ORDER_CREATION_ABORTED` | 409 | 같은 키의 생성이 실패로 종료됨, 재실행 없음 | 구현 |
 | `ORDER_CREATION_RECOVERY_REQUIRED` | 409 | 생성 결과 확인 필요 또는 생성 기록 논리 삭제, 재실행 없음 | 구현 |
-| `ORDER_NOT_DELETABLE` | 409 | 취소 또는 배송 완료 전 주문 삭제 | 예정 |
+| `ORDER_NOT_DELETABLE` | 409 | 취소·배송 완료 전 삭제, 미해결 취소 또는 삭제 진행 기록 불일치 | 구현 |
 
 ## delivery-service
 | 코드 | HTTP | 의미 | 상태 |

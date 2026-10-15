@@ -4,7 +4,8 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
-| 45 | [주문 생성 Idempotency-Key와 최초 응답 재사용](step-45-order-idempotency-key.md) | 미커밋 |
+| 46 | [주문 삭제와 기본 API 마무리](step-46-order-deletion.md) | feat(order): 주문 삭제와 재요청 복구 구현 |
+| 45 | [주문 생성 Idempotency-Key와 최초 응답 재사용](step-45-order-idempotency-key.md) | ed9f8d0 feat(order): 주문 생성 멱등키와 최초 응답 재사용 구현 |
 | 44 | [주문 생성 진행 기록과 커밋 재확인](step-44-order-creation-progress.md) | 39f704a feat(order): 생성 진행 기록과 커밋 결과 재확인 구현 |
 | 43 | [주문 취소 API와 진행 기록](step-43-order-cancellation.md) | 2e5fcc1 feat(order): 주문 취소와 실패 복구 기록 구현 |
 | 42 | [주문 요청사항 수정 API](step-42-order-request-note-update.md) | 6ac9b8a feat(order): 주문 요청사항 수정 API 구현 |

@@ -17,4 +17,9 @@ public interface OrderJpaRepository extends JpaRepository<Order, UUID>, OrderRep
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from Order o where o.id = :id")
     Optional<Order> findByIdForUpdate(@Param("id") UUID id);
+
+    // Note: 삭제 커밋 재확인은 논리 삭제된 주문도 잠가 읽어야 한다. 일반 주문 조회에는 사용하지 않는다.
+    @Override
+    @Query(value = "SELECT * FROM {h-schema}p_orders WHERE order_id = :id FOR UPDATE", nativeQuery = true)
+    Optional<Order> findByIdIncludingDeletedForUpdate(@Param("id") UUID id);
 }

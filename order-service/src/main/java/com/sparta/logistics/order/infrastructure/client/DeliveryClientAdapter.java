@@ -9,6 +9,8 @@ import com.sparta.logistics.order.infrastructure.client.dto.DeliveryResponse;
 import com.sparta.logistics.order.infrastructure.client.dto.DeliveryStatusResponse;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -31,7 +33,10 @@ public class DeliveryClientAdapter implements DeliveryGateway {
 
     @Override
     public void deleteByOrderId(UUID orderId) {
-        deleteClient.deleteByOrderId(orderId);
+        ResponseEntity<Void> response = deleteClient.deleteByOrderId(orderId);
+        if (response == null || response.getStatusCode() != HttpStatus.NO_CONTENT) {
+            throw new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE, "배송 삭제 완료 응답을 확인할 수 없습니다.");
+        }
     }
 
     @Override

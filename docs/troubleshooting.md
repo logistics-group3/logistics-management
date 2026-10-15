@@ -143,3 +143,19 @@
 - 원인: Mockito getArgument의 제네릭 반환 타입과 두 from 오버로드가 겹쳐 Java가 Order와 OrderCreationSnapshot 중 인자 타입을 확정하지 못했다.
 - 해결: 테스트에서 `invocation.getArgument(0, Order.class)`로 실제 Writer 인자 타입을 명시했다. 제품 코드의 DTO 변환 계약은 유지했다.
 - 확인: 주문 347개와 전체 build 통과. 타입을 명시한 기존 생성 서비스 테스트도 포함한다.
+
+### TS-015 삭제 스모크의 장애 주입 DDL이 요청과 순환 대기를 만듦
+
+- 서비스·작성: order Gateway 격리 검증 / Junhyun An 작업 / 2026-10-15
+- 문제: 정상 삭제는 통과했으나 로컬 커밋 실패 시나리오에서 드라이버가 20초 후 TimeoutError를 냈다. I-13 HTTP 대역 내부에서 p_order_deletions에 CHECK를 추가하도록 작성했다.
+- 원인: O-06은 주문·진행 기록을 읽은 트랜잭션에서 I-13 응답을 기다린다. 대역의 ALTER TABLE은 그 트랜잭션의 테이블 잠금이 끝나기를 기다려 서로 진행하지 못했다. 제품의 재요청 로직이 아니라 장애 주입 위치의 문제였다.
+- 해결: CHECK를 DELETE 요청 전에 설치했다. 대역은 원격 삭제 응답만 처리하고, 로컬 완료 기록 저장에서 CHECK가 실패하게 했다. 격리 서버의 Feign 타임아웃도 명시했다.
+- 확인: Gateway에서 첫 요청 500·재요청 200, 재요청의 I-10 생략·I-13 반복과 로컬 삭제 완료를 확인했다. 초기 정리에서 대기 중이던 자체 JVM은 종료를 재확인했고 최종 실행의 임시 JVM·DB도 정리했다.
+
+### TS-016 I-13의 void Feign 반환이 202도 삭제 완료로 받아들임
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: I-13 대역이 200·202를 반환하는 회귀 테스트에서 O-06이 503 대신 200으로 완료돼 두 테스트가 실패했다.
+- 원인: 기존 DeliveryDeleteClient의 void 반환은 정상 2xx 처리 후 종료해 명세의 204 여부를 검사하지 않았다. 특히 202는 접수 상태이므로 삭제 완료를 뜻하지 않는다.
+- 해결: infrastructure에서 ResponseEntity<Void>를 받고 Adapter에서 204를 확인한다. 다른 2xx는 SERVICE_UNAVAILABLE로 올려 로컬 삭제를 롤백하고 진행 기록을 보존한다. application의 DeliveryGateway와 생성 보상 재시도 횟수는 유지했다.
+- 확인: 두 회귀 테스트를 포함한 전체 build 성공. 주문 421개·전체 XML 519개, 실패·오류·skip 0이다.

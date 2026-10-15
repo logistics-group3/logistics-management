@@ -13,5 +13,7 @@ public interface OrderRepository {
 
     Optional<Order> findByIdForUpdate(UUID id);
 
+    Optional<Order> findByIdIncludingDeletedForUpdate(UUID id);
+
     void flush();
 }

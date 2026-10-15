@@ -125,6 +125,13 @@ public class Order extends BaseEntity {
         this.status = OrderStatus.CANCELED;
     }
 
+    /** O-06. 배송 완료는 I-10으로 확인하며 취소된 주문은 배송 재조회 없이 삭제할 수 있다. */
+    public void validateDeletable(boolean deliveryCompleted) {
+        if (status != OrderStatus.CANCELED && !deliveryCompleted) {
+            throw new BusinessException(OrderErrorCode.ORDER_NOT_DELETABLE);
+        }
+    }
+
     private static long calculateTotalPrice(long unitPrice, int quantity) {
         try {
             // Note: 원 단위 BIGINT 계약(SA 5.5)을 지킨다. 일반 곱셈은 오버플로 때 예외 없이 잘린 금액을 만들 수 있다.

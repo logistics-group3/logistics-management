@@ -10,7 +10,7 @@
 | 포트 | 8084 |
 | 스키마·DB 계정 | `order_schema` / `order_app` |
 | 책임 | 주문 생성(Saga 오케스트레이션)·조회·요청사항 수정·취소·삭제, Slack 알림 |
-| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations` (SA 5.5·주문 ADR 0006~0008) |
+| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations`, `p_order_deletions` (SA 5.5·주문 ADR 0006~0009) |
 
 ## 2. 제공 API (계약)
 
@@ -21,7 +21,7 @@
 | O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
 | O-04 | `PATCH /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | requestNote 필수·공백 불가·최대 500자. 취소된 주문은 409 INVALID_STATUS_TRANSITION |
 | O-05 | `POST /api/v1/orders/{orderId}/cancel` | 주문자 본인, MASTER | 구현 | 배송 취소 → 주문 커밋, 확인된 롤백만 원복. 진행 기록·중복 실행 차단·미확정 결과 복구 대기 |
-| O-06 | `DELETE /api/v1/orders/{orderId}` | MASTER | 예정 | 취소 또는 배송 완료 주문만 삭제(SA 6.7) |
+| O-06 | `DELETE /api/v1/orders/{orderId}` | MASTER | 구현 | 취소 또는 배송 완료만 논리 삭제. 삭제 허가 근거·진행 기록·커밋 재확인, 미해결 취소와 충돌 차단 |
 
 금액은 정수 원 단위의 `long`·`BIGINT`이며 SA 5.5·6.7과 일치한다. BigDecimal 전환은 사용자 요청으로 되돌렸고 현재 기준은 [order ADR 0005](decisions/0005-order-money-integer-krw.md)다.
 
@@ -32,10 +32,10 @@
 | I-07 `GET /internal/companies/{companyId}` | company | 요청·공급 업체 확인 | 통신 실패 시 총 3회 시도 (`order-company`) |
 | I-08 `GET /internal/products/{productId}` | company | 상품·가격 확인 | 통신 실패 시 총 3회 시도 (`order-company`) |
 | I-09 `POST /internal/deliveries` | delivery | 배송 생성(orderId 멱등) | 통신 실패 시 같은 orderId로 총 3회 시도 (`order-delivery-create`) |
-| I-10 `GET /internal/deliveries/{deliveryId}` | delivery | 배송 조회, 향후 삭제·복구 판단 | 아직 미연결. GET 통신 재시도 대상 |
+| I-10 `GET /internal/deliveries/{deliveryId}` | delivery | 새 ORDERED 삭제의 배송 완료 확인 | 응답 없는 통신 실패에 최대 3회 (`order-delivery-read`), 5xx는 1회 |
 | I-11 `POST /internal/deliveries/{deliveryId}/cancel` | delivery | 집하 시작 여부를 판단하고 배송·구간 취소 | 1회 (`order-delivery-cancel`), 응답 status=CANCELED 확인 |
 | I-12 `POST /internal/deliveries/{deliveryId}/cancel-revert` | delivery | 확인된 로컬 롤백의 배송 원복 | 응답 없는 통신 실패에 최대 3회 (`order-delivery-cancel-revert`), 5xx 응답은 재시도 없음 |
-| I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 생성 실패 보상. 주문 저장 예외는 미저장 확인 후에만 삭제 | OrderService가 총 3회 시도. `order-delivery-delete` Feign은 재시도하지 않는다 |
+| I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 생성 실패 보상·O-06 배송 삭제 | 생성 보상은 OrderService가 총 3회. O-06은 요청당 1회, 실패 후 같은 DELETE로 재개. Feign 자체 재시도 없음 |
 
 `CompanyClientAdapter`와 `DeliveryClientAdapter`가 application 인터페이스를 실제 Feign에 연결한다. 주소는 Eureka 서비스 이름으로 찾고 URL을 하드코딩하지 않는다. 5xx 응답은 재시도하지 않고 공통 디코더가 `SERVICE_UNAVAILABLE`로 바꾼다.
 
@@ -49,7 +49,7 @@
 - [x] O-01 실제 Feign 어댑터·Spring 빈 조립·Controller 연결
 - [x] O-01 생성 진행 기록·V3, 저장 예외 후 같은 DB의 진행 기록 잠금·커밋 결과 재확인
 - [x] O-01 필수 Idempotency-Key·V4: 사용자별 키 UNIQUE·요청 지문·최초 응답 JSONB, 완료 재사용·처리 중/실패/복구 대기 409
-- [x] 멱등성 테스트 55개 추가. 현재 주문 347개·전체 XML 445개, 실패·오류·skip 0. 전체 build 통과
+- [x] 멱등성 단계 테스트 55개 추가. 당시 주문 347개·전체 XML 445개, 실패·오류·skip 0. 전체 build 통과
 - [x] 실제 PostgreSQL 동시 INSERT 경쟁·유니크 실패 후 재조회, 다른 사용자·대소문자 구분, 삭제 이력 차단, V3 기존 행 유지 검증
 - [x] 격리 Gateway·JWT·Feign·PostgreSQL 재요청 검증: 201·400·401·409·500·503, 헤더 전달·원래 응답 보존·배송 1회 확인
 - [x] 로컬 주문 서비스만 교체·Flyway V4·키 UNIQUE·JSONB·health UP·Gateway 필수 헤더 문서 확인. 기존 3개 테이블·나머지 8개 컨테이너·.env·Webhook 유지
@@ -61,7 +61,12 @@
 - [x] O-02 검색·O-03 단건 조회, 논리 삭제 제외·주문자 범위·날짜·페이지·정렬 검증
 - [x] O-04 요청사항 수정: 본인·MASTER 권한, 취소 상태 거부, 잠금 조회·변경 감지·Audit 응답
 - [x] O-05 취소: 진행 기록·부분 유니크·권한·상태·Feign·로컬 커밋 재확인·원복
-- [ ] O-06 삭제
+- [x] O-06 MASTER 삭제·I-10 연결·V5·삭제 허가 근거 보존·I-13 실패 뒤 재요청·커밋 재확인
+- [x] 삭제 테스트 74개 추가: 도메인 7개·application 10개·MVC 8개·PostgreSQL 21개·HTTP/Feign 28개. 주문 421개·전체 XML 519개, 실패·오류·skip 0, 전체 build 통과
+- [x] 실제 DB flush·완료 기록·커밋 실패, 커밋 뒤 반환 예외, 다른 연결에서 시작 기록 확인, 동시 삭제 잠금과 새 취소 차단 검증
+- [x] I-13의 204 이외 2xx를 완료로 오인하지 않도록 검증. 기존 생성 보상·취소·멱등키 회귀 테스트 통과
+- [x] 격리 Gateway·JWT 생성→취소→삭제와 배송 완료 삭제, 원격 삭제 후 로컬 롤백·같은 DELETE 재개·기존 생성 응답 재사용 확인
+- [x] 로컬 주문 최종 이미지·V5·같은 스키마 FK·health UP·Gateway O-06 문서·미인증 DELETE 401 확인. 다른 8개 컨테이너·기존 데이터·.env·Webhook 유지
 - [x] 커밋 후 비동기 Slack 알림, 타임아웃·HTTP 오류·큐 포화 시 주문 201 유지
 - [x] Slack 구현 단계의 주문 테스트 108개 통과. 커밋 전·실패 시 알림 미실행, 비동기·헤더 격리·비밀값 로그 제외 확인
 - [x] 조회 API 테스트 44개 추가. 조회 단계 주문 152개·전체 테스트 XML 250개, 실패·오류·skip 0
@@ -103,6 +108,10 @@ O-01은 배송 생성 전에 p_order_creations를 커밋하고 주문과 COMPLET
 O-01 호출자는 `Idempotency-Key`를 반드시 보낸다. 새 주문에 새 키를 만들고 응답 유실·네트워크 재시도에는 **같은 키와 같은 본문**을 사용한다. UUID를 권장하며 1~128자 영문·숫자·`.`·`_`·`:`·`-`만 허용한다. 사용자 ID별로 구분하며 대소문자를 구별한다.
 같은 키·본문의 완료 요청은 최초 생성 응답으로 201을 반환한다. 요청사항 수정·취소 이후에도 생성 응답은 그대로이며 현재 상태는 O-03에서 조회한다. 다른 본문·처리 중·실패 종료·복구 대기는 각 전용 코드로 409다. 키는 자동 만료하지 않는다([ADR 0008](decisions/0008-order-idempotency-key.md)).
 전체 원본 요청 저장·자동 재실행·복구 API는 아직 없다. 생성 기록·커밋 재확인은 [스텝 44](../../learning/junhyun/steps/step-44-order-creation-progress.md), 멱등키 구현 이유는 [스텝 45](../../learning/junhyun/steps/step-45-order-idempotency-key.md), 타 서비스의 호출·재시도 규칙은 [연동 실패 계약](integration-contract.md)에 정리했다.
+
+O-06은 MASTER가 본문 없이 호출하며 성공은 200·data=null이다. CANCELED 주문은 I-10 없이, ORDERED 주문은 I-10의 주문·배송 ID와 DELIVERED를 확인한 뒤 삭제한다. 미해결 취소가 있으면 409 ORDER_NOT_DELETABLE이다.
+삭제 가능 근거를 먼저 커밋하고 주문 잠금 안에서 논리 삭제·I-13·완료 기록을 처리한다. 배송만 삭제된 뒤 DB가 롤백돼도 같은 DELETE 재요청은 저장된 근거로 이어가며, 삭제된 배송을 다시 GET하지 않는다. 이미 삭제된 주문의 새 요청은 404다.
+삭제 시작 뒤 새 취소는 409 INVALID_STATUS_TRANSITION으로 막는다. 삭제는 기존 생성 멱등키·최초 응답을 지우지 않고 Slack도 발행하지 않는다. 근거는 [ADR 0009](decisions/0009-order-deletion-progress.md), 재현과 남은 범위는 [스텝 46](../../learning/junhyun/steps/step-46-order-deletion.md)에 있다.
 
 ## 5. 협업 로그
 

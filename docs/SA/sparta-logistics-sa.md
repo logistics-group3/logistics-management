@@ -19,6 +19,7 @@
 | v2.0 주문 보강 | 2026-10-15 | 주문 담당자 승인으로 취소 진행 기록·중복 실행 보호·미확정 결과 수동 복구를 추가했다. 공개 주문 상태는 유지한다([order ADR 0006](../services/order/decisions/0006-order-cancellation-progress.md)). |
 | v2.0 생성 보강 | 2026-10-15 | 주문 담당자의 O-01 보강 요청으로 생성 진행 기록·커밋 재확인·미확정 결과 보존을 추가했다([order ADR 0007](../services/order/decisions/0007-order-creation-progress.md)). |
 | v2.0 생성 멱등성 | 2026-10-15 | 주문 담당자의 요청으로 O-01 필수 Idempotency-Key·사용자별 키 UNIQUE·요청 지문·최초 응답 재사용을 추가했다([order ADR 0008](../services/order/decisions/0008-order-idempotency-key.md)). |
+| v2.0 삭제 보강 | 2026-10-15 | 주문 담당자 승인으로 O-06 삭제 조건·진행 기록을 보존한다. 배송 삭제 후 로컬 롤백에도 같은 DELETE로 진행한다([order ADR 0009](../services/order/decisions/0009-order-deletion-progress.md)). |
 
 ---
 
@@ -535,6 +536,7 @@ erDiagram
 ```mermaid
 erDiagram
     p_orders ||--o{ p_order_cancellations : "취소 시도"
+    p_orders ||--o| p_order_deletions : "삭제 진행"
     p_orders {
         uuid order_id PK "서비스에서 선발급"
         uuid orderer_id "논리 참조: 주문자"
@@ -566,6 +568,14 @@ erDiagram
         uuid delivery_id "논리 참조: 배송"
         varchar status "(20) 취소 진행 상태"
         varchar failure_reason "(30) 복구 필요 사유"
+    }
+    p_order_deletions {
+        uuid order_deletion_id PK "삭제 진행 ID"
+        uuid order_id FK,UK "같은 서비스의 주문"
+        uuid delivery_id "논리 참조: 배송"
+        varchar eligibility "(20) 취소 또는 배송 완료 확인"
+        varchar status "(20) 삭제 진행 상태"
+        varchar failure_reason "(30) 실패·결과 확인 사유"
     }
 ```
 
@@ -788,6 +798,21 @@ erDiagram
 - 생성 전 기록이므로 p_orders에도 물리 FK를 두지 않는다. 기존 주문의 생성 이력을 역으로 채우지 않으며 새 생성 요청부터 기록한다.
 - `(orderer_id, idempotency_key)` UNIQUE는 논리 삭제 이력도 포함한다. 키를 자동 만료하지 않으며 기존 키 없는 행은 유지한다(V4).
 - 전체 실패 요청 본문 저장·자동 재실행은 별도 범위다. 성공 응답만 주문·COMPLETED와 같은 트랜잭션으로 보관한다.
+
+**`p_order_deletions` — 삭제 진행 기록** (2026-10-15 주문 담당자 승인, order ADR 0009)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `order_deletion_id` | UUID | PK | 삭제 진행 식별자 |
+| `status` | VARCHAR(20) | NOT NULL, CHECK | `PROCESSING`, `COMPLETED`, `RECOVERY_REQUIRED` |
+| `eligibility` | VARCHAR(20) | NOT NULL, CHECK | `ORDER_CANCELED`, `DELIVERY_DELIVERED`. 삭제 전에 확인한 허가 근거 |
+| `failure_reason` | VARCHAR(30) | NULL, CHECK | `DELIVERY_DELETE_FAILED`, `ORDER_WRITE_FAILED`, `ORDER_COMMIT_UNKNOWN`. RECOVERY_REQUIRED에서만 필수 |
+| `order_id` | UUID | NOT NULL, UNIQUE, FK | 같은 order_schema의 p_orders 참조. 삭제 이력 포함 UNIQUE |
+| `delivery_id` | UUID | NOT NULL, 논리 참조 | 삭제할 배송 ID |
+| Audit 컬럼 6개 | | | 공통 |
+
+- 조회 인덱스: 활성 행의 `delivery_id`, 미해결 활성 행의 `created_at`. 자동 만료하지 않는다(V5).
+- 기록이 있으면 같은 삭제 재요청은 최초 허가 근거로 진행한다. 새 취소를 차단하며 생성 멱등키·최초 응답은 유지한다.
 
 ### 5.6 delivery_schema
 
@@ -1960,8 +1985,12 @@ Authorization: Bearer {accessToken}
 **Response `200 OK`**: `data: null`
 
 - 주문 논리 삭제와 배송·구간 논리 삭제(I-13)를 함께 수행한다. I-13 호출이 실패하면 주문 삭제도 롤백한다.
+- 최초 ORDERED 삭제는 I-10의 deliveryId·orderId 일치와 DELIVERED를 확인한다. CANCELED 주문과 이미 삭제를 시작한 주문은 I-10을 재조회하지 않는다.
+- 삭제 가능 근거를 p_order_deletions에 먼저 커밋한다. 이후 같은 주문 잠금 아래 논리 삭제·I-13·완료 기록을 처리한다. 미해결 취소가 있으면 삭제를 거부하고 삭제 시작 후 새 취소도 막는다.
+- I-13 성공 뒤 주문 DB가 롤백되면 삭제 기록으로 재요청을 이어간다. 새 I-10의 404로 이전 삭제 허가를 잃지 않는다. I-13은 요청당 1회이며 같은 orderId의 반복 삭제는 제공 계약대로 안전해야 한다.
+- 커밋 예외 뒤 주문 삭제·COMPLETED가 확인되면 200을 유지한다. 이미 삭제된 주문의 별도 새 요청은 404다. 삭제는 Slack을 발행하지 않고 생성의 최초 응답도 지우지 않는다.
 
-**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND` · 409 `ORDER_NOT_DELETABLE` · 503 `SERVICE_UNAVAILABLE`
+**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND`·하위 조회 4xx · 409 `ORDER_NOT_DELETABLE` (조건 미충족·미해결 취소·기록 불일치) · 500 `INTERNAL_SERVER_ERROR` (진행 기록·로컬 저장 실패) · 503 `SERVICE_UNAVAILABLE`
 
 ### 6.8 API 상세 — 배송 (delivery-service)
 
@@ -2363,9 +2392,12 @@ UPDATE hub_schema.p_hub_stocks
 | 작업 | 처리 | 실패 시 |
 | --- | --- | --- |
 | 업체 삭제 (C-05) | 업체 + 소속 상품 논리 삭제를 한 로컬 트랜잭션으로 처리 | 전체 롤백 |
-| 주문 삭제 (O-06) | 주문 논리 삭제 → 배송·경로 논리 삭제(I-13)를 한 트랜잭션 메서드 안에서 호출 | I-13 실패 시 주문 삭제 롤백. 커밋 실패 시 I-13은 멱등이므로 재시도로 수렴 |
+| 주문 삭제 (O-06) | 삭제 허가 근거 별도 커밋 → 주문 잠금 안에서 논리 삭제·I-13·완료 기록 처리 | 실패 시 로컬 롤백·기록 보존. 같은 DELETE는 저장된 허가로 I-13 반복·로컬 삭제를 완료. 커밋 확인 시 200 유지 |
 | 배송 생성 (I-09) | 배송, 구간 기록, 구간별 담당자 배정을 한 로컬 트랜잭션으로 저장 | 전체 롤백 → order-service가 보상 수행 |
 | 조회 | `@SQLRestriction("deleted_at IS NULL")`로 삭제 데이터 자동 제외 | - |
+
+O-06은 기존 SA 경계를 유지하므로 I-13 동안 주문 잠금·DB 연결을 사용한다. 최초 I-10 조회는 트랜잭션 밖이다. 잠금 안에서 재시도를 중첩하지 않고 I-13을 요청당 1회 호출한다.
+생성·취소의 미확정 작업을 새 시도로 다시 실행하는 것과, 삭제의 같은 종료 동작을 계속하는 것을 구분한다. 운영 복구·자동 스케줄러는 별도 범위다.
 
 ### 7.6 Saga 방식 결정 (멘토 피드백)
 
@@ -2716,6 +2748,26 @@ Table order_schema.p_order_cancellations {
 }
 Ref: order_schema.p_order_cancellations.order_id > order_schema.p_orders.order_id
 
+Table order_schema.p_order_deletions {
+  order_deletion_id uuid [pk]
+  status varchar(20) [not null, note: 'PROCESSING, COMPLETED, RECOVERY_REQUIRED']
+  eligibility varchar(20) [not null, note: 'ORDER_CANCELED, DELIVERY_DELIVERED']
+  failure_reason varchar(30) [note: 'RECOVERY_REQUIRED에서만 필수. DELIVERY_DELETE_FAILED, ORDER_WRITE_FAILED, ORDER_COMMIT_UNKNOWN']
+  order_id uuid [not null, unique]
+  delivery_id uuid [not null, note: '배송 논리 참조, 물리 FK 없음']
+  created_at timestamp [not null]
+  created_by varchar(100) [not null]
+  updated_at timestamp [not null]
+  updated_by varchar(100) [not null]
+  deleted_at timestamp
+  deleted_by varchar(100)
+  indexes {
+    delivery_id
+  }
+  Note: '같은 주문 잠금 아래 변경. 미해결 created_at 부분 인덱스·상태 CHECK는 V5 SQL 참고'
+}
+Ref: order_schema.p_orders.order_id - order_schema.p_order_deletions.order_id
+
 // ========== delivery-service ==========
 Table delivery_schema.p_deliveries {
   delivery_id uuid [pk]
@@ -2791,6 +2843,7 @@ TableGroup order_service {
   order_schema.p_orders
   order_schema.p_order_cancellations
   order_schema.p_order_creations
+  order_schema.p_order_deletions
 }
 
 TableGroup delivery_service {

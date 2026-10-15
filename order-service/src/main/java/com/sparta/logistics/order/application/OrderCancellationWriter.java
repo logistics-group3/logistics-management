@@ -12,6 +12,7 @@ import com.sparta.logistics.order.domain.OrderCancellation;
 import com.sparta.logistics.order.domain.OrderCancellationRepository;
 import com.sparta.logistics.order.domain.OrderCancellationStatus;
 import com.sparta.logistics.order.domain.OrderErrorCode;
+import com.sparta.logistics.order.domain.OrderDeletionRepository;
 import com.sparta.logistics.order.domain.OrderRepository;
 import com.sparta.logistics.order.domain.OrderStatus;
 import java.util.Set;
@@ -28,6 +29,7 @@ public class OrderCancellationWriter {
 
     private final OrderRepository orderRepository;
     private final OrderCancellationRepository cancellationRepository;
+    private final OrderDeletionRepository deletionRepository;
 
     /** O-05. 권한·상태 확인과 실행권 획득을 커밋한 뒤 배송을 호출할 수 있게 한다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -35,6 +37,9 @@ public class OrderCancellationWriter {
         Order order = findOrder(orderId);
         user.validateSelfOrMaster(order.getOrdererId());
         order.validateCancelable();
+        if (deletionRepository.findByOrderIdIncludingDeleted(orderId).isPresent()) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION, "삭제가 시작된 주문은 새 취소를 시작할 수 없습니다.");
+        }
         if (cancellationRepository.existsByOrderIdAndStatusIn(orderId,
                 Set.of(OrderCancellationStatus.PROCESSING, OrderCancellationStatus.RECOVERY_REQUIRED))) {
             throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION, "주문 취소가 진행 중이거나 결과 확인이 필요합니다.");

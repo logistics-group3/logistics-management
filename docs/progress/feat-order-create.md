@@ -1,7 +1,7 @@
 # feat/order-create
 
 ## 지금 하는 일
-이전 생성 보강을 39f704a로 커밋했다. O-01 사용자별 Idempotency-Key·최초 응답 재사용을 구현하고 테스트·격리 Gateway·로컬 V4 반영·문서 검사를 마쳤다. 이번 멱등키 변경은 미커밋이다.
+기본 주문 API O-01~O-06 구현·검증·로컬 반영을 완료했다. 멱등키는 ed9f8d0이며 삭제의 최종 커밋 제목은 `feat(order): 주문 삭제와 재요청 복구 구현`이다. 실제 팀 서비스 통합과 선택 보강은 다음 단계로 구분한다.
 
 ## 진행 상태
 - [x] `git fetch origin`으로 원격 `dev`를 확인했다.
@@ -93,26 +93,36 @@
 - [x] SA·에러 코드·호출자 연동 계약·실패 처리·스텝 45를 갱신했다. COMPANY-001·DELIVERY-001·DELIVERY-002는 기존 OPEN을 유지한다.
 - [x] 문서 동기화·에러 코드 20개·git diff 공백·변경 범위 36개 파일의 로컬 링크 141개·신규 파일 공백 검사를 통과했다. SA 주문 ERD·생성 시퀀스 렌더와 DBML 파싱을 확인했다. 실제 Webhook 값은 변경 파일·최근 주문 로그에 없으며 별도 학습 파일 4개와 progress의 GitHub 기록은 보존했다.
 - 면접 포인트: 키 존재 조회만으로 동시 생성을 막을 수 없는 이유, 유니크 충돌 뒤 새 트랜잭션이 필요한 이유, 최초 응답과 현재 주문 조회의 차이
+- [x] 사용자 요청으로 남은 분량을 확인했다. 기본 명세는 O-06 하나이며 생성 진행 조회·운영 복구·Outbox는 추가 보강이다. 전체 build를 재확인했고 기존 성공 결과를 재사용했다.
+- [x] 사용자가 "삭제 기록 포함, 끝까지 진행"을 선택했다. ADR 0009를 채택하고 멱등키 변경 36개 파일을 ed9f8d0에 커밋했다. 별도 학습 파일과 progress의 GitHub 기록은 제외했다.
+- [x] O-06 MASTER 삭제·I-10·V5·삭제 허가 근거와 진행 기록·커밋 재확인·같은 DELETE 재개·미해결 취소 상호 차단 구현
+- [x] 신규 도메인 7개·application 10개·MVC 8개·PostgreSQL 21개·HTTP/Feign 28개, 총 74개. 전체 build 성공, 주문 421개·전체 XML 519개, 실패·오류·skip 0
+- [x] 실제 PostgreSQL flush·완료 기록·커밋 실패, 실제 커밋 뒤 반환 예외, 동일 주문 삭제 잠금 대기·I-13 1회, 삭제 후 생성 멱등키 보존 확인
+- [x] I-13의 200·202를 완료로 오인하던 void Feign 반환을 회귀 테스트로 재현하고 204 검사로 보강했다(TS-016).
+- [x] 최종 Gateway·JWT·Feign·격리 PostgreSQL에서 생성→취소→삭제, 배송 완료 삭제, 로컬 롤백 뒤 같은 DELETE 재개, 내부 202 거부, 삭제 후 생성 멱등키 재응답을 확인했다. 200·201·400·401·403·404·409·500·503을 검증했고 임시 JVM·DB를 정리했다.
+- [x] 로컬 주문 서비스만 최종 이미지로 반영했다. V5·주문 ID UNIQUE·같은 스키마 FK·health UP·Gateway O-06/200·기존 O-01 필수 키·미인증 DELETE 401을 확인했다. 기존 3개 테이블·나머지 8개 컨테이너·PostgreSQL 볼륨·.env·Webhook은 유지됐고 새 삭제 기록도 0건이다.
+- [x] 문서 동기화·에러 코드 21개·공백·작업 범위 42개 파일의 링크와 신규 파일 검사를 통과했다. SA 주문 ERD 렌더·DBML 파싱·삭제 FK 방향을 확인했다. 실제 Webhook 값은 변경 파일·최근 주문 로그에 없으며 별도 학습 파일 4개와 GitHub progress 기록을 보존했다.
+- 면접 포인트: 배송 삭제 후 로컬 롤백에도 허가 근거가 필요한 이유, 삭제 재개와 미확정 생성 재실행의 차이, 202와 204의 완료 의미
 
 ## 다음 단계
-1. [스텝 45](../learning/junhyun/steps/step-45-order-idempotency-key.md), [실패 처리 설계](../services/order/failure-handling.md), [타 서비스 연동 계약](../services/order/integration-contract.md)을 읽는다. 생성 진행 기록·V3는 39f704a에 커밋됐고 이번 멱등키·V4 변경은 미커밋이다.
-2. Slack URL은 이미 로컬 `.env`와 실행 중인 order-service에 반영됐다. URL을 출력·커밋하지 않는다. 승인받은 테스트 1건은 전송 완료했으므로 같은 검증을 자동으로 반복하지 않는다.
-3. 팀 company I-07·I-08, delivery I-09·I-11·I-12·I-13의 실제 구현·데이터가 준비되면 생성·취소·보상과 생성 이벤트의 실제 Slack 알림을 통합 검증한다. 이번 검증 데이터는 격리 DB에만 넣었다.
-4. I-13 재시도는 OrderService에서 총 3회, Feign은 NEVER_RETRY다. 클라이언트를 합치면서 재시도가 중첩되지 않게 유지한다.
-5. 기존 의존 서비스가 정상인 경우 주문만 재기동하려면 빌드 후 `docker compose up -d --no-deps --no-build order-service`로 범위를 한정한다. 현재 공동 run.sh는 의존 서비스도 조정한다.
-6. O-06은 MASTER 전용이며 삭제 조건과 배송 I-13 실패 계약을 확인한다. 취소의 미해결 진행 기록이 있는 주문을 삭제하지 않도록 실행권 계약도 함께 지킨다.
-7. 생성 기록·멱등키를 구현했다. 다음 후보는 생성 진행 조회 API, 복구 유스케이스와 delivery 지연 처리 계약이다. 미확정 생성의 자동 복구에는 DELIVERY-002 결정이 필요하다. 현재 order 내부 구현과 새 보장에 대한 팀 합의를 구분한다.
+1. 기본 주문 API O-01~O-06 구현은 완료했다. [스텝 46](../learning/junhyun/steps/step-46-order-deletion.md)과 [연동 계약](../services/order/integration-contract.md)으로 현재 범위와 재시도 규칙을 확인한다.
+2. 팀 company·delivery의 실제 업무 구현·데이터가 준비되면 생성·취소·삭제·실패 보상을 통합 검증한다. COMPANY-001·DELIVERY-001·DELIVERY-002는 OPEN이며 대역 테스트를 실제 제공 서비스 검증으로 표시하지 않는다.
+3. 생성 진행 조회·생성/취소 운영 복구·시간 예산·관측·Outbox는 선택 후속이다. 이번 기본 기능 완료 조건에 추가하지 않는다. 지연 생성 자동 복구는 DELIVERY-002의 추가 계약이 필요하다.
+4. Slack URL은 .env와 실행 중인 주문 컨테이너에 있다. 실제 URL을 출력·커밋하지 않는다. 승인받은 실제 테스트 1건은 이미 전송했으므로 자동 반복하지 않는다.
+5. 로컬 주문만 반영할 때는 이미지 빌드 후 `docker compose up -d --no-deps --no-build order-service`를 사용한다. 실제 업무 데이터 변경은 별도 요청 범위에서 수행한다.
+6. 별도 학습 노트 4개와 progress 맨 앞의 GitHub 학습 기록은 이 주문 구현의 커밋에서 제외한다. 기존 stash도 유지한다.
 
 ## 직접 해보기
 1. 저장소 터미널에서 `git branch --show-current`를 실행한다. `feat/order-create`가 나오면 작업 브랜치에 있다. IntelliJ에서는 Git 브랜치 위젯에서 같은 이름을 확인한다.
 2. `git log -1 --oneline`으로 생성 기록 커밋 `39f704a`를 확인한다. 취소는 `2e5fcc1`, 수정은 `6ac9b8a`, 조회는 `9a41925`, Slack 기록은 `af0ba34`, Slack 코드는 `7a3f93f`, Feign·Controller는 `9b48adc`, application은 `3b5a39c`, 기반은 `216a768`이다.
 3. IntelliJ에서 `docs/SA/sparta-logistics-sa.md` 5.5를 열고 주문 테이블 필드와 상태 `ORDERED`, `CANCELED`를 확인한다.
 4. `./gradlew :order-service:test --tests '*OrderTest'`로 도메인 규칙 24개를 확인한다. IntelliJ에서는 `OrderTest` 클래스 옆 실행 버튼으로 실행한다.
-5. `./gradlew :order-service:test --tests 'com.sparta.logistics.order.application.*'`로 생성·조회·수정·취소 application 테스트 79개를 확인한다.
+5. `./gradlew :order-service:test --tests 'com.sparta.logistics.order.application.*'`로 생성·조회·수정·취소 application 테스트 89개를 확인한다.
 6. `./gradlew :order-service:test --tests '*OrderControllerWebMvcTest'`로 생성 Controller 18개를 확인한다.
 7. `./gradlew :order-service:test --tests '*OrderNotificationIntegrationTest'`로 Slack 대역과 실제 비동기 연결 6개를 확인한다. IntelliJ에서는 클래스 옆 실행 버튼을 사용한다.
-8. Docker 실행 상태에서 `./gradlew :order-service:test`로 HTTP·DB 통합 테스트를 포함한 347개를 확인한다. 지문·멱등성 39개만 보려면 `--tests '*OrderRequestIdentityTest' --tests '*OrderIdempotency*'`를 추가한다. IntelliJ에서는 해당 테스트 클래스의 실행 버튼을 사용하고 결과는 `order-service/build/reports/tests/test/index.html`에서 본다.
-9. `docker compose exec -T order-service curl -fsS http://localhost:8084/actuator/health`에서 `UP`을 확인한다. 실제 Webhook URL을 출력하는 명령은 쓰지 않는다.
+8. Docker 실행 상태에서 `./gradlew :order-service:test`로 HTTP·DB 통합 테스트를 포함한 421개를 확인한다. 지문·멱등성 39개만 보려면 `--tests '*OrderRequestIdentityTest' --tests '*OrderIdempotency*'`를 추가한다. IntelliJ에서는 해당 테스트 클래스의 실행 버튼을 사용하고 결과는 `order-service/build/reports/tests/test/index.html`에서 본다.
+9. `./gradlew :order-service:test --tests '*OrderDeletion*'`로 삭제 관련 74개를 확인한다. IntelliJ에서는 해당 5개 테스트 클래스 옆 실행 버튼을 사용한다.
+10. `docker compose exec -T order-service curl -fsS http://localhost:8084/actuator/health`에서 `UP`을 확인한다. 실제 Webhook URL을 출력하는 명령은 쓰지 않는다.
 
 ## 메모
 - 작업일: 2026-10-15 (Asia/Seoul). 브랜치 생성·기능 추천 이후 사용자가 주문 기반(Entity·마이그레이션·Repository·테스트) 구현과 설명을 요청했다.
@@ -122,7 +132,7 @@
 - 보관한 stash: `pre-order-branch-2026-10-15: preserve README newline`, 생성 시 객체 `8b7392d5755626822b727ee5cbb5cb0a74752320`. 새 README에는 이미 줄바꿈이 있다. 기존 README 전체를 새 브랜치에 덮어쓰지 않는다.
 - 기반·application·Feign·Controller·Slack은 구현했다. 격리 Gateway·비동기·HTTP 대역 검증과 실제 Webhook 테스트 1건의 200·ok 확인까지 마쳤다. 팀 서비스 실제 데이터로 주문 전체 흐름을 검증하는 단계는 남아 있다.
 - 기반은 `216a768`, application은 `3b5a39c`, Feign·Controller는 `9b48adc`, Slack은 `7a3f93f`에 커밋했다. 푸시는 수행하지 않았다.
-- Slack 연동 기록은 `af0ba34`, O-02·O-03은 `9a41925`, O-04는 `6ac9b8a`, O-05는 `2e5fcc1`, 생성 기록·V3는 `39f704a`에 커밋했다. 멱등키·V4는 미커밋이다. 공통·다른 서비스 소스 코드는 유지했다.
+- Slack 연동 기록은 `af0ba34`, O-02·O-03은 `9a41925`, O-04는 `6ac9b8a`, O-05는 `2e5fcc1`, 생성 기록·V3는 `39f704a`에 커밋했다. 멱등키·V4는 ed9f8d0에 커밋했다. O-06의 최종 커밋 제목은 `feat(order): 주문 삭제와 재요청 복구 구현`이다. 공통·다른 서비스 소스는 유지했다.
 - `docs/learning/junhyun/README.md`와 qna의 common-core-split-easy·downstream-error-propagation·github-ai-review-auto-approval 변경은 별도 작업이므로 보존한다. 이 progress 맨 앞의 GitHub 학습 기록도 해당 작업의 변경이다.
 - O-04는 상태 검증이 있는 짧은 로컬 쓰기 트랜잭션이다. 응답 Audit를 위해 flush하지만 생성용 OrderWriter·이벤트를 거치지 않는다. 격리 Gateway 검증의 user 인증 응답은 HTTP 대역이며 실제 Slack 메시지는 추가로 보내지 않았다.
 - O-05의 PROCESSING·RECOVERY_REQUIRED를 자동 만료시키거나 SQL로 임의 해제하지 않는다. 복구 API는 아직 없으며 failure-handling.md의 확인 절차와 후속 설계를 따른다. 실제 커밋 응답 패킷 유실·프로세스 강제 종료·다중 JVM 시험은 미실행이다.
@@ -131,3 +141,4 @@
 - BigDecimal 전환 후 사용자가 정수 원화 범위를 확인하고 원복을 요청했다. 현재 기준은 [주문 ADR 0005](../services/order/decisions/0005-order-money-integer-krw.md)의 long·BIGINT이며 SA 5.5·6.7과 일치한다. 팀 공통 SA와 다른 서비스 코드는 수정하지 않았다.
 - 금액 원복 당시에는 V1이 미커밋 초안이었다. 현재 V1은 `216a768`에 커밋됐으므로 이후 스키마 변경은 새 마이그레이션으로 한다.
 - 로컬 기동 과정에서 run.sh가 PostgreSQL도 재생성했다. 기존 pgdata 볼륨 재사용·초기화 생략, .env 해시 유지, 나머지 7개 컨테이너 ID·시작 시각 유지와 관련 서비스 health UP을 확인했다(TS-008). 정확한 재생성 판정 원인은 미확인이다.
+- O-06의 V5는 주문 소유 스키마만 보강한다. 삭제 허가 근거를 별도 커밋하고 SA 7.5대로 I-13 중 주문 잠금을 유지한다. 원격 삭제는 정확한 204만 완료로 확인하며 O-06 요청당 1회다. 동일 DELETE의 재개는 생성·취소의 미확정 새 시도와 다르다.
