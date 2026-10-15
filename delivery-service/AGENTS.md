@@ -12,6 +12,12 @@
 - 고치는 계층의 규칙: [`docs/agents/rules/`](../docs/agents/rules/README.md)
 - 서비스 결정: [`docs/services/delivery/decisions/`](../docs/services/delivery/decisions/README.md)
 
+## 작업 방식
+- 작업은 태스크(`T01`, `T02` ...) 단위로 브랜치 `feat/delivery-T{nn}` 하나에서 진행하고, 세부 작업은 커밋으로 나눈다. 규칙은 [`docs/workflow.md`](docs/workflow.md)에 있다.
+- 커밋할 때마다 [`docs/tasks/T{nn}.md`](docs/tasks/README.md)의 "작업 기록"에 그 커밋 항목을 같은 커밋에 넣는다.
+- 배송 도메인 설명과 API 상세는 [`docs/domain/`](docs/domain/delivery.md)에 있다. 설계를 판단하기 전에 읽는다.
+- 대화에서 설계 결정이 나면 그 응답 안에서 바로 [`docs/domain/delivery-decision-log.md`](docs/domain/delivery-decision-log.md)에 추가한다. 컨텍스트가 압축되기 전에 남기기 위해서다. 형식은 [`docs/workflow.md`](docs/workflow.md) 6절을 따른다.
+
 ## 모듈 규칙
 - 패키지 `com.sparta.logistics.delivery`, 스키마 `delivery_schema`, DB 계정 `delivery_app`.
 - 배송은 집하 → 허브 이동 → 업체 배송 3구간이다. 두 업체가 같은 허브 소속이면 허브 이동 구간을 만들지 않는다. 주문 1건 = 배송 1건이다.
