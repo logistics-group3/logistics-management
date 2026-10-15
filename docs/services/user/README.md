@@ -26,7 +26,6 @@
 | U-08 | `DELETE /api/v1/users/{userId}` | MASTER | 구현 | 자기 자신 삭제 400 `INVALID_REQUEST`(SA와 같음) |
 | I-01 | `GET /internal/users/{userId}` | gateway, company, delivery | 구현 | DTO 그대로 반환(ADR 0010). 탈퇴 시 404 `USER_NOT_FOUND` |
 | I-14 | `GET /internal/users/delivery-managers?hubId=` | delivery | 구현 | `[{userId, slackId}]`를 감싸지 않고 반환. 없으면 `[]`, hubId 누락 400. 정렬하지 않는다(동점 처리는 delivery) |
-| 샘플 | `GET /api/v1/users/sample/me`, `/admin` | 로그인, MASTER | 구현 | 공통 인프라 검증용. 업무 API가 대체하면 정리한다 |
 
 ## 3. 호출하는 다른 서비스 API
 
@@ -41,6 +40,7 @@
 - [x] U-03 내 정보 조회, U-04 단건 조회 (단위·WebMvc·통합 테스트, Gateway 경유 호출)
 - [x] U-05 검색, U-06 수정, U-07 권한·배송담당자 지정, U-08 논리 삭제 (단위·WebMvc·통합 테스트, Gateway 경유 호출. U-07 허브 지정의 hub 실제 연동은 hub I-02 구현 후 확인)
 - [x] I-14 허브별 배송담당자 목록 (통합 테스트, 내부 호출)
+- [x] 공통 인프라 샘플 API 삭제, `script/e2e-check.sh`를 U-03·U-05로 교체
 
 ## 5. 협업 로그
 

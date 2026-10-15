@@ -98,3 +98,8 @@
 ### 메모
 - 진행 방식: 사용자 요청으로 I-14 presentation부터 U-07, 샘플 정리까지 계층마다 멈추지 않고 한 번에 구현했다.
 - hub-service가 I-02를 아직 구현하지 않아, 허브를 지정하면 hub의 기본 404 `NOT_FOUND`가 전달된다(Gateway 경유 확인). hub 구현 후 `HUB_NOT_FOUND`와 실제 허브명 저장을 다시 확인한다.
+
+## 공통 인프라 샘플 API 삭제 (2026-10-15)
+- `presentation/sample/AuthSampleController`를 지웠다. `script/e2e-check.sh`의 `/sample/me`는 U-03 `/api/v1/users/me`로, `/sample/admin`은 MASTER 전용인 U-05 `/api/v1/users`로 바꿨다. `docs/guides/local-run.md` 예시도 바꿨다.
+- `script/e2e-check.sh`, `docs/guides/local-run.md`는 공용 파일이라 PR에서 팀 전체 리뷰를 받는다.
+- 이 PC에는 Python이 없어 `script/run.sh --check`를 끝까지 돌리지 못했다(TS-006). 같은 항목을 curl로 직접 확인했다.
