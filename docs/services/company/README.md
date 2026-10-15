@@ -16,10 +16,10 @@
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| C-01~C-05 | `/api/v1/companies/**` | 로그인, 업체 관리자, MASTER | 예정 |  |
-| P-01~P-05 | `/api/v1/products`, `/api/v1/companies/{companyId}/products/**` | 로그인, 업체 관리자, MASTER | 예정 |  |
-| I-07 | `GET /internal/companies/{companyId}` | order | 예정 |  |
-| I-08 | `GET /internal/products/{productId}` | order | 예정 |  |
+| C-01~C-05 | `/api/v1/companies/**` | 로그인, 업체 관리자, MASTER | 구현 | C-01에서 MASTER가 managerId를 비우면 400 `VALIDATION_ERROR` |
+| P-01~P-05 | `/api/v1/products`, `/api/v1/companies/{companyId}/products/**` | 로그인, 업체 관리자, MASTER | 구현 |  |
+| I-07 | `GET /internal/companies/{companyId}` | order | 구현 | 응답 `companyId, name, hubId, address, managerId`, 없거나 삭제됨 404 `COMPANY_NOT_FOUND` |
+| I-08 | `GET /internal/products/{productId}` | order | 구현 | 응답 `productId, companyId, name, price`, 없거나 삭제됨 404 `PRODUCT_NOT_FOUND` |
 
 ## 3. 호출하는 다른 서비스 API
 
@@ -32,8 +32,8 @@
 
 - [x] 업체·상품 Entity와 Flyway 마이그레이션
 - [x] 업체·상품 검색(QueryDSL), user·hub FeignClient
-- [ ] C-01~C-05, P-01~P-05
-- [ ] I-07, I-08 내부 API
+- [x] C-01~C-05, P-01~P-05
+- [x] I-07, I-08 내부 API
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
 
