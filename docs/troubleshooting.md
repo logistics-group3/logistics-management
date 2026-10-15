@@ -70,3 +70,10 @@
 - 문제: 회원가입 요청 본문에 한글이 있으면 400이 반환됐다.
 - 원인: Git Bash에서 `-d '...'`로 넘긴 한글이 UTF-8로 전달되지 않았다(서버 문제 아님).
 - 해결: UTF-8 파일로 저장해 `--data-binary @file.json`으로 보내거나 Swagger·Postman을 사용한다.
+
+### TS-006 Windows에서 `script/run.sh --check`가 "5분 안에 준비되지 않았다(등록: [])"로 실패
+- 서비스·작성: 인프라 / 권민혁 / 2026-10-15
+- 문제: 모든 컨테이너가 떠 있고 Eureka 대시보드에도 서비스가 UP인데, `script/e2e-check.sh`가 `5분 안에 준비되지 않았다. 등록: [], 로그인 응답: 401`로 끝났다.
+- 원인: 스크립트가 JSON을 `python3`으로 읽는다. Python을 설치하지 않은 Windows에서는 `python3`이 Microsoft Store로 연결되는 실행 파일(`AppData/Local/Microsoft/WindowsApps/python3`)이라 아무것도 출력하지 않는다. 그래서 Eureka 등록 목록이 빈 값이 된다. 로그인 401은 준비 확인용으로 없는 계정을 보낸 결과라 정상이다.
+- 해결: Python 3를 설치하고 "앱 실행 별칭"에서 Store 연결을 끈 뒤 `python3 --version`이 버전을 출력하는지 확인한다. 설치 전에는 같은 항목을 curl로 직접 호출해 확인한다(`docs/progress/feat-user-read.md` 메모).
+- 배운 점: 셸 스크립트가 쓰는 외부 명령(python3, jq 등)은 실행 전에 있는지 확인하고, 없으면 그 이유로 실패하게 만드는 편이 원인 찾기가 빠르다.
