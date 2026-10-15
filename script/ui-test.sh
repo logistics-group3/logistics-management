@@ -13,7 +13,7 @@ values = {
     'POSTGRES_PORT': '15432', 'CONFIG_SERVER_PORT': '18888', 'EUREKA_PORT': '18761',
     'GATEWAY_PORT': '127.0.0.1:18080', 'JWT_SECRET': secrets.token_hex(48),
     'MASTER_USERNAME': 'uimaster', 'MASTER_PASSWORD': 'UiLocal!2026',
-    'SLACK_WEBHOOK_URL': '',
+    'SLACK_WEBHOOK_URL': '', 'SLACK_DM_ENABLED': 'false',
 }
 for service in ('USER', 'HUB', 'COMPANY', 'ORDER', 'DELIVERY'):
     values[f'{service}_DB_PASSWORD'] = secrets.token_hex(24)
@@ -31,7 +31,10 @@ import os, subprocess, sys
 from pathlib import Path
 values = dict(line.split('=', 1) for line in Path('.env.ui-test').read_text().splitlines() if '=' in line and not line.startswith('#'))
 # 셸에 남아 있는 개발 환경 변수보다 전용 파일을 우선한다.
-environment = {**os.environ, **values, 'SLACK_WEBHOOK_URL': ''}
+dm_defaults = {'SLACK_DM_ENABLED': 'false', 'SLACK_BOT_TOKEN': '', 'SLACK_DM_WORKSPACE_ID': '', 'SLACK_DM_API_BASE_URL': 'https://slack.com/api', 'SLACK_DM_ALLOWED_EMAILS': ''}
+if values.get('SLACK_DM_ENABLED', 'false').strip().lower() in ('true', '1', 'yes', 'on') and not values.get('SLACK_DM_ALLOWED_EMAILS', '').strip():
+    raise SystemExit('UI 테스트에서 DM을 켤 때는 승인된 수신자 이메일 허용 목록이 필요하다.')
+environment = {**os.environ, **dm_defaults, **values, 'SLACK_WEBHOOK_URL': ''}
 result = subprocess.run(['docker', 'compose', '-p', 'logistics-ui-test', '--env-file', '.env.ui-test', '-f', 'docker-compose.yml', *sys.argv[1:]], env=environment)
 sys.exit(result.returncode)
 PYCOMPOSE

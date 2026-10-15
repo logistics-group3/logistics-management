@@ -27,6 +27,7 @@
 | 16 | 구현하며 정한 것(D-01~05, I-09~13) | cascade PERSIST만, 생성은 트랜잭션 밖 오케스트레이션 + 유니크 위반 시 기존 배송 반환, 수령인 404면 Slack ID NULL, 원복은 취소 상태일 때만, 에러 코드는 `DeliveryErrorCode` |
 | 17 | 조회와 명령 저장소 분리 | 조회는 QueryDSL `@QueryProjection` DTO를 바로 반환(Result로 다시 감싸지 않음), 명령은 JPA로 Entity. 조회 DTO가 application에 있어 팀 레이어 규칙과 다름 |
 | 18 | 1:1 복사 Response 없애기 | Result 하나면 그대로 응답, 여러 Result를 합칠 때만 `Response`(`DeliveryResponse`). delivery만의 코드 규칙으로 `delivery-service/AGENTS.md`에 둠 |
+| 19 | 주문 DM용 수신자 조회 | I-15로 활성 구간 담당자만 제공. 로컬 구현·담당자 리뷰 대기(ADR 0016) |
 
 ---
 
@@ -236,6 +237,14 @@ SA에 같은 용도의 내부 API가 이미 있으면 그 이름을 따른다.
 **결론** — `DeliveryResponse`, `DeliverySummaryResponse`, `DeliveryStatusResponse`를 지우고 컨트롤러가 Result를 그대로 응답한다. `DeliveryResult`는 `@JsonUnwrapped`로 배송 필드를 최상위로 펼쳐 기존 응답 모양을 복사 코드 없이 유지한다. 바꾸기 전후 D-01, D-02, D-03, I-10, I-11 응답 JSON 구조를 MockMvc로 저장해 비교했고 같았다. 규칙은 `delivery-service/AGENTS.md` "delivery 코드 규칙"에 있다.
 
 이어서 이름 기준을 정했다. Result 하나를 감싸는 Response는 낭비지만, 여러 Result를 합쳐야 응답이 되는 경우에는 그 조합을 `Response`라고 부른다. 배송과 구간을 합치던 `DeliveryResult`를 `DeliveryResponse`로 바꿨다. 합치는 일이 서비스 안에서 일어나서(D-02 구간으로 권한 확인, D-03~D-05 Entity) presentation으로 옮기면 서비스가 재료를 넘길 묶음이 하나 더 필요하므로 `application/dto`에 둔다.
+
+## 19. 주문 DM용 수신자 조회 (2026-10-16)
+
+**왜** — 사용자가 이메일로 배송담당자에게 DM을 보내는 기능을 요청했다. 기존 I-10은 주문 삭제 때 쓰는 상태 조회이며 구간 담당자가 없다.
+
+**어떻게** — 기존 I-10에 필드를 섞는 대신 I-15를 추가했다. 기존 상태·구간 조회를 재사용해 WAITING·MOVING 담당자 ID를 중복 제거한다. 완료·취소 배송은 빈 배열, 없음·삭제는 404다. 이메일과 Slack 호출은 user·order가 맡는다.
+
+**결론** — [ADR 0016](../../../docs/decisions/0016-delivery-manager-slack-dm.md)의 로컬 확장으로 구현했다. 39개 delivery 테스트와 같은 허브 실제 주문의 DM 1건을 확인했다. DELIVERY-003은 담당자 리뷰 대기이며, 발송 직전 재배정·취소와의 원자성을 추가한 것은 아니다. 작업은 [T06](../tasks/T06.md)에 있다.
 
 ## 남은 일
 

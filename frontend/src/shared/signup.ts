@@ -3,7 +3,7 @@ export interface SignupInput {
   password: string
   passwordConfirm: string
   name: string
-  slackId: string
+  slackEmail: string
   affiliationType: 'COMPANY' | 'HUB'
   affiliationName: string
 }
@@ -16,9 +16,13 @@ export function validateSignup(input: SignupInput) {
   if (input.password !== input.passwordConfirm)
     errors.passwordConfirm = '비밀번호가 일치하지 않습니다.'
   if (!input.name.trim() || input.name.length > 50) errors.name = '이름을 1~50자로 입력해 주세요.'
-  if (!input.slackId.trim() || input.slackId.length > 50)
-    errors.slackId = 'Slack 멤버 ID를 1~50자로 입력해 주세요.'
   if (!input.affiliationName.trim() || input.affiliationName.length > 100)
     errors.affiliationName = '소속명을 1~100자로 입력해 주세요.'
+  if (
+    !input.slackEmail.trim() ||
+    input.slackEmail.trim().length > 254 ||
+    !/^[^\s@]+@[^\s@]+$/.test(input.slackEmail.trim())
+  )
+    errors.slackEmail = '올바른 Slack 계정 이메일을 입력해 주세요.'
   return errors
 }

@@ -55,7 +55,7 @@ public final class HttpStubServer implements AutoCloseable {
                     .collect(Collectors.toMap(entry -> entry.getKey().toLowerCase(Locale.ROOT),
                             entry -> entry.getValue().get(0)));
             RecordedRequest request = new RecordedRequest(exchange.getRequestMethod(), exchange.getRequestURI().getPath(),
-                    new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8), headers);
+                    new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8), headers, exchange.getRequestURI().getRawQuery());
             requests.add(request);
             Reply reply = responder.apply(request);
             if (reply.delayMillis() > 0) {
@@ -82,7 +82,7 @@ public final class HttpStubServer implements AutoCloseable {
         executor.shutdownNow();
     }
 
-    public record RecordedRequest(String method, String path, String body, Map<String, String> headers) {
+    public record RecordedRequest(String method, String path, String body, Map<String, String> headers, String rawQuery) {
         public String header(String name) {
             return headers.get(name.toLowerCase(Locale.ROOT));
         }

@@ -9,6 +9,7 @@ import { Badge, DetailField, ErrorNotice } from '../shared/ui'
 import { Button } from '../components/ui/button'
 import { CompanyDetails } from './CompanyDetails'
 import { DeliveryManagerForm } from './DeliveryManagerForm'
+import { SlackEmailForm } from './SlackEmailForm'
 export type CatalogKind = 'companies' | 'products' | 'hubs' | 'users'
 export type CatalogItem = Company | Product | Hub | User
 export function CatalogDetails({
@@ -87,7 +88,7 @@ export function CatalogDetails({
         <DetailField label="배송 담당">
           {u.isDeliveryManager ? `${directory.hubName(u.hubId!)} 담당자` : '미지정'}
         </DetailField>
-        <DetailField label="Slack ID">{u.slackId}</DetailField>
+        <DetailField label="Slack 알림 이메일">{u.slackEmail ?? '미등록'}</DetailField>
         <DetailField label="사용자 ID">
           <code>{u.userId}</code>
         </DetailField>
@@ -117,7 +118,10 @@ export function CatalogDetails({
         </div>
       )}
       {user?.role === 'MASTER' && (
-        <DeliveryManagerForm key={`${u.userId}:${u.isDeliveryManager}:${u.hubId}`} target={u} />
+        <>
+          <DeliveryManagerForm key={`${u.userId}:${u.isDeliveryManager}:${u.hubId}`} target={u} />
+          <SlackEmailForm key={`${u.userId}:${u.slackEmail ?? ''}`} target={u} />
+        </>
       )}
     </>
   )

@@ -27,6 +27,9 @@ public class UserService {
     public UserResult update(UUID userId, UpdateUserCommand command) {
         User user = findUser(userId);
         user.updateProfile(command.name(), command.slackId(), command.affiliationType(), command.affiliationName());
+        if (command.slackEmail() != null) {
+            user.changeSlackEmail(command.slackEmail());
+        }
         return UserResult.from(user);
     }
 

@@ -2,6 +2,7 @@ package com.sparta.logistics.user.presentation.dto;
 
 import com.sparta.logistics.user.application.dto.UpdateUserCommand;
 import com.sparta.logistics.user.domain.AffiliationType;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -14,13 +15,14 @@ public record UpdateUserRequest(
         @Size(max = 50) @Pattern(regexp = NOT_BLANK, message = BLANK_MESSAGE) String name,
         @Size(max = 50) @Pattern(regexp = NOT_BLANK, message = BLANK_MESSAGE) String slackId,
         AffiliationType affiliationType,
-        @Size(max = 100) @Pattern(regexp = NOT_BLANK, message = BLANK_MESSAGE) String affiliationName
+        @Size(max = 100) @Pattern(regexp = NOT_BLANK, message = BLANK_MESSAGE) String affiliationName,
+        @Email(message = "올바른 Slack 계정 이메일을 입력해 주세요.") @Size(max = 254) String slackEmail
 ) {
 
     private static final String NOT_BLANK = "(?s).*\\S.*";
     private static final String BLANK_MESSAGE = "빈 값으로 바꿀 수 없습니다.";
 
     public UpdateUserCommand toCommand() {
-        return new UpdateUserCommand(name, slackId, affiliationType, affiliationName);
+        return new UpdateUserCommand(name, slackId, affiliationType, affiliationName, slackEmail);
     }
 }

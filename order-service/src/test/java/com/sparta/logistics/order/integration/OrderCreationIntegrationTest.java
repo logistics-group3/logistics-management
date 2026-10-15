@@ -92,7 +92,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
         assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, result.orderId()))
                 .isEqualTo("COMPLETED");
         verify(notificationSender).send(new OrderCreatedEvent(result.orderId(), supplier.name(), receiver.name(),
-                product.name(), 50, null));
+                product.name(), 50, null, result.deliveryId()));
     }
 
     @Test

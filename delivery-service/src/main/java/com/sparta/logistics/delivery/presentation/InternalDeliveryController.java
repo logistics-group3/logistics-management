@@ -6,6 +6,9 @@ import com.sparta.logistics.delivery.application.DeliveryService;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
 import com.sparta.logistics.delivery.presentation.dto.CreateDeliveryRequest;
 import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
+import com.sparta.logistics.delivery.application.dto.DeliveryNotificationRecipientsResult;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +24,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * order 전용 내부 API(I-09~I-13, SA 6.3). Gateway에 라우트가 없어 외부에서 부를 수 없다.
+ * order 전용 내부 API(I-09~I-13, I-15). Gateway에 라우트가 없어 외부에서 부를 수 없다.
  * DTO를 감싸지 않고 반환한다(ADR 0010). I-09·I-11·I-12·I-13은 같은 요청을 다시 보내도 결과가 같다(SA 7.3).
  */
 @RestController
+@Tag(name = "내부 배송 API")
 @RequiredArgsConstructor
 @RequestMapping("/internal/deliveries")
 public class InternalDeliveryController {
@@ -45,6 +49,13 @@ public class InternalDeliveryController {
     @GetMapping("/{deliveryId}")
     public DeliveryStatusResult get(@PathVariable UUID deliveryId) {
         return deliveryQueryService.getDeliveryStatus(deliveryId);
+    }
+
+    /** I-15 주문 커밋 후 알림 수신자 조회. 기존 I-10 응답은 유지한다. */
+    @Operation(summary = "I-15 배송 알림 수신자 조회")
+    @GetMapping("/{deliveryId}/notification-recipients")
+    public DeliveryNotificationRecipientsResult getNotificationRecipients(@PathVariable UUID deliveryId) {
+        return deliveryQueryService.getNotificationRecipients(deliveryId);
     }
 
     /** I-11 배송 취소 */

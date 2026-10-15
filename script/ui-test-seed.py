@@ -18,6 +18,8 @@ if port != '127.0.0.1:18080':
 container = json.loads(subprocess.check_output(['docker', 'inspect', 'logistics-ui-test-order-service-1']))[0]
 if any(item.startswith('SLACK_WEBHOOK_URL=') and item != 'SLACK_WEBHOOK_URL=' for item in container['Config']['Env']):
     raise SystemExit('UI 테스트 Slack 알림이 꺼져 있어야 한다.')
+if any(item.split('=', 1)[1].strip().lower() in ('true', '1', 'yes', 'on') for item in container['Config']['Env'] if item.startswith('SLACK_DM_ENABLED=')):
+    raise SystemExit('실제 DM이 활성화된 동안 시드를 실행할 수 없다. DM을 끈 뒤 데이터를 준비한다.')
 BASE = f'http://{port}/api/v1'
 PASSWORD = ENV['MASTER_PASSWORD']
 
@@ -51,7 +53,7 @@ users = request('/users?size=50', token=master)['content']
 accounts = [('uiuser', '김서연', 'COMPANY', '한빛 리테일'), ('uidriver', '이준호', 'HUB', hub['name']), ('uiviewer', '박지민', 'COMPANY', '새봄 유통')]
 for username, name, affiliation, affiliation_name in accounts:
     if not any(u['username'] == username for u in users):
-        request('/auth/signup', 'POST', {'username': username, 'password': PASSWORD, 'name': name, 'slackId': 'UI_TEST_' + username, 'affiliationType': affiliation, 'affiliationName': affiliation_name})
+        request('/auth/signup', 'POST', {'username': username, 'password': PASSWORD, 'name': name, 'slackEmail': username + '@example.com', 'affiliationType': affiliation, 'affiliationName': affiliation_name})
 users = request('/users?size=50', token=master)['content']
 by_username = {u['username']: u for u in users}
 driver = by_username['uidriver']

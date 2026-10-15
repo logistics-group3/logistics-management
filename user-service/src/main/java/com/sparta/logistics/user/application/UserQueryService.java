@@ -5,6 +5,7 @@ import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.user.application.dto.DeliveryManagerResult;
 import com.sparta.logistics.user.application.dto.InternalUserResult;
 import com.sparta.logistics.user.application.dto.UserResult;
+import com.sparta.logistics.user.application.dto.UserNotificationContactResult;
 import com.sparta.logistics.user.domain.User;
 import com.sparta.logistics.user.domain.UserErrorCode;
 import com.sparta.logistics.user.domain.UserRepository;
@@ -58,6 +59,12 @@ public class UserQueryService {
         return userRepository.findAllByHubIdAndDeliveryManagerTrue(hubId).stream()
                 .map(DeliveryManagerResult::from)
                 .toList();
+    }
+
+    /** I-16 알림 연락처 조회. 기존 I-01·I-14에는 이메일을 추가하지 않는다. */
+    public UserNotificationContactResult getNotificationContact(UUID userId) {
+        User user = findUser(userId);
+        return new UserNotificationContactResult(user.getId(), user.isDeliveryManager(), user.getSlackEmail());
     }
 
     private User findUser(UUID userId) {

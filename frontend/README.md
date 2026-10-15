@@ -29,7 +29,7 @@ script/ui-test.sh frontend
 ## 회원가입부터 시작하기
 
 http://127.0.0.1:5174/signup 에서 새 계정을 만든다. 로그인 화면의 회원가입 링크로도 이동할 수 있다.
-아이디는 소문자·숫자 4~10자, 비밀번호는 8~15자이며 대문자·소문자·숫자·특수문자를 포함한다. 비밀번호 확인, 이름, Slack 멤버 ID, 소속 유형·소속명을 입력한다.
+아이디는 소문자·숫자 4~10자, 비밀번호는 8~15자이며 대문자·소문자·숫자·특수문자를 포함한다. 비밀번호 확인, 이름, Slack 가입 이메일, 소속 유형·소속명을 입력한다. Slack 멤버 ID 입력칸은 없으며 이메일은 필수다. 서버도 멤버 ID 없이 가입하도록 user V3가 적용돼야 한다.
 가입 성공 후 아이디가 채워진 로그인 화면으로 이동한다. 비밀번호는 저장하거나 다음 화면으로 전달하지 않는다. 중복 아이디와 입력 오류는 화면에서 확인한다.
 
 새 회원은 서버의 기존 계약대로 USER·배송담당자 아님으로 생성된다. 소속명을 입력하는 것은 기존 업체·허브의 담당자 권한을 부여하는 것과 다르다.
@@ -52,7 +52,8 @@ MASTER는 업체 등록 시 담당자를 선택하고, 업체 상세의 `업체 
 3. 사용자 관리 → 사용자 상세 → `배송 담당자로 지정`을 체크하고 담당 허브를 선택해 저장한다.
 4. 해당 사용자로 로그인한 뒤 본인 업체 주문 또는 배정된 배송의 구간 처리를 확인한다. 기존 배송 재배정은 이번 UI 범위에 포함하지 않는다.
 
-[Slack 이메일·Webhook·개인 DM 차이](../docs/learning/junhyun/qna/2026-10-15-slack-webhook-email-and-dm.md)를 별도로 정리했다. 이 테스트 서버에서는 Slack 발송이 비활성화되어 있다.
+[Slack 이메일·Webhook·개인 DM 차이](../docs/learning/junhyun/qna/2026-10-15-slack-webhook-email-and-dm.md)를 별도로 정리했다. MASTER는 사용자 상세의 `Slack DM 알림`에서 이메일을 설정·해제한다. 저장 성공은 연락처 저장을 뜻하며 Slack 계정 조회·발송 성공과는 구분한다.
+서버 설정과 실제 검증 상태는 [Slack DM 실행 안내](../docs/guides/slack-dm.md)에 있다. 현재 로컬은 `uidriver`에 승인된 본인 이메일 하나를 연결했고 그 주소에만 DM을 허용한다. Webhook은 꺼져 있다. 새 주문에 배정되면 본인 Slack DM을 받는다.
 
 ## 테스트 계정
 
@@ -79,6 +80,8 @@ MASTER는 업체 등록 시 담당자를 선택하고, 업체 상세의 `업체 
 
 ## 검증
 
+백엔드와 프런트를 모두 확인하는 공통 기준은 [전체 빌드·검증](../docs/guides/full-build.md)이다. Gradle에는 이 프런트 빌드가 포함되지 않는다.
+
 ```bash
 npm --prefix frontend run test
 npm --prefix frontend run build
@@ -91,8 +94,10 @@ script/error-codes-check.sh
 ```
 
 E2E는 실행 중인 UI·테스트 서버와 시드가 필요하며 로컬 Google Chrome을 사용한다. `frontend/test-results/`에 화면 증거, `frontend/playwright-report/`에 보고서가 생성된다. 인증 토큰을 포함할 수 있는 네트워크 trace는 저장하지 않는다. E2E가 생성한 주문은 각 정상 시나리오 마지막에 취소 또는 배송 완료 후 삭제한다.
+실제 DM이 활성화돼 있으면 E2E·시드는 실행을 거부한다. `.env.ui-test`의 `SLACK_DM_ENABLED=false`를 저장한 뒤 `script/ui-test.sh up`으로 컨테이너에 반영하고 자동 검증한다. E2E는 UI 프록시가 전용 DB로 연결되는지도 확인한다.
 
 [검증 기록](../docs/reviews/logistics-test-ui.md)에서 실제 실행 결과와 검증 범위를 확인한다.
+[Slack DM 검증 기록](../docs/reviews/slack-dm.md)은 이메일 UI를 포함한 최신 41개 단위·15개 E2E·729개 백엔드 테스트와 실제 DM 1건의 범위를 구분한다.
 
 ## 중지·재실행
 

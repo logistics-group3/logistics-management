@@ -46,7 +46,7 @@ class UserServiceTest {
     void update() {
         given(userRepository.findById(hong.getId())).willReturn(Optional.of(hong));
 
-        UserResult result = userService.update(hong.getId(), new UpdateUserCommand(null, "U09", AffiliationType.HUB, null));
+        UserResult result = userService.update(hong.getId(), new UpdateUserCommand(null, "U09", AffiliationType.HUB, null, null));
 
         assertThat(result.slackId()).isEqualTo("U09");
         assertThat(result.affiliationType()).isEqualTo(AffiliationType.HUB);
@@ -58,7 +58,7 @@ class UserServiceTest {
         UUID userId = UUID.randomUUID();
         given(userRepository.findById(userId)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.update(userId, new UpdateUserCommand("김철수", null, null, null)))
+        assertThatThrownBy(() -> userService.update(userId, new UpdateUserCommand("김철수", null, null, null, null)))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(UserErrorCode.USER_NOT_FOUND);
     }

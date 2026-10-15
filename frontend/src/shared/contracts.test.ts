@@ -100,7 +100,7 @@ describe('회원가입 입력 계약', () => {
     password: 'UiLocal!2026',
     passwordConfirm: 'UiLocal!2026',
     name: '테스트 담당자',
-    slackId: 'UI_TEST_MEMBER',
+    slackEmail: 'user@example.com',
     affiliationType: 'COMPANY' as const,
     affiliationName: '테스트 업체',
   }
@@ -119,8 +119,23 @@ describe('회원가입 입력 계약', () => {
     expect(
       validateSignup({ ...valid, passwordConfirm: 'Different!1' }).passwordConfirm,
     ).toBeTruthy())
-  it('이름·Slack ID·소속명의 공백만 있는 값을 거절한다', () =>
+  it('이름·Slack 이메일·소속명의 공백만 있는 값을 거절한다', () =>
     expect(
-      Object.keys(validateSignup({ ...valid, name: ' ', slackId: '\t', affiliationName: '  ' })),
-    ).toEqual(['name', 'slackId', 'affiliationName']))
+      Object.keys(validateSignup({ ...valid, name: ' ', slackEmail: '\t', affiliationName: '  ' })),
+    ).toEqual(['name', 'affiliationName', 'slackEmail']))
+})
+
+it('멤버 ID 없이 가입하며 빈 이메일과 잘못된 이메일은 거절한다', () => {
+  const valid = {
+    username: 'newuser1',
+    password: 'UiLocal!2026',
+    passwordConfirm: 'UiLocal!2026',
+    name: '담당자',
+    slackEmail: 'driver@example.com',
+    affiliationType: 'HUB' as const,
+    affiliationName: '서울',
+  }
+  expect(validateSignup({ ...valid, slackEmail: '' }).slackEmail).toBeTruthy()
+  expect(validateSignup({ ...valid, slackEmail: 'driver+test@example.com' })).toEqual({})
+  expect(validateSignup({ ...valid, slackEmail: 'not-an-email' }).slackEmail).toBeTruthy()
 })

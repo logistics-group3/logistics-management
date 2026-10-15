@@ -124,6 +124,14 @@ SA 7.5에 따라 I-13 중 주문 잠금·로컬 트랜잭션을 유지한다. O-
 
 ## 진행 중인 협업 기록
 
+### 커밋 후 DM 확장 (ADR 0016, 2026-10-16)
+
+I-15는 `{deliveryId, orderId, status, managerIds}`를, I-16은 `{userId, isDeliveryManager, slackEmail}`을 감싸지 않고 반환한다. 기존 I-10 응답과 I-01·I-14 필드 구성은 유지한다.
+
+신규 가입 화면·U-01은 필수 slackEmail만 받도록 사용자의 후속 요청을 반영했다. 기존 I-01·I-14의 필드 구성은 유지하지만 신규 사용자의 slackId는 null이다. delivery는 수령인 ID 없음과 배정 후보 ID 조회를 구분해야 하며, DM은 I-16의 이메일을 사용한다. user V2/V3와 U-01 요청 변경을 함께 반영한다.
+order는 배송·주문 연결을 검증하고 활성 구간의 담당자에게만 발송을 시도한다. 내부 API 실패·Slack 실패는 커밋 후 알림 실패로 기록하며 O-01 응답·배송 보상으로 전파하지 않는다.
+실제 같은 허브 경로의 연동은 확인했다. 제공 담당자의 팀 리뷰, 다른 허브 I-03, 동시 재배정·취소와 발송의 원자성, Outbox 보장은 별도다. [설정·실패 표](../../guides/slack-dm.md), USER-002·DELIVERY-003을 함께 확인한다.
+
 - [COMPANY-001](../company/README.md#company-001-주문-연동용-조회-응답과-오류-계약-확인): 기존 I-07·I-08 구현·연동 확인 요청.
 - [DELIVERY-001](../delivery/README.md#delivery-001-주문-saga의-내부-api와-실패-계약-연동-확인): 기존 I-09·I-11·I-12·I-13 구현·연동 확인 요청.
 - [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토): 추가 정책 검토, 아직 합의되지 않음.

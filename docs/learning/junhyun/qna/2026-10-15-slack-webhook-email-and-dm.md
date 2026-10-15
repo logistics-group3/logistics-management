@@ -1,7 +1,7 @@
 ---
 title: Slack Webhook을 배송담당자 이메일에 연결할 수 있는가
 date: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 asker: Junhyun An
 level: 중급
 tags: [slack, webhook, oauth, notification, delivery]
@@ -17,7 +17,7 @@ tags: [slack, webhook, oauth, notification, delivery]
 
 Incoming Webhook은 설치할 때 선택한 채널로 보내므로 이메일을 넣어 수신자를 바꿀 수 없다.
 같은 워크스페이스에 등록된 이메일로 Slack 사용자를 찾고 그 사용자에게 DM을 보내는 방식은 별도 Web API 연동으로 가능하다.
-현재 프로젝트는 Slack 멤버 ID를 저장하고 고정 채널 Webhook을 사용한다. 이메일 조회·개인 DM 발송은 아직 구현하지 않았다.
+최초 답변 때는 고정 채널 Webhook만 있었다. 이후 사용자 요청으로 이메일 조회·개인 DM을 구현했고 2026-10-16 실제 주문 알림 1건의 Slack 접수를 확인했다.
 이메일은 Slack 사용자를 찾는 입력이며, 실제 이메일함으로 메일을 보내는 기능과는 다르다.
 
 ## 자세히
@@ -37,11 +37,13 @@ Slack 공식 문서는 Webhook 요청으로 기본 채널·username·아이콘�
 2. 결과의 Slack 멤버 ID로 `conversations.open`을 호출해 앱과 사용자의 DM을 연다. 1:1 DM에는 `im:write`가 필요하다.
 3. 반환된 DM 채널 ID에 `chat.postMessage`로 메시지를 보낸다. `chat:write`가 필요하다.
 
+2026-10-16 실제 앱 설정 UI는 users:read.email을 추가할 때 users:read도 의존 권한으로 요구했다. 사용자가 이 4개 봇 권한을 승인해 재설치했다.
+
 이미 멤버 ID를 알고 있다면 1번 조회를 생략할 수 있다. 따라서 현재 회원가입의 `slackId`를 이용하면 이메일 조회 권한 없이 시작할 수 있다.
 Bot Token은 서버 설정에 보관한다. 프런트엔드 환경 변수·브라우저 코드에 넣지 않는다. 스코프를 추가하면 Slack 앱의 설치 권한도 그에 맞게 갱신해야 한다.
 대상 이메일은 같은 워크스페이스에 등록된 활성 사용자를 가리켜야 한다. 임의의 이메일 주소로 Slack 외부 사람에게 보낼 수 있다는 의미가 아니다.
 
-## 이 프로젝트에서는
+## 최초 답변 시점 (2026-10-15, 구현 전)
 
 - `user-service/.../presentation/dto/SignupRequest.java`는 `slackId`를 받는다. 이메일 필드는 없다. 이메일을 slackId에 입력해도 자동으로 Slack 멤버 ID로 변환되지 않는다.
 - `order-service/.../infrastructure/notification/SlackOrderNotificationSender.java`는 설정된 Webhook URL 한 곳으로 보낸다. 현재 payload는 일반 텍스트이고 입력을 이스케이프한다. 담당자 멘션이나 DM 수신자 선택은 하지 않는다.
@@ -49,7 +51,15 @@ Bot Token은 서버 설정에 보관한다. 프런트엔드 환경 변수·브�
 - 주문 생성 완료 알림이라면 기존 커밋 후 비동기 경계를 유지한다. 배송 생성 직후에 보냈다가 이후 주문 트랜잭션이 실패하는 경우를 구분해야 한다.
 - 현재 UI 테스트 서버의 Slack Webhook은 비활성화되어 있다. 이번 작업은 질문 답변과 UI 연결이며 실제 Slack 메시지 전송·스코프 변경은 하지 않았다.
 
-현재 범위에서는 채널 알림과 저장된 Slack 멤버 ID를 유지하는 구성이 간단하다. 개인 DM이 필요해지면 봇 발송 어댑터를 추가하고, 이메일 입력을 원하면 이메일→ID 조회·검증을 더한다. 사용자 API·저장 필드 변경은 user 담당자와 합의한다.
+당시에는 채널 알림을 유지하고 개인 DM을 후속으로 제안했다. 아래 갱신은 사용자가 실제 구현을 요청한 뒤의 상태다.
+
+## 구현 후 갱신 (2026-10-16)
+
+- `slackEmail`·Flyway V2/V3·회원가입 입력·MASTER 수정/해제를 추가했다. 10/16 후속 요청으로 신규 가입은 이메일만 필수로 받는다. 기존 slackId는 보존하고 신규 가입의 ID는 null로 둔다.
+- I-15가 현재 활성 구간 담당자를, I-16이 사용자 연락처를 제공한다. 기존 내부 응답에 이메일을 추가하지 않았다.
+- 주문 커밋 후 비동기로 두 API를 읽고 Slack에 보낸다. 같은 이벤트의 담당자·이메일은 중복 제거하며 알림 실패는 주문 결과에 전파하지 않는다.
+- 실제 DM 1건을 검증하고 테스트 주문을 정리했다. 현재 격리 UI 서버는 승인된 본인 주소 하나만 발송을 허용한다. 자동 E2E·시드는 DM 활성화 상태에서 차단된다.
+- 계약은 USER-002·DELIVERY-003에 OPEN으로 기록해 제공 담당자 리뷰를 기다린다. [설계](../../../decisions/0016-delivery-manager-slack-dm.md), [설정·실패 처리](../../../guides/slack-dm.md), [검증](../../../reviews/slack-dm.md)이 현재 기준이다.
 
 ## 면접 포인트
 

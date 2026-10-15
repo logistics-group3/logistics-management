@@ -12,7 +12,7 @@ const emptyForm: SignupInput = {
   password: '',
   passwordConfirm: '',
   name: '',
-  slackId: '',
+  slackEmail: '',
   affiliationType: 'COMPANY',
   affiliationName: '',
 }
@@ -59,7 +59,7 @@ export function Signup() {
             const { passwordConfirm: _confirmation, ...body } = form
             const result = await api<{ userId: string; username: string }>('/auth/signup', {
               method: 'POST',
-              body,
+              body: { ...body, slackEmail: body.slackEmail.trim() },
             })
             if (!result?.userId)
               throw new ApiError(0, 'INVALID_RESPONSE', '가입 결과를 확인할 수 없습니다.')
@@ -133,16 +133,23 @@ export function Signup() {
                 placeholder="담당자 이름"
               />
             </Field>
-            <Field label="Slack 멤버 ID" hint={validation.slackId}>
+            <Field
+              label="Slack 계정 이메일"
+              hint={
+                validation.slackEmail ??
+                '배송담당자로 배정될 때 DM을 받을 Slack 워크스페이스 계정 이메일입니다.'
+              }
+            >
               <input
-                name="slackId"
-                autoComplete="off"
-                maxLength={50}
+                name="slackEmail"
+                type="email"
                 required
-                value={form.slackId}
-                aria-invalid={Boolean(validation.slackId)}
-                onChange={(e) => change('slackId', e.target.value)}
-                placeholder="예: U0123456789"
+                autoComplete="email"
+                maxLength={254}
+                value={form.slackEmail}
+                aria-invalid={Boolean(validation.slackEmail)}
+                onChange={(e) => change('slackEmail', e.target.value)}
+                placeholder="driver@example.com"
               />
             </Field>
           </div>

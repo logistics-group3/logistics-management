@@ -1,7 +1,7 @@
 # codex/logistics-test-ui
 
 ## 지금 하는 일
-회원가입→업체 등록·담당자 연결→상품·주문 생성 UI와 실제 연동 검증을 마쳤다. 테스트 서버(18080)와 UI(5174)는 실행 중이다.
+이메일만 받는 가입·Slack DM 구현과 프런트 포함 빌드 지침을 검증했다. UI 커밋 5aaf586에 이어 변경을 커밋·푸시하고 dev 대상 PR을 준비한다.
 
 ## 진행 상태
 
@@ -22,12 +22,23 @@
 - [x] [실행 안내](../../frontend/README.md), [ADR 0015](../decisions/0015-logistics-test-ui.md), [검증 기록](../reviews/logistics-test-ui.md), TS-018·019 기록
 - [x] 업체 C-01·C-04, 상품 P-01, 배송담당자 U-07 연결. 신규 USER의 가입→본인 업체 2곳→상품→주문 생성, MASTER 담당자 이전→새 담당자 주문, 허브 지정→실제 자동 배정·배송 완료·해제까지 검증
 - [x] Slack 이메일 조회·Webhook/DM 차이 [학습 노트](../learning/junhyun/qna/2026-10-15-slack-webhook-email-and-dm.md), 실행 안내·검증 기록 갱신. Slack 설정 변경·실제 발송 없음
+- [x] UI 작업을 5aaf586으로 커밋했다. 기존 별도 학습 문서 5개는 제외했다. 원격 푸시는 하지 않았다.
+- [x] Slack DM: user slackEmail·V2·I-16, delivery I-15, order 별도 AFTER_COMMIT·비동기 DM 송신, 가입·MASTER 이메일 UI·설정 구현
+- [x] 전체 build 727개(user 86·delivery 39·order 451 포함), 프런트 단위 41개·실제 API E2E 15개·build·lint 통과. 새 통합 테스트 풀 제한은 TS-020 기록
+- [x] 기존 Slack 앱에 users:read·users:read.email·im:write·chat:write를 사용자 승인으로 재설치. 본인 이메일만 허용하고 실제 주문 201→I-15→I-16→Slack 접수 1건 확인, 테스트 주문 취소·논리 삭제
+- [x] 증거 캡처 오류로 Bot Token 노출. 사용자 승인 후 해당 Bot Token만 auth.revoke로 폐기했고 이전 토큰 인증 거절을 확인했다. 새 토큰·동일 권한·수신자 조회 검증 후 전용 서버에 교체. 추가 DM은 보내지 않음
+- [x] 기존 개발 Webhook이 no_service인 것을 확인. 사용자 승인으로 `.env`의 URL 한 줄을 같은 채널의 새 URL로 교체하고 기존 이미지 버전의 order-service만 재생성. 나머지 8개 컨테이너·DB 보존, 채널 메시지 테스트 없음
+- [x] 실행 안내·검증·SA의 로컬 확장·서비스 노트·배송 T06·USER-002·DELIVERY-003 인계. 제공 담당자의 팀 리뷰는 OPEN 유지
+- [x] 사용자 후속 요청으로 가입의 Slack 멤버 ID 입력을 제거했다. U-01 필수 이메일·V3 nullable slackId·기존 값 보존, 입력/요청에 ID 없는 실제 가입→주문→배송 E2E 확인
+- [x] PR 제출 전 user 88개 실행·전체 build 729개(실패·오류·skip 0), 프런트 build·lint·format·단위 41개, 브라우저 E2E 15개(43.5초) 통과. 실제 Slack 발송 없음
+- [x] AGENTS·CLAUDE·품질 기준·PR 템플릿에 백엔드/프런트 검증 구분과 [전체 빌드 정본](../guides/full-build.md) 연결
+- [ ] 이번 변경 커밋·브랜치 푸시·dev 대상 PR 생성, PR 링크와 CI 상태 확인
 - 면접 포인트: USER 본인 담당 연결과 MASTER 재배정의 요청 차이, 큰 정수 JSON 전송, 멱등키 없는 생성의 결과 미확정 처리, Webhook과 봇 DM의 차이
 
 ## 다음 단계
 
 1. http://127.0.0.1:5174/signup 에서 회원가입부터 테스트한다. 계정·시나리오는 [frontend README](../../frontend/README.md)에 있다.
-2. 사용자 요청에 따라 UI 구현을 커밋으로 정리한다. 다음 작업은 배송담당자 이메일 기반 Slack DM 연동이며, 원격 푸시는 별도 요청 시 진행한다.
+2. UI 커밋은 5aaf586이다. 이메일 전용 가입·DM과 AI 빌드 지침을 함께 제출한다. [실행 안내](../guides/slack-dm.md)·[검증 기록](../reviews/slack-dm.md)을 기준으로 user·delivery 계약과 공용 compose 설정을 리뷰한다.
 3. 후속 범위는 업체·상품 삭제, 상품 수정, 계정 역할 변경·비활성화, 배송 수정/재배정·cross-hub 연동이다. I-03 준비 전에는 다른 허브 간 주문 제한을 유지한다.
 
 아래는 구현 때 사용한 최초 계획이다. 최종 구현·검증 사실은 위 완료 항목과 검증 기록이 기준이다.
@@ -115,16 +126,19 @@ hub I-03의 Controller는 아직 없다. 같은 허브 주문은 해당 호출�
 2. http://127.0.0.1:5174/signup 에서 가입→로그인을 확인한다. 준비된 주문 흐름은 `uimaster` / `UiLocal!2026`로 로그인한다. 현재 서버와 UI는 실행 중이다.
 3. 새 USER는 업체 관리 → 업체 등록에서 서울특별시 센터의 본인 업체를 등록하고, 주문에서 공급업체 스파르타 서플라이와 본인 수령업체를 선택한다. 상품까지 새로 만들 때는 같은 허브의 공급업체를 한 곳 더 등록한다. 다른 주문은 배송 상세에서 2구간 출발·도착 후 삭제한다.
 4. MASTER는 업체 상세에서 담당자를 변경하고, 사용자 상세에서 배송담당자·허브를 지정한다. `uiuser`·`uidriver` 계정(같은 테스트 비밀번호)으로 조회 범위와 담당 구간 버튼을 비교한다.
-5. 재실행은 루트 터미널에서 `script/ui-test.sh up`, `script/ui-test.sh seed`, `script/ui-test.sh frontend` 순서다. IntelliJ Terminal에서도 같은 명령을 실행한다.
-6. `npm --prefix frontend run test:e2e`로 브라우저 검증을 재현하고 `frontend/playwright-report/index.html`에서 결과를 확인한다.
+5. 재실행은 루트 터미널에서 `script/ui-test.sh up`, `script/ui-test.sh frontend`다. 초기 데이터가 없을 때만 DM 비활성화 상태에서 `script/ui-test.sh seed`를 실행한다.
+6. 현재 DM은 승인한 본인 주소에만 활성화돼 있다. 자동 E2E·시드는 차단되므로 `.env.ui-test`에서 DM을 끄고 `up`으로 반영한 뒤 `npm --prefix frontend run test:e2e`를 실행한다. 수동 주문 DM은 `uidriver`가 배정되는 서울 허브로 테스트한다.
 
 ## 메모
 
-- 작업일: 2026-10-15 (Asia/Seoul). 계획 제시 후 사용자가 전체 1차 구현과 서버·화면 실행까지 요청했다.
-- 프런트 코드·패키지·테스트와 별도 테스트 스택을 추가했다. 기존 개발 스택 재기동·실제 Slack 발송·커밋·푸시는 수행하지 않았다.
+- 작업일: 2026-10-15~16 (Asia/Seoul). 계획 제시 후 사용자가 전체 1차 구현과 서버·화면 실행, 이어서 이메일 DM을 요청했다.
+- UI 커밋과 승인된 DM 1건의 실연동을 수행했다. 토큰 교체 후 사용자 승인으로 기존 개발 주문 서비스의 Webhook만 복구했다. 이번 PR 준비에서는 기본 개발 환경과 별도 작업 문서 5개를 보존하며 추가 실제 Slack 메시지를 보내지 않는다.
 - 브랜치 정리 복구 묶음: `/Users/alloy/.codex/backups/logistics-management/local-branches-2026-10-15-5f0b0df7`. branches.bundle·원래 ref 목록·미커밋 문서·보존 확인 결과가 있다.
 - 별도 검토 worktree `/Users/alloy/.codex/worktrees/dev-merge-review/logistics-management`는 파일을 유지한 채 1384a5d의 detached HEAD다.
 - 기존 `docs/learning/junhyun/README.md`, Q&A 3개와 주문 progress의 GitHub 학습 기록은 별도 작업이며 보존한다.
-- `.env`·IDE 파일은 해시가 유지됐고 기존 README 줄바꿈 stash(8b7392d…)도 보존했다.
+- 최초 UI 작업에서는 `.env`·IDE 파일 해시를 유지했다. 이후 사용자 승인에 따른 Webhook 복구로 `.env`의 해당 URL 한 줄만 변경했다. 기존 README 줄바꿈 stash(8b7392d…)는 보존했다.
 
 - 이번 로컬 프런트 실행 세션은 81164이며 전용 Compose 프로젝트는 logistics-ui-test다. 생성한 앱 브라우저 탭에 회원가입 화면을 열어 두었다.
+
+- Slack 앱 확인: Chrome의 `Logistics Order Noti`(A0C986356H1), 디스이스스파르타(T0C98T2SSGM). 사용자 로그인 완료 확인. 앱 브라우저는 로그인 전이라 Chrome을 사용한다.
+- 승인 권한은 기존 incoming-webhook과 추가 4개(users:read, users:read.email, im:write, chat:write)다. chat:write.customize는 추가하지 않았다. Bot Token은 교체된 값으로 `.env.ui-test`에만 저장하며 파일 권한은 600이다.

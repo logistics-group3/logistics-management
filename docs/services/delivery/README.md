@@ -26,6 +26,7 @@
 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order | 구현 | 응답 `deliveryId, orderId, status`. 이미 취소면 200 |
 | I-12 | `POST /internal/deliveries/{deliveryId}/cancel-revert` | order | 구현 | 응답 `deliveryId, orderId, status`. 취소 상태가 아니면 no-op 200 |
 | I-13 | `DELETE /internal/deliveries/orders/{orderId}` | order | 구현 | 204. 대상이 없어도 204 |
+| I-15 | `GET /internal/deliveries/{deliveryId}/notification-recipients` | order | 로컬 구현·팀 리뷰 대기 | `{deliveryId, orderId, status, managerIds}`. WAITING·MOVING 담당자 중복 제거, 완료·취소는 빈 목록, 없음·삭제는 404 DELIVERY_NOT_FOUND. [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md) |
 
 배송 생성·삭제는 내부 API로만 제공한다(SA 6.2). 요청·응답 상세는 [`delivery-api.md`](../../../delivery-service/docs/domain/delivery-api.md).
 
@@ -47,6 +48,7 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 - [x] 상태 전이(구간 상태 → 배송 상태), 취소·원복, 재배정 규칙을 Entity 메서드로(2026-10-15)
 - [x] I-09 배송 생성과 담당자 자동 배정, orderId 멱등(동시 요청 포함)
 - [x] D-01~D-05, I-10~I-13
+- [x] I-15 알림 수신자 조회. delivery 테스트 39개와 실제 주문→I-15→DM 1건 확인(2026-10-16). [T06](../../../delivery-service/docs/tasks/T06.md)
 - [ ] Gateway 경유 호출 확인(user I-14, hub I-03 구현 후)
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
@@ -77,3 +79,12 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 - 검토 요청: 같은 orderId의 종료 표시 보존, 삭제 이력을 포함한 멱등키 수명, 시도 토큰으로 오래된 실행을 차단하는 방안 중 제공 가능한 보장을 정한다. orderId로 미확정 생성 결과를 확인할 수단도 함께 검토한다. 필요한 요청·응답 변경은 결정 후 합의한다.
 - 현재 영향: 주문의 진행 기록·커밋 재확인 구현은 기존 계약으로 진행한다. 추가 자동 복구와 미확정 기록 종료는 이 정책 확인 전까지 보장하지 않는다.
 - 결정: 미정. 새 토큰 필드나 종료 표시가 이미 구현됐다고 가정하지 않는다.
+
+### DELIVERY-003 주문 커밋 후 DM용 배송담당자 읽기 계약
+
+- 상태: OPEN (기능 구현 요청에 따른 로컬 변경, 제공 담당자 리뷰 대기)
+- 작성: order / Junhyun An 작업 / 2026-10-15
+- 내용: 사용자의 이메일 DM 구현 요청에 따라 I-15를 추가한다. 기존 I-10은 유지하고 별도 내부 조회로 배송·주문 ID, 상태, 중복 없는 구간 담당자 ID를 제공한다.
+- 관련: [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md). 팀 전체 승인·제공 담당자의 검토 완료를 뜻하지 않는다.
+- 구현·검증: 2026-10-16 QueryDSL 조회 결과를 재사용해 구현했고 중복 제거·완료 구간 제외·취소·삭제 테스트를 통과했다. 테이블·I-10·배정 규칙은 유지했다. 실제 같은 허브 2구간 담당자가 DM 1건을 받는 경로를 확인했으며 재배정·취소와 발송의 원자성은 보장하지 않는다.
+- U-01 후속 변경: 이메일만으로 가입한 사용자는 I-01·I-14의 slackId가 null이다. 자동 배정은 userId만 사용하고 수령인 ID 조회는 Optional.empty로 처리할 수 있어 기존 배송 코드는 유지한다. 배송의 recipientSlackId도 null일 수 있으며 DM은 I-16 이메일로 발송한다. 제공 담당자가 소비 계약을 함께 확인한다.

@@ -304,7 +304,7 @@ test('회원가입 검증·중복 아이디·가입 완료 → 실제 로그인�
   await page.getByLabel('비밀번호', { exact: true }).fill(password)
   await page.getByLabel('비밀번호 확인', { exact: true }).fill('Different!1')
   await page.getByLabel('이름', { exact: true }).fill('가입 검증 담당자')
-  await page.getByLabel('Slack 멤버 ID', { exact: true }).fill('UI_E2E_SIGNUP')
+  await page.getByLabel('Slack 계정 이메일', { exact: true }).fill('signup@example.com')
   await page.getByLabel('소속명', { exact: true }).fill('회원가입 테스트 업체')
   await page.getByRole('button', { name: '계정 만들기', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('비밀번호가 일치하지')

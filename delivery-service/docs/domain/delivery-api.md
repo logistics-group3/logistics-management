@@ -298,6 +298,13 @@ Response `204 No Content`
 
 ---
 
+### I-15. 주문 알림 수신자 조회 [로컬 확장·팀 리뷰 대기]
+
+`GET /internal/deliveries/{deliveryId}/notification-recipients`, 호출자 order. [ADR 0016](../../../docs/decisions/0016-delivery-manager-slack-dm.md).
+
+Response `200 OK` — 감싸지 않은 `{deliveryId, orderId, status, managerIds: [UUID]}`다. WAITING·MOVING 구간의 담당자만 중복 제거해 제공한다. 완료·취소 배송이면 managerIds는 빈 배열이고, 없음·논리 삭제는 404 `DELIVERY_NOT_FOUND`다.
+I-10, 상태 전이, 담당자 배정 규칙은 유지한다. 알림용 이메일은 user I-16에서 조회하고 Slack 호출은 order가 맡는다. 조회 이후 재배정·취소까지 원자적으로 묶는 API는 아니다.
+
 ## 4. 사용 — 다른 서비스 API
 
 배송이 부르는 쪽. 응답은 Feign DTO(infrastructure)에서 받아 **배송 용어로 바꿔** application에 넘긴다 (`delivery.md` §2-2).

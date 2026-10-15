@@ -40,8 +40,11 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
-    @Column(name = "slack_id", nullable = false, length = 50)
+    @Column(name = "slack_id", length = 50)
     private String slackId;
+
+    @Column(name = "slack_email", length = 254)
+    private String slackEmail;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "affiliation_type", nullable = false, length = 20)
@@ -98,6 +101,15 @@ public class User extends BaseEntity {
         if (affiliationName != null) {
             this.affiliationName = affiliationName;
         }
+    }
+
+    /** 이메일은 Slack DM 전용 선택 정보다. 빈 값은 해제하며 기존 Slack ID는 유지한다. */
+    public void changeSlackEmail(String email) {
+        String normalized = email == null ? null : email.strip();
+        if (normalized != null && normalized.length() > 254) {
+            throw new BusinessException(CommonErrorCode.VALIDATION_ERROR, "Slack 이메일은 254자 이하여야 합니다.");
+        }
+        this.slackEmail = normalized == null || normalized.isEmpty() ? null : normalized;
     }
 
     public void changeRole(Role role) {

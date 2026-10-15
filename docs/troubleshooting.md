@@ -183,3 +183,20 @@
 - 원인: Radix 스크롤 잠금이 body를 relative로 만들면서 표의 절대 배치된 sr-only 설명이 표 스크롤 영역의 클리핑 밖에 놓였다.
 - 해결: `.table-scroll`을 relative로 만들어 숨김 설명의 기준을 스크롤 영역 안에 뒀다. DOM에서 적용 전 778px·후 390px을 확인했다.
 - 확인: 모바일 E2E에 모달이 열린 상태의 문서 폭 검증을 추가했고 통과했다. 실제 viewport 캡처도 확인했다.
+
+### TS-020 Spring 통합 테스트를 추가하자 PostgreSQL 연결 수가 초과됨
+
+- 서비스·작성: order·user / Junhyun An 작업 / 2026-10-16
+- 문제: 새 DM 통합 테스트를 추가한 전체 build에서 기존 OrderRepositoryIntegrationTest 18개가 `too many clients already`로 실패했다. 같은 테스트를 단독으로 실행할 때의 도메인 오류가 아니었다.
+- 원인: 캐시된 Spring 테스트 컨텍스트마다 Hikari 풀이 기본 10개 연결을 유지해 공유 테스트 PostgreSQL의 최대 연결 100개를 초과했다.
+- 해결: 새 OrderDmNotificationIntegrationTest·SlackEmailIntegrationTest만 maximum-pool-size=2, minimum-idle=0으로 제한했다. 제품 설정·기존 공용 테스트 기반은 바꾸지 않았다.
+- 확인: `./gradlew build` 727개 테스트, 실패·오류·skip 0. 실제 커밋·롤백·비동기 발송 검증을 유지했다.
+
+### TS-021 Slack 설정 캡처에 Bot Token이 포함됨
+
+- 서비스·작성: 로컬 Slack 설정 / Junhyun An 작업 / 2026-10-16
+- 문제: OAuth 페이지에서 권한 표의 DOM 좌표로 캡처했으나 토큰 영역이 이미지에 포함돼 대화에 노출됐다. 캡처 좌표와 실제 이미지 범위가 달랐으며 도구 내부의 정확한 좌표 변환 원인은 미확인이다.
+- 해결: 사용자에게 알리고 승인 후 auth.revoke로 해당 Bot Token만 폐기했다. 이전 인증 거절·새 토큰 발급·동일 권한·수신자 조회를 확인하고 `.env.ui-test`와 테스트 서버에 반영했다. 잘못된 이미지는 삭제하고 토큰이 없는 App Manifest 화면으로 교체했다.
+- 추가 영향: 기존 개발 Webhook이 앱 목록에서 사라지고 404 no_service를 반환했다. 폐기 직전 상태를 확인하지 않아 정확한 무효화 시점은 미확인이다. 사용자 승인 후 같은 채널의 새 URL 한 줄만 `.env`에 반영하고 기존 이미지의 주문 컨테이너만 재생성했다. 나머지 8개 컨테이너·DB는 유지했다.
+- 확인: 새 Bot 인증·조회 정상, 새 Webhook은 메시지 없는 GET에 400 invalid_payload, 두 주문 서버 health UP. 추가 메시지는 보내지 않았다. 증거와 제한은 [검증 기록](reviews/slack-dm.md)에 있다.
+- 배운 점: 자격 증명이 보이는 페이지는 일부 영역이라도 캡처하지 않는다. 비밀값이 없는 별도 화면에서만 캡처하고 실제 이미지의 범위를 확인한 뒤 공유한다.

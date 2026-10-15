@@ -32,7 +32,7 @@ async function signup(request: APIRequestContext, username: string, name: string
       username,
       password,
       name,
-      slackId: 'UI_E2E_ONLY',
+      slackEmail: 'driver@example.com',
       affiliationType: 'COMPANY',
       affiliationName: 'UI 담당 연결 검증',
     },
@@ -113,7 +113,7 @@ test('신규 회원가입 → 본인 업체 2곳 등록 → 상품 등록 → �
     await page.getByLabel('비밀번호', { exact: true }).fill(password)
     await page.getByLabel('비밀번호 확인', { exact: true }).fill(password)
     await page.getByLabel('이름', { exact: true }).fill('신규 업무 담당자')
-    await page.getByLabel('Slack 멤버 ID', { exact: true }).fill('UI_E2E_ONBOARDING')
+    await page.getByLabel('Slack 계정 이메일', { exact: true }).fill('onboarding@example.com')
     await page.getByLabel('소속명', { exact: true }).fill('가입부터 주문 검증')
     const registration = page.waitForResponse(
       (r) => r.url().endsWith('/auth/signup') && r.request().method() === 'POST',
@@ -371,4 +371,65 @@ test('모바일 업체 등록·담당자 선택의 레이아웃과 접근성', a
     [],
   )
   await page.screenshot({ path: testInfo.outputPath('company-form-mobile.png') })
+})
+
+test('이메일만으로 가입, MASTER 수정·해제와 USER 편집 제한', async ({
+  page,
+  request,
+}, testInfo) => {
+  const resources = { orders: [] as string[], companies: [] as string[], users: [] as string[] }
+  const username = unique('ue')
+  try {
+    await page.goto('/signup')
+    await page.getByLabel('아이디', { exact: true }).fill(username)
+    await page.getByLabel('비밀번호', { exact: true }).fill(password)
+    await page.getByLabel('비밀번호 확인', { exact: true }).fill(password)
+    await page.getByLabel('이름', { exact: true }).fill('이메일 검증 담당자')
+    await expect(page.getByLabel('Slack 멤버 ID', { exact: true })).toHaveCount(0)
+    await page.getByLabel('소속명', { exact: true }).fill('DM 테스트')
+    await page.getByLabel('Slack 계정 이메일', { exact: true }).fill('driver+signup@example.com')
+    const registration = page.waitForResponse(
+      (r) => r.url().endsWith('/auth/signup') && r.request().method() === 'POST',
+    )
+    await page.getByRole('button', { name: '계정 만들기' }).click()
+    const result = await registration
+    expect(result.status()).toBe(201)
+    expect(result.request().postDataJSON()).not.toHaveProperty('slackId')
+    expect(result.request().postDataJSON().slackEmail).toBe('driver+signup@example.com')
+    const account = (await result.json()).data
+    resources.users.push(account.userId)
+    await login(page, username)
+    await nav(page, '사용자 관리')
+    await expect(page.getByText('driver+signup@example.com', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '알림 이메일 저장' })).toHaveCount(0)
+    await page.getByRole('button', { name: '로그아웃' }).click()
+    await login(page, 'uimaster')
+    await nav(page, '사용자 관리')
+    await page.getByRole('searchbox').fill('이메일 검증 담당자')
+    await page.getByRole('button', { name: '검색', exact: true }).click()
+    await page.getByRole('button', { name: '이메일 검증 담당자 상세', exact: true }).click()
+    await page.getByLabel('Slack 계정 이메일', { exact: true }).fill('driver+updated@example.com')
+    await page.getByRole('button', { name: '알림 이메일 저장' }).click()
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByRole('definition')
+        .filter({ hasText: 'driver+updated@example.com' }),
+    ).toBeVisible()
+    await page.screenshot({
+      path: testInfo.outputPath('slack-email-settings.png'),
+      fullPage: false,
+    })
+    await page.getByLabel('Slack 계정 이메일', { exact: true }).fill('')
+    await page.getByRole('button', { name: '알림 이메일 저장' }).click()
+    await expect(page.getByRole('dialog').getByText('미등록', { exact: true })).toBeVisible()
+    const headers = await adminHeaders(request)
+    const internal = await request.get(
+      `http://127.0.0.1:18080/internal/users/${account.userId}/notification-contact`,
+      { headers },
+    )
+    expect([403, 404]).toContain(internal.status())
+  } finally {
+    await cleanup(request, resources)
+  }
 })

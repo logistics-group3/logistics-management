@@ -4,6 +4,7 @@ PR을 리뷰할 때 계층별로 확인한다. 근거는 [레이어별 규칙](.
 
 ## 모든 PR
 - [ ] `./gradlew build`가 통과했다. PR 본문에 확인한 명령과 결과가 있다.
+- [ ] 전체 빌드·프런트·소비 API 계약 변경에는 프런트 build·lint·format:check·test도 확인했다([명령·범위](full-build.md)). 브라우저 E2E 실행 여부와 실제 Slack 비활성화를 별도로 적었다.
 - [ ] 비밀값(토큰, 실제 비밀번호, `.env`)이 들어가지 않았다.
 - [ ] 다른 서비스의 코드를 직접 고치지 않았다. 필요한 변경은 그 서비스 협업 로그에 요청했다.
 - [ ] 계층 의존 방향을 지켰다(presentation → application → domain ← infrastructure, `coding-conventions.md` 1절).

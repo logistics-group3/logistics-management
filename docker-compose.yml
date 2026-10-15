@@ -125,6 +125,11 @@ services:
       <<: *service-env
       ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_DM_ENABLED: ${SLACK_DM_ENABLED:-false}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_DM_WORKSPACE_ID: ${SLACK_DM_WORKSPACE_ID:-}
+      SLACK_DM_API_BASE_URL: ${SLACK_DM_API_BASE_URL:-https://slack.com/api}
+      SLACK_DM_ALLOWED_EMAILS: ${SLACK_DM_ALLOWED_EMAILS:-}
 
   delivery-service:
     <<: *db-service

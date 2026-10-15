@@ -18,12 +18,13 @@ public record UserResult(
         boolean isDeliveryManager,
         UUID hubId,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        String slackEmail
 ) {
 
     public static UserResult from(User user) {
         return new UserResult(user.getId(), user.getUsername(), user.getName(), user.getSlackId(),
                 user.getAffiliationType(), user.getAffiliationName(), user.getRole(), user.isDeliveryManager(),
-                user.getHubId(), user.getCreatedAt(), user.getUpdatedAt());
+                user.getHubId(), user.getCreatedAt(), user.getUpdatedAt(), user.getSlackEmail());
     }
 }

@@ -17,6 +17,7 @@
 | 막혔다 | [문제 해결 기록](troubleshooting.md) |
 | 왜 이렇게 만들었는지 궁금하다 | [결정 기록](decisions/README.md) |
 | AI 에이전트로 작업한다 | 루트 `AGENTS.md`(공통 진입점) |
+| 프런트까지 전체 빌드하거나 API 연동을 검증한다 | [전체 빌드·검증](guides/full-build.md): Gradle과 npm을 각각 실행 |
 
 ## 정보별 기준 위치
 

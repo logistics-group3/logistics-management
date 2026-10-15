@@ -15,7 +15,8 @@ export interface User {
   hubId: string | null
   affiliationType: string
   affiliationName: string
-  slackId: string
+  slackId: string | null
+  slackEmail?: string | null
   createdAt: string
 }
 export interface Hub {
