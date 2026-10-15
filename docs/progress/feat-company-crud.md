@@ -1,7 +1,7 @@
 # feat/company-crud
 
 ## 지금 하는 일
-company-service 4단계(presentation)와 Gateway 확인 완료, 커밋 대기
+`dev`로 PR을 올리고 리뷰를 기다린다
 
 ## 진행 상태
 - [x] 결정 확정: SA v2.0 기준, company 결정 0001·0002는 이번 범위 제외, 가격은 BIGINT/Long(company 결정 0003)
@@ -33,11 +33,13 @@ company-service 4단계(presentation)와 Gateway 확인 완료, 커밋 대기
   - hub I-02가 없어 업체는 DB에 직접 1건 넣고 확인. C-01과 허브 변경은 503 `SERVICE_UNAVAILABLE`
   - 401(토큰 없음), 400(검증, 허용 안 된 정렬), 403(남의 업체·상품, USER의 관리자 변경), 404(없음·다른 업체 경로·삭제됨), 외부 `/internal/**` 404
   - C-05 후 소속 상품 2/2 논리 삭제 확인(DB)
+- [x] 4단계 커밋 `994b394`
+- [x] PR 전 확인(2026-10-15): `./gradlew build` 성공, `script/docs-check.sh origin/dev` OK, `script/error-codes-check.sh` PASS
 - [ ] 미확인: hub I-02 구현 후 C-01 성공, 허브 변경 성공(HUB-001)
 - 면접 포인트: 상품에 hub_id를 두지 않고 업체를 따르게 한 이유, 서비스 간 참조는 FK 없이 인덱스만 두는 이유
 
 ## 다음 단계
-1. 4단계 커밋 후 `dev`로 PR을 올린다(PR 본문 STAR 형식, `docs/guides/git-workflow.md`).
+1. PR 리뷰 의견을 반영한다.
 2. HUB-001 답을 확인한다. hub I-02가 없으면 Gateway 통합 확인 시 업체 생성이 503이 된다.
 
 ## 직접 해보기
