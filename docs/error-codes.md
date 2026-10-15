@@ -35,11 +35,11 @@
 | `HUB_NOT_FOUND` | 404 | 허브가 없음 | 예정 |
 | `HUB_ROUTE_NOT_FOUND` | 404 | 허브 간 경로가 없음 | 예정 |
 
-## company-service
+## company-service (`CompanyErrorCode`)
 | 코드 | HTTP | 의미 | 상태 |
 |---|---|---|---|
-| `COMPANY_NOT_FOUND` | 404 | 업체가 없거나 삭제됨 | 예정 |
-| `PRODUCT_NOT_FOUND` | 404 | 상품이 없거나 삭제됨 | 예정 |
+| `COMPANY_NOT_FOUND` | 404 | 업체가 없거나 삭제됨 | 구현 |
+| `PRODUCT_NOT_FOUND` | 404 | 상품이 없거나 삭제됨 | 구현 |
 
 ## order-service
 | 코드 | HTTP | 의미 | 상태 |
@@ -51,10 +51,10 @@
 | `ORDER_CREATION_RECOVERY_REQUIRED` | 409 | 생성 결과 확인 필요 또는 생성 기록 논리 삭제, 재실행 없음 | 구현 |
 | `ORDER_NOT_DELETABLE` | 409 | 취소·배송 완료 전 삭제, 미해결 취소 또는 삭제 진행 기록 불일치 | 구현 |
 
-## delivery-service
+## delivery-service (`DeliveryErrorCode`)
 | 코드 | HTTP | 의미 | 상태 |
 |---|---|---|---|
-| `DELIVERY_NOT_FOUND` | 404 | 배송이 없음 | 예정 |
-| `DELIVERY_ROUTE_NOT_FOUND` | 404 | 배송 구간이 없음 | 예정 |
-| `DELIVERY_MANAGER_NOT_FOUND` | 404 | 배정할 배송담당자가 없음, 재배정 대상이 배송담당자가 아님 | 예정 |
-| `MANAGER_HUB_MISMATCH` | 400 | 재배정할 배송담당자의 소속 허브가 구간 담당 허브와 다름 | 예정 |
+| `DELIVERY_NOT_FOUND` | 404 | 배송이 없음 | 구현 |
+| `DELIVERY_ROUTE_NOT_FOUND` | 404 | 배송 구간이 없음 | 구현 |
+| `DELIVERY_MANAGER_NOT_FOUND` | 404 | 배정할 배송담당자가 없음, 재배정 대상이 배송담당자가 아님 | 구현 |
+| `MANAGER_HUB_MISMATCH` | 400 | 재배정할 배송담당자의 소속 허브가 구간 담당 허브와 다름 | 구현 |

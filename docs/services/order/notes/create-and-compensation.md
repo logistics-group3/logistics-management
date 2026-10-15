@@ -39,7 +39,7 @@
 ### 메모
 
 - 수령인 기본값은 SA 5.6의 요청업체명이며, 수령업체 관리자 ID를 배송에 전달한다. 수령인의 Slack ID 조회는 delivery 책임이다.
-- 테스트 작성 중 Mockito 검증을 중첩 호출한 문제는 [TS-006](../../../troubleshooting.md)에 기록했다.
+- 테스트 작성 중 Mockito 검증을 중첩 호출한 문제는 [TS-007](../../../troubleshooting.md)에 기록했다.
 - 이 단계에서는 실제 Feign 호출·HTTP API·Gateway를 검증하지 않았다. 후속 결과는 아래 Feign·Controller 기록을 따른다. Slack 발송은 아직 구현하지 않았다.
 - 재고 단계와 공통 모듈, 다른 서비스 코드는 추가·변경하지 않았다. 신규 서비스 에러 코드도 없다.
 
@@ -97,8 +97,8 @@ PostgreSQL은 2026-10-14 생성된 기존 `logistics-management_pgdata`를 재�
 
 ### 메모
 
-- 테스트 드라이버의 503 자동 재전송 문제는 [TS-007](../../../troubleshooting.md)에 기록했다. 호출 횟수 검증을 약하게 바꾸지 않고 드라이버 재시도를 제거했다.
-- 의존 DB 컨테이너 재생성은 [TS-008](../../../troubleshooting.md)에 기록했다.
+- 테스트 드라이버의 503 자동 재전송 문제는 [TS-008](../../../troubleshooting.md)에 기록했다. 호출 횟수 검증을 약하게 바꾸지 않고 드라이버 재시도를 제거했다.
+- 의존 DB 컨테이너 재생성은 [TS-009](../../../troubleshooting.md)에 기록했다.
 - Slack 알림, O-02~O-06, 팀 서비스 실제 데이터 연동은 이번 구현에 포함하지 않았다. 공통 모듈·다른 서비스 코드·SA 계약은 바꾸지 않았다.
 - Feign·Controller 변경은 후속 요청에서 `9b48adc feat(order): 주문 생성 Feign과 Controller 연결`로 커밋했다. 푸시는 수행하지 않았다.
 

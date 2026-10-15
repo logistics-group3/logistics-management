@@ -99,7 +99,7 @@ docker compose stop hub-service          # 도커로 떠 있었다면 내린다
 docker compose exec gateway-service curl -s http://user-service:8081/internal/users/{userId}
 
 # 사용자 헤더가 필요한 API는 Gateway가 넣어 주던 헤더를 직접 넣는다
-docker compose exec gateway-service curl -s http://user-service:8081/api/v1/users/sample/me \
+docker compose exec gateway-service curl -s http://user-service:8081/api/v1/users/me \
   -H 'X-User-Id: {uuid}' -H 'X-Username: master' -H 'X-User-Role: MASTER' -H 'X-Delivery-Manager: false'
 ```
 

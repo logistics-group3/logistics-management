@@ -25,7 +25,7 @@
 
 신규 application 10개·MVC 12개·HTTP/PostgreSQL 22개를 추가했고 전체 주문 152개가 통과했다. 전체 build 성공, XML 합계 250개이며 실패·오류·skip은 0이다.
 격리 Gateway·JWT·Order·PostgreSQL에서 200·400·401·403·404, 위조 헤더 차단, 본인 범위·count를 확인했다. 임시 프로세스와 DB는 정리했다. 자세한 실행 근거는 [스텝 41](../../learning/junhyun/steps/step-41-order-query-api.md)에 있다.
-Swagger size 기본값 불일치는 TS-010, 공유 테스트 DB의 fixture 간섭은 TS-011로 해결했다.
+Swagger size 기본값 불일치는 TS-011, 공유 테스트 DB의 fixture 간섭은 TS-011로 해결했다.
 
 ### 확인 질문
 

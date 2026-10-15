@@ -38,4 +38,15 @@
 
 작성 규칙은 [서비스 협업 창구](../README.md#협업-로그-규칙)를 따른다. 다른 서비스에 요청할 때는 **그 서비스의** 협업 로그에 쓴다.
 
-아직 기록이 없다.
+### HUB-001 I-02 허브 조회 구현 일정과 404 코드 확인
+- 상태: OPEN
+- 작성: company / kej-2356 / 2026-10-15
+- 관련: I-02, company C-01·C-04(업체 생성·수정 시 허브 존재 확인)
+- 내용: company-service가 `HubClient`로 `GET /internal/hubs/{hubId}`를 호출하도록 만들었다. SA 6.3대로 응답은 감싸지 않은 `hubId, name, address`이고, 없는 허브는 404 `HUB_NOT_FOUND`라고 가정했다. 계약이 다르면 알려 주고, 구현 일정을 공유해 주면 그때 Gateway로 통합 확인한다.
+
+### HUB-001 I-03 허브 간 경로 조회 구현과 응답 확인 요청
+- 상태: OPEN
+- 작성: delivery / 한얼 / 2026-10-15
+- 관련: I-03, SA 6.3, delivery I-09 배송 생성
+- 내용: delivery는 배송 생성(I-09) 때 출발 허브와 목적지 허브가 다르면 I-03을 호출해 허브 이동 구간의 예상 거리·시간을 채운다. delivery 쪽 Feign은 `GET /internal/hub-routes?departureHubId=&arrivalHubId=` → `{ hubRouteId, distanceKm, durationMinutes }`(DTO 그대로, ADR 0010)로 구현했다. I-03이 아직 없어 I-09가 실제 연동에서는 실패한다. (1) 구현 일정 (2) 경로가 없을 때 에러 코드 이름(delivery는 받은 에러를 그대로 order에 전달한다)을 알려 달라.
+- 결정:

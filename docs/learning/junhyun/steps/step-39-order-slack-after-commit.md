@@ -48,7 +48,7 @@ flowchart TD
 - 실제 Tomcat·비동기 프록시·HTTP 테스트 대역: Slack 수신 시 별도 DB 연결에서 주문 조회, Webhook 응답을 막아도 주문 201 반환.
 - Slack 400·429·500, 읽기 타임아웃, 실행 풀·큐 포화에서 주문 201·DB 저장 유지, 배송 보상 없음. HTTP 재시도 없음.
 - JSON의 한글·요청사항·업체명 스냅샷, 멘션 제어 문자 이스케이프, 인증 헤더 미전달, 로그의 URL·응답 본문 제외, URL 미설정 시 발송 생략 확인.
-- 최초 테스트 컴파일에서 잘못 참조한 `IS_DELIVERY_MANAGER`를 공통 정본의 `DELIVERY_MANAGER`로 고쳤다. 공통 계약은 바꾸지 않았다(TS-009).
+- 최초 테스트 컴파일에서 잘못 참조한 `IS_DELIVERY_MANAGER`를 공통 정본의 `DELIVERY_MANAGER`로 고쳤다. 공통 계약은 바꾸지 않았다(TS-010).
 - 이 스텝의 구현 당시에는 실제 Slack 채널 발송·팀 데이터 연동·기존 Compose 반영을 하지 않았다. 후속 [스텝 40](step-40-slack-live-connection.md)에서 Compose 반영과 Webhook 테스트 1건의 HTTP 200·ok를 확인했다. 팀 서비스 실제 데이터 연동은 남아 있다.
 
 ## 직접 해보기

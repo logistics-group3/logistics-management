@@ -2,6 +2,8 @@ package com.sparta.logistics.user.domain;
 
 import com.sparta.logistics.common.auth.Role;
 import com.sparta.logistics.common.entity.BaseEntity;
+import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -74,6 +76,46 @@ public class User extends BaseEntity {
     public static User signup(String username, String encodedPassword, String name, String slackId,
                               AffiliationType affiliationType, String affiliationName) {
         return new User(username, encodedPassword, name, slackId, affiliationType, affiliationName);
+    }
+
+    /**
+     * U-06 프로필 수정. null인 값은 바꾸지 않는다.
+     * 배송담당자의 소속은 담당 허브로 고정되므로 여기서 바꿀 수 없다(user 결정 0001). 소속은 U-07 허브 지정으로만 바뀐다.
+     */
+    public void updateProfile(String name, String slackId, AffiliationType affiliationType, String affiliationName) {
+        if (deliveryManager && (affiliationType != null || affiliationName != null)) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "배송담당자의 소속은 허브 지정으로만 바꿀 수 있습니다.");
+        }
+        if (name != null) {
+            this.name = name;
+        }
+        if (slackId != null) {
+            this.slackId = slackId;
+        }
+        if (affiliationType != null) {
+            this.affiliationType = affiliationType;
+        }
+        if (affiliationName != null) {
+            this.affiliationName = affiliationName;
+        }
+    }
+
+    public void changeRole(Role role) {
+        this.role = role;
+    }
+
+    /** U-07 배송담당자 지정 또는 소속 허브 변경. 소속도 그 허브로 함께 바꾼다(SA U-07). */
+    public void assignDeliveryManager(UUID hubId, String hubName) {
+        this.deliveryManager = true;
+        this.hubId = hubId;
+        this.affiliationType = AffiliationType.HUB;
+        this.affiliationName = hubName;
+    }
+
+    /** U-07 배송담당자 해제. 소속 허브만 지우고 소속 정보는 그대로 둔다(SA U-07). */
+    public void releaseDeliveryManager() {
+        this.deliveryManager = false;
+        this.hubId = null;
     }
 
     /** 기동 시 환경 변수로 만드는 초기 관리자. 가입 API로는 MASTER를 만들 수 없으므로 이 경로만 MASTER로 시작한다. */

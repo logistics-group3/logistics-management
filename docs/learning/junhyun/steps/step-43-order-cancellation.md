@@ -93,4 +93,4 @@ O-01의 커밋 재확인·생성 진행 기록은 이후 [스텝 44](step-44-ord
 
 - [ADR 0006](../../../services/order/decisions/0006-order-cancellation-progress.md), [SA 5.5·6.7·7.2](../../../SA/sparta-logistics-sa.md)
 - [서비스 구현 노트](../../../services/order/notes.md), [예외 처리 설계](../../../services/order/failure-handling.md)
-- [트러블슈팅 TS-012](../../../troubleshooting.md)
+- [트러블슈팅 TS-013](../../../troubleshooting.md)

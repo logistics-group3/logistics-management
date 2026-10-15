@@ -50,4 +50,4 @@ HTTP 테스트에서는 Feign 자체를 Mock으로 바꾸지 않고 실제 요�
 ## 다음 단계
 
 커밋 후 비동기 Slack 알림을 구현하고, 팀 company·delivery 구현과 실제 데이터로 통합 검증한다. 상세 구현·실행 근거는 [order 구현 노트](../../../services/order/notes.md)에 있다.
-테스트 드라이버의 503 재전송과 의존 DB 재생성 기록은 [TS-007·TS-008](../../../troubleshooting.md)에 있다.
+테스트 드라이버의 503 재전송과 의존 DB 재생성 기록은 [TS-008·TS-009](../../../troubleshooting.md)에 있다.

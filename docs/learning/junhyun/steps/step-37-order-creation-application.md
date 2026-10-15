@@ -48,4 +48,4 @@
 ## 기록
 
 - [order 구현 노트와 공식 근거](../../../services/order/notes.md)
-- [Mockito 검증 중첩 문제 TS-006](../../../troubleshooting.md)
+- [Mockito 검증 중첩 문제 TS-007](../../../troubleshooting.md)

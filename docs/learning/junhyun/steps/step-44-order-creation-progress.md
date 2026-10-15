@@ -94,4 +94,4 @@ save와 resolveCreation이 미리 커밋된 같은 기록을 잠그므로, 재�
 ## 참고
 
 - [ADR 0007](../../../services/order/decisions/0007-order-creation-progress.md), [SA 5.5·7.1](../../../SA/sparta-logistics-sa.md)
-- [진행 상황](../../../progress/feat-order-create.md), [트러블슈팅 TS-013](../../../troubleshooting.md)
+- [진행 상황](../../../progress/feat-order-create.md), [트러블슈팅 TS-014](../../../troubleshooting.md)

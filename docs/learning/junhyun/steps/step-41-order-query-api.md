@@ -58,7 +58,7 @@ Controller는 검증·변환·위임을 담당하며 검색 SQL이나 소유자 
 - 격리 검증용 Java 프로세스와 DB 컨테이너를 정리했다. 증거 파일은 임시 `logistics-order-query-smoke-qce84k57/result.json`과 서버 로그다.
 - 현재 Compose에서도 `docker compose build order-service` 후 `up -d --no-deps --no-build --wait --wait-timeout 90 order-service`를 실행했다. 주문 health UP, Gateway의 O-02·O-03 OpenAPI 200, 기본 size=10·sort=createdAt,DESC와 조회 두 경로의 미인증 401을 확인했다.
 - 교체된 컨테이너는 order-service뿐이며 나머지 8개의 ID·시작 시각은 같다. `.env` 해시와 주문 컨테이너의 기존 Webhook 값도 유지됐다.
-- OpenAPI size 기본값 불일치는 TS-010, 공유 테스트 DB의 fixture 간섭은 TS-011에 기록했다.
+- OpenAPI size 기본값 불일치는 TS-011, 공유 테스트 DB의 fixture 간섭은 TS-011에 기록했다.
 - 문서 동기화·에러 코드 16개 중복/누락·공백·로컬 링크 검사를 통과했다. 실제 Webhook 값은 변경 파일에 없다. 다른 작업에서 추가된 Q&A 학습 노트는 보존했다.
 
 ## 직접 해보기

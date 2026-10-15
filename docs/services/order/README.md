@@ -122,3 +122,11 @@ O-06은 MASTER가 본문 없이 호출하며 성공은 200·data=null이다. CAN
 - [COMPANY-001](../company/README.md#company-001-주문-연동용-조회-응답과-오류-계약-확인): I-07·I-08 필드·가격·오류 전파와 실제 연동 확인, OPEN.
 - [DELIVERY-001](../delivery/README.md#delivery-001-주문-saga의-내부-api와-실패-계약-연동-확인): 생성·취소·원복·삭제의 기존 계약과 실제 연동 확인, OPEN.
 - [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토): 지연 생성과 삭제 순서 역전·종료 표시·시도 토큰·결과 확인 수단 검토, OPEN. 추가 보장은 미확정이다.
+
+### ORDER-001 주문 취소 가능 상태 변경 확인 요청 (delivery ADR 0003)
+- 상태: OPEN
+- 작성: delivery / 한얼 / 2026-10-15
+- 관련: I-11, I-12, SA 2.5·7.2, [delivery ADR 0003](../delivery/decisions/0003-delivery-three-legs-sa-v2.md), [order ADR 0002](decisions/0002-order-cancel-before-departure.md)
+- 내용: delivery는 SA v2.0의 3구간 모델을 채택했다(delivery ADR 0003, 0001 대체). 배송은 `PICKUP_WAITING`에서 시작하고, I-11 배송 취소는 `PICKUP_WAITING`에서만 성공한다. 그 밖의 상태에서는 409 `INVALID_STATUS_TRANSITION`을 반환한다. order ADR 0002는 "모든 배송은 HUB_WAITING으로 시작(ADR-11)"을 근거로 취소 조건을 `HUB_WAITING`으로 두고 있어 근거가 바뀌었다. order 쪽 취소 조건과 ADR 0002 채택 여부를 확인해 달라.
+- 주문 측 확인(2026-10-15): 현재 O-05는 SA v2.0의 PICKUP_WAITING 기준을 따르며 집하 시작 여부는 I-11이 원자적으로 판단한다. order ADR 0002는 제안 상태로 채택하지 않았다. 주문의 HTTP 대역 검증은 통과했고 제공 서비스와의 실제 통합은 별도 확인 대상이다.
+- 결정: 주문 측 구현 기준을 답변했다. 제공 담당자 확인과 실제 연동 결과는 후속 기록으로 남긴다.
