@@ -16,7 +16,7 @@
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | 생성·보상·Feign·Controller·커밋 후 Slack 구현. 외부 서버는 HTTP 대역으로 검증, 실제 Slack 채널은 미발송 |
+| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | 생성·보상·Feign·Controller·커밋 후 Slack 구현. company·delivery는 HTTP 대역으로 검증, 실제 Slack Webhook 테스트는 200·ok 확인 |
 | O-02~O-06 | `/api/v1/orders/**` | 주문자, MASTER | 예정 | O-05는 취소 흐름(SA 7.2) |
 
 금액은 정수 원 단위의 `long`·`BIGINT`이며 SA 5.5·6.7과 일치한다. BigDecimal 전환은 사용자 요청으로 되돌렸고 현재 기준은 [order ADR 0005](decisions/0005-order-money-integer-krw.md)다.
@@ -47,12 +47,15 @@
 - [ ] O-02~O-06
 - [x] 커밋 후 비동기 Slack 알림, 타임아웃·HTTP 오류·큐 포화 시 주문 201 유지
 - [x] 현재 주문 테스트 108개 통과. 커밋 전·실패 시 알림 미실행, 비동기·헤더 격리·비밀값 로그 제외 확인
-- [ ] 실제 Slack 채널 발송과 기존 Compose에 새 이미지·설정 반영
+- [x] config-server·order-service 새 이미지·환경 변수 반영, health UP·Gateway OpenAPI 200·미인증 401 확인
+- [x] 주문 컨테이너에서 실제 Slack Webhook 테스트 1건 발송, HTTP 200·ok 확인 (주문 생성 없는 연결 테스트)
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
-구현 과정과 검증 근거는 [구현 노트](notes.md)에 있다. 팀 서비스의 실제 구현·데이터 연동과 실제 Slack 채널 발송은 남아 있다.
+구현 과정과 검증 근거는 [구현 노트](notes.md)에 있다. 팀 서비스의 실제 구현·데이터로 주문 생성부터 Slack 알림까지 연결하는 전체 검증은 남아 있다.
 
 Slack 설정은 `config-repo/order-service.yml`의 `slack.webhook-url`이며 기존 `SLACK_WEBHOOK_URL` 환경 변수를 사용한다. 빈 값은 발송 생략이다. 풀은 2개 스레드·100개 대기열, 연결·읽기 제한은 1초·2초이며 재시도하지 않는다. 메모리 이벤트이므로 프로세스 종료·전송 실패·포화 시 알림 유실이 가능하다. 적용 절차는 [스텝 39](../../learning/junhyun/steps/step-39-order-slack-after-commit.md)에 있다.
+
+실제 환경 반영과 발송 결과는 [스텝 40](../../learning/junhyun/steps/step-40-slack-live-connection.md)에 있다. 실제 URL은 저장소에 기록하지 않는다.
 
 ## 5. 협업 로그
 

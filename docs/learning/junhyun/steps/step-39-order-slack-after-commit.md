@@ -3,7 +3,7 @@
 - 날짜: 2026-10-15
 - 브랜치: `feat/order-create`
 - 이전 작업 커밋: `9b48adc feat(order): 주문 생성 Feign과 Controller 연결`
-- 현재 변경: Slack 알림·검증·문서, 미커밋. 푸시는 수행하지 않았다.
+- 구현 커밋: `7a3f93f feat(order): 커밋 후 비동기 Slack 알림 구현`. 푸시는 수행하지 않았다.
 
 ## 만든 것
 
@@ -49,7 +49,7 @@ flowchart TD
 - Slack 400·429·500, 읽기 타임아웃, 실행 풀·큐 포화에서 주문 201·DB 저장 유지, 배송 보상 없음. HTTP 재시도 없음.
 - JSON의 한글·요청사항·업체명 스냅샷, 멘션 제어 문자 이스케이프, 인증 헤더 미전달, 로그의 URL·응답 본문 제외, URL 미설정 시 발송 생략 확인.
 - 최초 테스트 컴파일에서 잘못 참조한 `IS_DELIVERY_MANAGER`를 공통 정본의 `DELIVERY_MANAGER`로 고쳤다. 공통 계약은 바꾸지 않았다(TS-009).
-- 실제 Slack 채널 발송, 팀 서비스 실제 데이터 연동, 기존 Compose의 새 이미지·설정 반영은 하지 않았다.
+- 이 스텝의 구현 당시에는 실제 Slack 채널 발송·팀 데이터 연동·기존 Compose 반영을 하지 않았다. 후속 [스텝 40](step-40-slack-live-connection.md)에서 Compose 반영과 Webhook 테스트 1건의 HTTP 200·ok를 확인했다. 팀 서비스 실제 데이터 연동은 남아 있다.
 
 ## 직접 해보기
 
@@ -57,7 +57,7 @@ flowchart TD
 2. `./gradlew :order-service:test --tests '*OrderCreationIntegrationTest'`로 커밋·실패 경계 6개를 확인한다. `notifiesOnlyAfterCommit`의 이벤트 발행 직후에는 알림 호출이 없고, 트랜잭션 반환 후에만 호출된다.
 3. `./gradlew :order-service:test`로 전체 108개를 실행한다. 결과는 `order-service/build/reports/tests/test/index.html`에서 본다.
 4. 실제 Slack 연동 시에는 `.env`의 `SLACK_WEBHOOK_URL`을 설정한다. URL을 저장소나 채팅에 붙이지 않는다. IDE 실행에서는 order 실행 설정의 환경 변수에 넣는다.
-5. Compose 반영 시 config-repo도 config-server 이미지에 포함되므로 config-server와 order 이미지를 모두 갱신한다. 아래 명령은 이번 작업에서 실행하지 않았다. 기존 의존 서비스가 정상인 환경에서 적용하며, 이 시점부터 정상 주문은 실제 채널에 알림을 보낸다.
+5. Compose 반영 시 config-repo도 config-server 이미지에 포함되므로 config-server와 order 이미지를 모두 갱신한다. 아래 명령은 이 스텝 구현 당시 미실행이었고 후속 스텝 40에서 적용했다. 기존 의존 서비스가 정상인 환경에서 적용하며, 이 시점부터 정상 주문은 실제 채널에 알림을 보낸다.
 
 ```sh
 docker compose build config-server order-service

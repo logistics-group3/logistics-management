@@ -229,4 +229,34 @@ PostgreSQL은 2026-10-14 생성된 기존 `logistics-management_pgdata`를 재�
 - 원화 금액은 기존 long·BIGINT 그대로다. 다른 서비스·공통 코드·DB 스키마는 변경하지 않았다.
 - [order ADR 0003](decisions/0003-slack-notification-after-commit.md)을 주문 담당자의 요청에 따라 채택했고, 원문과 현재 구현 보완을 구분했다.
 - [질문 노트](../../learning/junhyun/qna/2026-10-15-order-notification-after-commit-async.md)에 커밋 후·비동기의 목적과 전달 보장의 한계를 기록했다.
-- Slack 변경은 미커밋이며 푸시는 수행하지 않았다.
+- Slack 변경은 후속 요청에서 `7a3f93f feat(order): 커밋 후 비동기 Slack 알림 구현`으로 커밋했다. 푸시는 수행하지 않았다.
+
+## Slack 실제 연동 준비 (2026-10-15)
+
+- 사용자 요청으로 알림 구현 26개 파일을 `7a3f93f`로 커밋했다. 직후 작업 트리는 깨끗했다.
+- `.env`가 Git 무시 대상이고 `SLACK_WEBHOOK_URL`은 비어 있음을 값 노출 없이 확인했다.
+- `docker compose build config-server order-service`가 성공했다. 실행 중인 컨테이너를 교체하는 명령은 실행하지 않았다.
+- Slack 앱 설정 페이지를 확인했을 때는 로그인 전이었다. 이후 사용자가 Slack 설정을 직접 진행하겠다고 선택했다. 에이전트는 앱·채널·Webhook 생성과 실제 메시지 발송을 하지 않았다.
+- 새 채널은 필수가 아니며 `#logistics-order-dev`를 개발 알림 전용 채널로 제안했다. 설정 순서와 근거는 [질문 노트](../../learning/junhyun/qna/2026-10-15-slack-incoming-webhook-setup.md)에 있다.
+- 후속 요청으로 Chrome에서 사용자가 선택한 `2026 내일배움캠프`의 앱 생성 화면을 확인했다. 설치 권한 없음 안내 후 화면이 갱신되며 앱 설치 한도 초과가 표시됐다. 최종 스크린샷에서 한도 초과를 확인했고 앱·Webhook은 생성하지 않았다. 팀 관리자의 권한·한도 확인 또는 다른 테스트 워크스페이스 선택이 필요하다.
+- 이후 사용자가 `디스이스스파르타` 워크스페이스를 만들었다. Chrome 앱 생성 양식에서 선택 가능하며 기존 제한 경고가 없음을 확인했다. 사용자가 직접 설정하도록 워크스페이스만 선택해 두었고 앱·Webhook 생성, 팀원 초대, 메시지 발송은 하지 않았다.
+- 앱 생성 2/4단계의 빈 스코프 목록에 대한 후속 질문을 확인했다. 상단 검색창으로 incoming-webhook을 찾아 생성 양식에 선택했으며 Bot scopes (1)·User scopes (0)을 확인했다. 실제 앱 생성·설치·Webhook 발급은 사용자 진행 단계로 남아 있다.
+
+## Slack 실제 연결 확인 (2026-10-15)
+
+### 처리 과정
+
+사용자가 앱 생성과 `.env` 설정을 완료했다고 알렸다. 값 노출 없이 Webhook 형식을 확인한 뒤 준비된 config-server·order-service 이미지를 `up -d --no-deps --no-build --wait`로 순서대로 적용했다.
+사용자가 테스트 메시지 1건의 발송을 승인해 주문 컨테이너에서 Webhook으로 전송했고 HTTP 200·본문 ok를 받았다. 재시도하지 않았다.
+
+### 검증과 핵심
+
+- Config Server의 Slack 설정과 주문 컨테이너의 환경 변수 전달, 두 서비스 health UP, Gateway OpenAPI 200·미인증 401을 확인했다.
+- 두 대상 컨테이너만 교체됐고 나머지 7개 컨테이너의 ID·시작 시각과 PostgreSQL 볼륨 연결이 유지됐다. `.env`의 작업 전후 해시도 같다.
+- 실제 주문은 만들지 않았다. 이번 결과는 실제 Webhook 연결·발송 검증이며, 팀 서비스 실제 데이터로 주문 이벤트 전체를 연결하는 검증은 별도다.
+- 상세 명령·메시지·결과는 [스텝 40](../../learning/junhyun/steps/step-40-slack-live-connection.md)에 있다. 비밀값은 로그·문서·명령 인자에 출력하지 않았다.
+
+### 확인 질문
+
+- `.env`를 바꾼 뒤 단순 restart로는 값이 반영되지 않는 이유는 무엇인가?
+- Webhook 테스트가 성공해도 실제 주문 생성 전체 흐름의 검증이 남는 이유는 무엇인가?
