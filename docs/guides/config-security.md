@@ -21,7 +21,7 @@ config-repo/ ──(config-server 빌드 때 jar에 포함)──▶ config-serv
 | 서비스 DB 비밀번호 | `config-repo/{service}.yml`의 `${USER_DB_PASSWORD:user_local_pw}` 등 | `.env` → compose `environment` | 로컬 더미 값으로 접속한다. compose는 `:?`로 값이 없으면 실행을 거부한다 |
 | JWT 서명 키 | `${JWT_SECRET}` (gateway, user) | `.env`의 `JWT_SECRET`(32바이트 이상) | 기본값을 두지 않는다. IDE로 띄울 때는 실행 설정에 환경 변수로 넣는다 |
 | 최초 MASTER 계정 | `${MASTER_USERNAME:}`, `${MASTER_PASSWORD:}` (user) | `.env` | 비어 있으면 MASTER를 만들지 않는다 |
-| Slack Webhook URL | compose `${SLACK_WEBHOOK_URL}` (order) | `.env` | 빈 값. 알림 구현 때 처리 방식을 정한다 |
+| Slack Webhook URL | `config-repo/order-service.yml`의 `${SLACK_WEBHOOK_URL:}` → `slack.webhook-url`, compose가 order에 전달 | `.env` | 알림을 생략한다. 주문 생성은 유지한다. URL과 HTTP 예외 메시지·응답 본문을 로그에 남기지 않는다 |
 
 ## 3. 규칙
 | # | 규칙 | 이유 |

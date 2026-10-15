@@ -3,7 +3,7 @@
 - 날짜: 2026-10-15
 - 브랜치: `feat/order-create`
 - 이전 작업 커밋: `3b5a39c feat(order): 주문 생성 흐름과 실패 보상 구현`
-- 현재 변경: Feign·Controller·검증·문서, 미커밋
+- 구현 커밋: `9b48adc feat(order): 주문 생성 Feign과 Controller 연결`
 
 ## 만든 것
 

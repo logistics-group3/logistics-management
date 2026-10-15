@@ -187,9 +187,46 @@ PostgreSQL은 2026-10-14 생성된 기존 `logistics-management_pgdata`를 재�
 - 테스트 드라이버의 503 자동 재전송 문제는 [TS-007](../../troubleshooting.md)에 기록했다. 호출 횟수 검증을 약하게 바꾸지 않고 드라이버 재시도를 제거했다.
 - 의존 DB 컨테이너 재생성은 [TS-008](../../troubleshooting.md)에 기록했다.
 - Slack 알림, O-02~O-06, 팀 서비스 실제 데이터 연동은 이번 구현에 포함하지 않았다. 공통 모듈·다른 서비스 코드·SA 계약은 바꾸지 않았다.
-- 현재 Feign·Controller 변경은 미커밋이며 푸시는 수행하지 않았다.
+- Feign·Controller 변경은 후속 요청에서 `9b48adc feat(order): 주문 생성 Feign과 Controller 연결`로 커밋했다. 푸시는 수행하지 않았다.
 
 ### 근거
 
 - [OpenFeign 4.3 설정과 contextId](https://docs.spring.io/spring-cloud-openfeign/reference/4.3/spring-cloud-openfeign.html)
 - [Feign 규칙](../../agents/rules/feign.md), [Controller 규칙](../../agents/rules/controller.md)
+
+## O-01 커밋 후 비동기 Slack 알림 (2026-10-15)
+
+### 처리 과정
+
+1. 기존 Feign·Controller 변경 26개 파일을 사용자 요청에 따라 `9b48adc`로 커밋했다. 커밋 직후 작업 트리는 깨끗했다.
+2. `OrderWriter`에서 주문을 저장한 뒤 트랜잭션 안에서 `OrderCreatedEvent`를 발행한다. 업체명은 OrderService가 조회한 값을 전달하고 상품명·수량·요청사항은 저장된 주문에서 복사한다.
+3. `OrderCreatedEventListener`가 AFTER_COMMIT에서 전송 빈을 호출한다. `@Async` 전송 빈은 별도 풀에서 Slack을 호출한다.
+4. `SlackProperties`와 주문 전용 설정에 기존 `SLACK_WEBHOOK_URL`을 연결했다. HTTP 오류·타임아웃·작업 제출 거부는 알림 오류로만 기록한다.
+5. PostgreSQL 커밋 경계, 실제 Tomcat·비동기 프록시·Webhook HTTP, JSON·헤더·로그를 검증했다.
+
+### 핵심
+
+- **커밋 기준**: flush 이후에도 커밋에 실패할 수 있으므로 저장 성공을 알림 성공의 출발점으로 삼지 않는다. AFTER_COMMIT은 최종 확정된 주문만 받는다.
+- **비동기 기준**: 요청 스레드는 전송 작업만 제출하고 Slack 응답은 기다리지 않는다. JPA Entity와 요청 컨텍스트 대신 불변 데이터만 넘긴다.
+- **포화와 실패**: 2개 스레드·100개 큐로 자원을 제한한다. 제출 거절·Slack 오류가 발생해도 주문 201과 배송을 유지한다. 큐가 차면 요청 스레드에서 대신 전송하지 않는다.
+- **외부 통신**: 연결 1초·읽기 2초, 자동 재시도 없음. 공통 Feign을 쓰지 않아 사용자 인증 헤더를 Slack에 전달하지 않는다. URL·응답 본문·HTTP 예외 메시지를 로그에 남기지 않는다.
+- **범위와 한계**: 이벤트는 JVM 메모리에만 있다. 프로세스 종료·전송 실패·포화 시 유실될 수 있다. URL이 비어 있으면 발송을 생략하며, 실제 채널 발송은 이번에 하지 않았다.
+
+### 검증
+
+주문 테스트 108개, 전체 빌드 성공 및 XML 합계 206개(실패·오류·skip 0)를 확인했다. 전체 빌드에서는 주문의 직전 결과를 재사용하고 config-server 테스트는 새 설정 리소스로 다시 실행했다.
+기존 트랜잭션 테스트 4개에 알림 검증을 더하고 2개 경계 시나리오를 추가했다. Slack HTTP 통합 6개와 전송 단위 7개를 추가했다. 처음 테스트 컴파일의 헤더 상수 오기는 공통 정본을 확인해 수정했다(TS-009).
+상세 결과와 실제 환경 적용 명령은 [스텝 39](../../learning/junhyun/steps/step-39-order-slack-after-commit.md)에 있다. 기존 Compose 교체·실제 Slack·팀 서비스 데이터 연동은 수행하지 않았다.
+
+### 확인 질문
+
+- `@Async`만 붙였을 때 롤백된 주문의 알림이 나갈 수 있는 이유는 무엇인가?
+- `saveAndFlush`가 성공해도 AFTER_COMMIT까지 기다려야 하는 이유는 무엇인가?
+- 큐 포화 시 CallerRunsPolicy를 쓰면 주문 응답의 성질이 어떻게 달라지는가?
+
+### 메모
+
+- 원화 금액은 기존 long·BIGINT 그대로다. 다른 서비스·공통 코드·DB 스키마는 변경하지 않았다.
+- [order ADR 0003](decisions/0003-slack-notification-after-commit.md)을 주문 담당자의 요청에 따라 채택했고, 원문과 현재 구현 보완을 구분했다.
+- [질문 노트](../../learning/junhyun/qna/2026-10-15-order-notification-after-commit-async.md)에 커밋 후·비동기의 목적과 전달 보장의 한계를 기록했다.
+- Slack 변경은 미커밋이며 푸시는 수행하지 않았다.

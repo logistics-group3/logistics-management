@@ -16,6 +16,8 @@ import com.sparta.logistics.common.support.PostgresIntegrationTest;
 import com.sparta.logistics.order.application.CompanyReader;
 import com.sparta.logistics.order.application.DeliveryGateway;
 import com.sparta.logistics.order.application.OrderService;
+import com.sparta.logistics.order.application.OrderNotificationSender;
+import com.sparta.logistics.order.application.event.OrderCreatedEvent;
 import com.sparta.logistics.order.application.dto.CompanyResult;
 import com.sparta.logistics.order.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.order.application.dto.CreateOrderCommand;
@@ -28,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -50,6 +53,10 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
     private JdbcTemplate jdbcTemplate;
     @Autowired
     private TransactionTemplate transactionTemplate;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+    @MockitoBean
+    private OrderNotificationSender notificationSender;
     @MockitoBean
     private CompanyReader companyReader;
     @MockitoBean
@@ -82,6 +89,8 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
                 "SELECT created_by FROM order_schema.p_orders WHERE order_id = ?", String.class, result.orderId()))
                 .isEqualTo("SYSTEM");
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        verify(notificationSender).send(new OrderCreatedEvent(result.orderId(), supplier.name(), receiver.name(),
+                product.name(), 50, null));
     }
 
     @Test
@@ -97,6 +106,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
 
         verify(deliveryGateway).deleteByOrderId(createdOrderId.get());
         assertThat(orderRepository.findById(existing.getId())).isPresent();
+        verifyNoInteractions(notificationSender);
     }
 
     @Test
@@ -122,6 +132,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
 
             verify(deliveryGateway).deleteByOrderId(createdOrderId.get());
             assertThat(orderRepository.findById(existing.getId())).isPresent();
+            verifyNoInteractions(notificationSender);
         } finally {
             jdbcTemplate.execute("ALTER TABLE order_schema.p_orders DROP CONSTRAINT uk_order_test_deferred_note");
         }
@@ -134,6 +145,27 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
                 status -> service.create(user, command(null))))
                 .isInstanceOf(IllegalTransactionStateException.class);
         verifyNoInteractions(companyReader, deliveryGateway);
+    }
+
+    @Test
+    @DisplayName("저장과 이벤트 발행이 끝나도 커밋 전에는 알림을 제출하지 않는다")
+    void notifiesOnlyAfterCommit() {
+        Order order = existingOrder(null);
+        transactionTemplate.executeWithoutResult(status -> {
+            orderRepository.saveAndFlush(order);
+            eventPublisher.publishEvent(OrderCreatedEvent.from(order, supplier.name(), receiver.name()));
+            verifyNoInteractions(notificationSender);
+        });
+
+        verify(notificationSender).send(OrderCreatedEvent.from(order, supplier.name(), receiver.name()));
+    }
+
+    @Test
+    @DisplayName("트랜잭션 밖에서 발행한 이벤트는 커밋된 주문으로 간주하지 않는다")
+    void ignoresEventWithoutTransaction() {
+        eventPublisher.publishEvent(OrderCreatedEvent.from(existingOrder(null), supplier.name(), receiver.name()));
+
+        verifyNoInteractions(notificationSender);
     }
 
     private void stubExternalServices() {

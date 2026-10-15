@@ -3,6 +3,7 @@ package com.sparta.logistics.order.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
@@ -83,7 +84,7 @@ class OrderServiceTest {
         sequence.verify(companyReader).getCompany(receiver.companyId());
         sequence.verify(companyReader).getProduct(product.productId());
         sequence.verify(deliveryGateway).create(delivery.capture());
-        sequence.verify(orderWriter).save(order.capture());
+        sequence.verify(orderWriter).save(order.capture(), eq(supplier.name()), eq(receiver.name()));
 
         assertThat(result.orderId()).isNotNull().isEqualTo(order.getValue().getId());
         assertThat(result.ordererId()).isEqualTo(user.userId());
@@ -109,7 +110,7 @@ class OrderServiceTest {
         OrderResult result = service.create(master, command);
 
         assertThat(result.ordererId()).isEqualTo(master.userId());
-        verify(orderWriter).save(any());
+        verify(orderWriter).save(any(), eq(supplier.name()), eq(receiver.name()));
     }
 
     @Test
@@ -228,7 +229,7 @@ class OrderServiceTest {
     @DisplayName("배송 성공 후 주문 저장 실패는 배송을 삭제하고 INTERNAL_SERVER_ERROR로 반환한다")
     void compensatesOrderSaveFailure() {
         stubDeliveryCreated();
-        given(orderWriter.save(any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
+        given(orderWriter.save(any(), any(), any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
 
         assertThatThrownBy(() -> service.create(user, command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
@@ -255,7 +256,7 @@ class OrderServiceTest {
     @DisplayName("배송 삭제 보상은 실패하면 같은 orderId로 총 3회까지 시도한다")
     void retriesCompensationUntilSuccess() {
         stubDeliveryCreated();
-        given(orderWriter.save(any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
+        given(orderWriter.save(any(), any(), any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
         willThrow(timeout()).willThrow(timeout()).willDoNothing().given(deliveryGateway).deleteByOrderId(any());
 
         assertThatThrownBy(() -> service.create(user, command))
@@ -296,7 +297,7 @@ class OrderServiceTest {
 
     private void stubSuccess() {
         stubDeliveryCreated();
-        given(orderWriter.save(any())).willAnswer(invocation -> OrderResult.from(invocation.getArgument(0)));
+        given(orderWriter.save(any(), any(), any())).willAnswer(invocation -> OrderResult.from(invocation.getArgument(0)));
     }
 
     private UUID captureCreatedOrderId() {

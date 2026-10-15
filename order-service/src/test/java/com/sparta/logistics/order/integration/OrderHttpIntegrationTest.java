@@ -43,6 +43,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = {
         "spring.flyway.schemas=order_schema",
         "spring.jpa.properties.hibernate.default_schema=order_schema",
+        "slack.webhook-url=",
         "spring.cloud.openfeign.client.config.default.connectTimeout=1000",
         "spring.cloud.openfeign.client.config.default.readTimeout=200"
 })

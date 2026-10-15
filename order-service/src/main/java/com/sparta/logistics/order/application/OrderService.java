@@ -56,7 +56,7 @@ public class OrderService {
         try {
             Order order = Order.create(orderId, user.userId(), command.supplierCompanyId(), command.receiverCompanyId(),
                     command.productId(), product.name(), product.price(), command.quantity(), deliveryId, command.requestNote());
-            return orderWriter.save(order);
+            return orderWriter.save(order, supplier.name(), receiver.name());
         } catch (BusinessException exception) {
             compensateDelivery(orderId);
             throw exception;
