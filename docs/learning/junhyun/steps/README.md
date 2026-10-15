@@ -4,7 +4,8 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
-| 43 | [주문 취소 API와 진행 기록](step-43-order-cancellation.md) | 미커밋 |
+| 44 | [주문 생성 진행 기록과 커밋 재확인](step-44-order-creation-progress.md) | 미커밋 |
+| 43 | [주문 취소 API와 진행 기록](step-43-order-cancellation.md) | 2e5fcc1 feat(order): 주문 취소와 실패 복구 기록 구현 |
 | 42 | [주문 요청사항 수정 API](step-42-order-request-note-update.md) | 6ac9b8a feat(order): 주문 요청사항 수정 API 구현 |
 | 41 | [주문 검색과 단건 조회 API](step-41-order-query-api.md) | 9a41925 feat(order): 주문 검색과 단건 조회 구현 |
 | 40 | [Slack 실제 연결과 컨테이너 설정 반영](step-40-slack-live-connection.md) | af0ba34 docs(order): Slack 실제 연동과 설정 검증 기록 |

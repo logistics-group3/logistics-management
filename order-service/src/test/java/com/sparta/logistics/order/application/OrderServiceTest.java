@@ -21,6 +21,7 @@ import com.sparta.logistics.order.application.dto.CompanyResult;
 import com.sparta.logistics.order.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.order.application.dto.CreateOrderCommand;
 import com.sparta.logistics.order.application.dto.OrderResult;
+import com.sparta.logistics.order.application.dto.OrderCreationCommitResult;
 import com.sparta.logistics.order.application.dto.ProductResult;
 import com.sparta.logistics.order.domain.Order;
 import com.sparta.logistics.order.domain.OrderRepository;
@@ -86,6 +87,7 @@ class OrderServiceTest {
         sequence.verify(companyReader).getCompany(supplier.companyId());
         sequence.verify(companyReader).getCompany(receiver.companyId());
         sequence.verify(companyReader).getProduct(product.productId());
+        sequence.verify(orderWriter).start(any());
         sequence.verify(deliveryGateway).create(delivery.capture());
         sequence.verify(orderWriter).save(order.capture(), eq(supplier.name()), eq(receiver.name()));
 
@@ -184,9 +186,9 @@ class OrderServiceTest {
         BusinessException failure = notFound("DELIVERY_MANAGER_NOT_FOUND");
         given(deliveryGateway.create(any())).willThrow(failure);
 
-        assertThatThrownBy(() -> service.create(user, command)).isSameAs(failure);
+        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
         verify(deliveryGateway, never()).deleteByOrderId(any());
-        verifyNoInteractions(orderWriter);
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -196,10 +198,10 @@ class OrderServiceTest {
         BusinessException failure = new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE);
         given(deliveryGateway.create(any())).willThrow(failure);
 
-        assertThatThrownBy(() -> service.create(user, command)).isSameAs(failure);
+        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
-        verifyNoInteractions(orderWriter);
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -212,7 +214,7 @@ class OrderServiceTest {
                 .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
-        verifyNoInteractions(orderWriter);
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -225,7 +227,7 @@ class OrderServiceTest {
                 .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
-        verifyNoInteractions(orderWriter);
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -233,6 +235,7 @@ class OrderServiceTest {
     void compensatesOrderSaveFailure() {
         stubDeliveryCreated();
         given(orderWriter.save(any(), any(), any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
+        given(orderWriter.resolveCreation(any())).willReturn(OrderCreationCommitResult.notCommitted());
 
         assertThatThrownBy(() -> service.create(user, command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
@@ -247,12 +250,13 @@ class OrderServiceTest {
         given(companyReader.getProduct(product.productId())).willReturn(
                 new ProductResult(product.productId(), supplier.companyId(), product.name(), Long.MAX_VALUE));
         given(deliveryGateway.create(any())).willReturn(deliveryId);
+        given(orderWriter.resolveCreation(any())).willReturn(OrderCreationCommitResult.notCommitted());
 
         assertThatThrownBy(() -> service.create(user, command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_REQUEST);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
-        verifyNoInteractions(orderWriter);
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -260,6 +264,7 @@ class OrderServiceTest {
     void retriesCompensationUntilSuccess() {
         stubDeliveryCreated();
         given(orderWriter.save(any(), any(), any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
+        given(orderWriter.resolveCreation(any())).willReturn(OrderCreationCommitResult.notCommitted());
         willThrow(timeout()).willThrow(timeout()).willDoNothing().given(deliveryGateway).deleteByOrderId(any());
 
         assertThatThrownBy(() -> service.create(user, command))
@@ -276,7 +281,7 @@ class OrderServiceTest {
         given(deliveryGateway.create(any())).willThrow(failure);
         willThrow(timeout()).given(deliveryGateway).deleteByOrderId(any());
 
-        assertThatThrownBy(() -> service.create(user, command)).isSameAs(failure);
+        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
 
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway, times(3)).deleteByOrderId(orderId);

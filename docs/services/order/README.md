@@ -10,13 +10,13 @@
 | 포트 | 8084 |
 | 스키마·DB 계정 | `order_schema` / `order_app` |
 | 책임 | 주문 생성(Saga 오케스트레이션)·조회·요청사항 수정·취소·삭제, Slack 알림 |
-| 소유 테이블 | `p_orders`, `p_order_cancellations` (SA 5.5·주문 ADR 0006) |
+| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations` (SA 5.5·주문 ADR 0006·0007) |
 
 ## 2. 제공 API (계약)
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | 생성·보상·Feign·Controller·커밋 후 Slack 구현. company·delivery는 HTTP 대역으로 검증, 실제 Slack Webhook 테스트는 200·ok 확인 |
+| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | 생성 진행 기록·커밋 재확인·보상·Feign·커밋 후 Slack. 제공 서비스는 HTTP 대역 검증, 실제 Slack 연결 테스트는 별도 200·ok 확인 |
 | O-02 | `GET /api/v1/orders` | 로그인, USER는 본인 주문만 | 구현 | 선택 필터·QueryDSL·페이지·정렬, 내용과 count에 같은 권한 조건 |
 | O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
 | O-04 | `PATCH /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | requestNote 필수·공백 불가·최대 500자. 취소된 주문은 409 INVALID_STATUS_TRANSITION |
@@ -35,7 +35,7 @@
 | I-10 `GET /internal/deliveries/{deliveryId}` | delivery | 배송 조회, 향후 삭제·복구 판단 | 아직 미연결. GET 통신 재시도 대상 |
 | I-11 `POST /internal/deliveries/{deliveryId}/cancel` | delivery | 집하 시작 여부를 판단하고 배송·구간 취소 | 1회 (`order-delivery-cancel`), 응답 status=CANCELED 확인 |
 | I-12 `POST /internal/deliveries/{deliveryId}/cancel-revert` | delivery | 확인된 로컬 롤백의 배송 원복 | 응답 없는 통신 실패에 최대 3회 (`order-delivery-cancel-revert`), 5xx 응답은 재시도 없음 |
-| I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 주문 생성 실패 보상, 배송 논리 삭제 | OrderService가 총 3회 시도. `order-delivery-delete` Feign은 재시도하지 않는다 |
+| I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 생성 실패 보상. 주문 저장 예외는 미저장 확인 후에만 삭제 | OrderService가 총 3회 시도. `order-delivery-delete` Feign은 재시도하지 않는다 |
 
 `CompanyClientAdapter`와 `DeliveryClientAdapter`가 application 인터페이스를 실제 Feign에 연결한다. 주소는 Eureka 서비스 이름으로 찾고 URL을 하드코딩하지 않는다. 5xx 응답은 재시도하지 않고 공통 디코더가 `SERVICE_UNAVAILABLE`로 바꾼다.
 
@@ -47,6 +47,9 @@
 - [x] O-01 application 생성 흐름·권한 검증·보상 (외부 서비스 Mock, 단위 테스트 23개)
 - [x] 실제 주문 DB 커밋·flush 실패·커밋 실패·트랜잭션 경계 검증 (PostgreSQL 통합 테스트 4개)
 - [x] O-01 실제 Feign 어댑터·Spring 빈 조립·Controller 연결
+- [x] O-01 생성 진행 기록·V3, 저장 예외 후 같은 DB의 진행 기록 잠금·커밋 결과 재확인
+- [x] 주문 INSERT·생성 COMPLETED·이벤트를 같은 트랜잭션으로 처리. 실제 커밋 확인 시 결과 재사용·삭제 및 이벤트 재발행 없음
+- [x] I-09 미확정 결과는 I-13 성공 후에도 복구 대기. 확인된 미저장만 삭제 결과에 따라 ABORTED 또는 DELIVERY_DELETE_FAILED
 - [x] Controller 11개·실제 HTTP/Feign 13개 추가 검증. 주문 모듈 전체 93개 통과
 - [x] 격리 Gateway·JWT·주문 서버·PostgreSQL 검증: 401·201·400·503, 위조 헤더 제거, 실패 보상 (user·company·delivery 응답은 HTTP 테스트 대역)
 - [ ] 팀 company·delivery 구현·실제 데이터와 정상 주문 연동
@@ -58,7 +61,11 @@
 - [x] Slack 구현 단계의 주문 테스트 108개 통과. 커밋 전·실패 시 알림 미실행, 비동기·헤더 격리·비밀값 로그 제외 확인
 - [x] 조회 API 테스트 44개 추가. 조회 단계 주문 152개·전체 테스트 XML 250개, 실패·오류·skip 0
 - [x] 수정 API 테스트 39개 추가. 수정 단계 주문 191개·전체 테스트 XML 289개, 실패·오류·skip 0
-- [x] 취소 테스트 61개 추가. 현재 주문 252개·전체 XML 350개, 실패·오류·skip 0. 전체 build 통과
+- [x] 취소 테스트 61개 추가. 취소 단계 주문 252개·전체 XML 350개, 실패·오류·skip 0. 전체 build 통과
+- [x] 생성 보강 테스트 40개 추가. 현재 주문 292개·전체 XML 390개, 실패·오류·skip 0. 전체 build 통과
+- [x] 실제 커밋 뒤 반환 예외·재확인 실패·잠금 대기·이벤트 1회·완료 기록 실패 롤백·지연 배송 생성 기록 보존 확인
+- [x] 격리 Gateway·JWT·실제 Feign·PostgreSQL 생성 보강 검증: 201·400·401·500·503, 시작 기록 실패 시 원격 호출 없음
+- [x] 로컬 주문 서비스·V3 반영, 생성 기록 FK 없음·health UP·Gateway O-01 문서·미인증 401 확인. 기존 주문·취소 기록·다른 컨테이너·.env 유지
 - [x] 실제 PostgreSQL flush·커밋 실패, 동시 실행·독립 진행·요청사항 보존, 부분 유니크·CHECK 검증
 - [x] 실제 Feign I-11 1회·I-12 통신 실패 최대 3회·5xx 1회, 늦은 취소 응답과 복구 대기 검증
 - [x] 격리 Gateway·JWT·Order·PostgreSQL 취소 검증: 200·400·401·403·404·409·500·503, 저장 롤백 후 원복·지연 완료 차단
@@ -87,8 +94,15 @@ O-04 본문은 `{"requestNote":"오후 도착 희망"}`이다. 누락·null·빈
 O-05는 본문 없이 호출하며 성공 데이터는 orderId·status=CANCELED다. 취소 여부는 배송 I-11이 원자적으로 판단한다. 진행 중·복구 대기인 주문은 409로 새 실행을 막으며 타임아웃·5xx를 실패 확정으로 취급하지 않는다.
 진행 기록은 2026-10-15 주문 담당자의 명시적 승인으로 V2에 추가했고 SA의 주문 영역에 반영했다. 구현 이유·재현은 [스텝 43](../../learning/junhyun/steps/step-43-order-cancellation.md), 생성·취소의 상세 실패 행렬과 후속 보강안은 [예외 처리 설계](failure-handling.md)에 있다.
 
+O-01은 배송 생성 전에 p_order_creations를 커밋하고 주문과 COMPLETED를 함께 저장한다. 저장 예외가 나도 커밋이 확인되면 201을 반환하며, 조회 실패·상태 불일치에는 배송을 삭제하지 않는다. I-09 타임아웃 보상은 기존대로 시도하지만 지연 생성이 끝났다는 보장이 없어 RECOVERY_REQUIRED를 유지한다.
+외부 주문 멱등키·전체 요청 저장·자동 재실행·복구 API는 아직 없다. 생성 기록은 새 요청의 실행 추적이며 사용자 재요청의 중복 주문 방지 기능은 아니다. 구현 이유는 [스텝 44](../../learning/junhyun/steps/step-44-order-creation-progress.md), 타 서비스가 읽을 내용은 [연동 실패 계약](integration-contract.md)에 정리했다.
+
 ## 5. 협업 로그
 
 작성 규칙은 [서비스 협업 창구](../README.md#협업-로그-규칙)를 따른다. 다른 서비스에 요청할 때는 **그 서비스의** 협업 로그에 쓴다.
 
-아직 기록이 없다.
+타 서비스 연동 요청은 받는 서비스의 창구에 남겼다. 기존 SA 계약을 사용하는 주문 내부 구현과 실제 제공 서비스 검증을 구분한다.
+
+- [COMPANY-001](../company/README.md#company-001-주문-연동용-조회-응답과-오류-계약-확인): I-07·I-08 필드·가격·오류 전파와 실제 연동 확인, OPEN.
+- [DELIVERY-001](../delivery/README.md#delivery-001-주문-saga의-내부-api와-실패-계약-연동-확인): 생성·취소·원복·삭제의 기존 계약과 실제 연동 확인, OPEN.
+- [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토): 지연 생성과 삭제 순서 역전·종료 표시·시도 토큰·결과 확인 수단 검토, OPEN. 추가 보장은 미확정이다.

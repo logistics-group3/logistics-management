@@ -1,6 +1,7 @@
 package com.sparta.logistics.order.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,8 +14,14 @@ import com.sparta.logistics.order.support.HttpStubServer.Reply;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +49,7 @@ import org.springframework.test.context.TestPropertySource;
 })
 @TestPropertySource(properties = {
         "spring.flyway.schemas=order_schema",
+        "spring.jpa.open-in-view=false",
         "spring.jpa.properties.hibernate.default_schema=order_schema",
         "slack.webhook-url=",
         "spring.cloud.openfeign.client.config.default.connectTimeout=1000",
@@ -89,6 +97,19 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         STUB.reset(this::normalReply);
     }
 
+    @AfterEach
+    void cleanUpCreatedFixtures() throws Exception {
+        jdbc.execute("ALTER TABLE order_schema.p_order_creations DROP CONSTRAINT IF EXISTS ck_test_creation_completion");
+        Set<UUID> ids = new HashSet<>();
+        for (RecordedRequest request : STUB.requests("POST", "/internal/deliveries")) {
+            ids.add(UUID.fromString(mapper.readTree(request.body()).path("orderId").asText()));
+        }
+        for (UUID id : ids) {
+            jdbc.update("DELETE FROM order_schema.p_order_creations WHERE order_id=?", id);
+            jdbc.update("DELETE FROM order_schema.p_orders WHERE order_id=?", id);
+        }
+    }
+
     @Test
     @DisplayName("실제 HTTP 생성 요청이 Feign 계약·사용자 헤더·배송 정보·주문 DB 저장까지 연결된다")
     void createsThroughHttpAndFeign() throws Exception {
@@ -120,6 +141,11 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
             assertThat(request.header(UserHeaders.ROLE)).isEqualTo("USER");
         }
         assertThat(creates.get(0).header(UserHeaders.USER_ID)).isEqualTo(userId.toString());
+        assertCreationRecord(orderId, "COMPLETED", null);
+        assertThat(jdbc.queryForObject("SELECT orderer_id FROM order_schema.p_order_creations WHERE order_id=?", UUID.class, orderId))
+                .isEqualTo(userId);
+        assertThat(jdbc.queryForObject("SELECT created_by FROM order_schema.p_order_creations WHERE order_id=?", String.class, orderId))
+                .isEqualTo("junhyun");
     }
 
     @Test
@@ -166,6 +192,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
 
         assertError(create(), HttpStatus.NOT_FOUND, "DELIVERY_MANAGER_NOT_FOUND");
         assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/")).isEmpty();
+        assertCreationRecord(createdOrderId(), "ABORTED", null);
     }
 
     @Test
@@ -205,6 +232,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id = ?",
                 Integer.class, orderId)).isEqualTo(1);
         assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/")).isEmpty();
+        assertCreationRecord(orderId, "COMPLETED", null);
     }
 
     @Test
@@ -239,6 +267,75 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         assertError(create(), HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
         assertThat(STUB.requests("GET", "/internal/companies/" + supplierId)).hasSize(3);
         assertThat(STUB.requests("POST", "/internal/deliveries")).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_order_creations WHERE orderer_id=?", Integer.class, userId)).isZero();
+    }
+
+    @Test
+    @DisplayName("완료 기록 저장이 실패하면 실제 HTTP에서도 주문을 롤백하고 배송 삭제 후 ABORTED로 남긴다")
+    void rollsBackWhenCompletionRecordFails() throws Exception {
+        failCompletionRecord();
+
+        assertError(create(), HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR");
+
+        UUID orderId = createdOrderId();
+        assertCreationRecord(orderId, "ABORTED", null);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id=?", Integer.class, orderId)).isZero();
+        assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/" + orderId)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("주문 미저장 확인 뒤 배송 삭제도 실패하면 실제 배송 ID와 삭제 실패 사유를 보존한다")
+    void persistsFailedCleanup() throws Exception {
+        failCompletionRecord();
+        STUB.reset(request -> request.method().equals("DELETE") ? failure(500, "INTERNAL_SERVER_ERROR") : normalReply(request));
+
+        assertError(create(), HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR");
+
+        UUID orderId = createdOrderId();
+        assertCreationRecord(orderId, "RECOVERY_REQUIRED", "DELIVERY_DELETE_FAILED");
+        assertThat(jdbc.queryForObject("SELECT delivery_id FROM order_schema.p_order_creations WHERE order_id=?", UUID.class, orderId))
+                .isEqualTo(deliveryId);
+        assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/" + orderId)).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("타임아웃 보상 뒤 지연된 배송 생성이 끝나도 복구 기록을 자동 종료하지 않는다")
+    void retainsRecoveryAfterLateDeliveryCreation() throws Exception {
+        CountDownLatch finishCreation = new CountDownLatch(1);
+        AtomicInteger finished = new AtomicInteger();
+        STUB.reset(request -> {
+            if (request.method().equals("POST")) {
+                try { assertThat(finishCreation.await(5, TimeUnit.SECONDS)).isTrue(); }
+                catch (InterruptedException exception) { Thread.currentThread().interrupt(); throw new AssertionError(exception); }
+                finished.incrementAndGet();
+            }
+            return normalReply(request);
+        });
+        try {
+            assertError(create(), HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+            assertCompensated(1);
+            assertThat(finished.get()).isZero();
+            finishCreation.countDown();
+            await().atMost(Duration.ofSeconds(3)).untilAsserted(() -> assertThat(finished.get()).isEqualTo(3));
+
+            assertCreationRecord(createdOrderId(), "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
+        } finally {
+            finishCreation.countDown();
+        }
+    }
+
+    private void failCompletionRecord() {
+        jdbc.execute("ALTER TABLE order_schema.p_order_creations ADD CONSTRAINT ck_test_creation_completion "
+                + "CHECK (orderer_id <> '" + userId + "'::uuid OR status <> 'COMPLETED')");
+    }
+
+    private UUID createdOrderId() throws Exception {
+        return UUID.fromString(mapper.readTree(STUB.requests("POST", "/internal/deliveries").get(0).body()).path("orderId").asText());
+    }
+
+    private void assertCreationRecord(UUID orderId, String status, String reason) {
+        assertThat(jdbc.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, orderId)).isEqualTo(status);
+        assertThat(jdbc.queryForObject("SELECT failure_reason FROM order_schema.p_order_creations WHERE order_id=?", String.class, orderId)).isEqualTo(reason);
     }
 
     private ResponseEntity<String> create() {
@@ -295,6 +392,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
                 });
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id = ?",
                 Integer.class, orderId)).isZero();
+        assertCreationRecord(orderId, "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
     }
 
     private String json(Object value) {

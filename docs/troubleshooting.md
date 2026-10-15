@@ -127,3 +127,11 @@
 - 원인: 테스트 드라이버 차이로 확인했다. SimpleClientHttpRequestFactory에서는 본문이 null이고 같은 API를 JdkClientHttpRequestFactory로 호출하면 공통 UNAUTHORIZED 본문을 읽었다. HttpURLConnection 내부의 정확한 본문 누락 경로는 미확인이다.
 - 해결: 해당 테스트 드라이버를 Java 17 HttpClient 기반 JdkClientHttpRequestFactory로 바꾸고 연결 1초·읽기 10초 제한을 유지했다. 서비스의 인증·예외 응답 코드는 변경하지 않았다.
 - 확인: HTTP/Feign 취소 테스트 18개와 전체 build 통과. I-11 1회·I-12 통신 실패 최대 3회·I-12 5xx 1회도 함께 확인해 드라이버의 상태 코드 재전송이 섞이지 않음을 검증했다.
+
+### TS-013 주문 Entity와 Spring @Order의 이름 충돌로 테스트 컴파일 실패
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: 커밋 뒤 예외를 주입하는 테스트에서 domain.Order와 Spring의 Order 애너테이션을 함께 import해 `reference to Order is ambiguous`가 발생했다.
+- 원인: 두 타입의 단순 이름이 같아 Java가 Entity와 애너테이션을 구분할 수 없었다.
+- 해결: Entity import를 유지하고 테스트 aspect의 순서는 `@org.springframework.core.annotation.Order(...)`로 명시했다. 제품 코드의 타입 이름과 트랜잭션 설정은 바꾸지 않았다.
+- 확인: 생성 기록 PostgreSQL 통합 테스트 15개와 전체 build 통과. 실제 커밋 뒤 예외·잠금 대기·롤백·생성 이벤트 1회 검증을 포함한다.

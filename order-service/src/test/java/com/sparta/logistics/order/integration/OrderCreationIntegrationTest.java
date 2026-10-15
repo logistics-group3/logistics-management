@@ -89,6 +89,8 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
                 "SELECT created_by FROM order_schema.p_orders WHERE order_id = ?", String.class, result.orderId()))
                 .isEqualTo("SYSTEM");
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+        assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, result.orderId()))
+                .isEqualTo("COMPLETED");
         verify(notificationSender).send(new OrderCreatedEvent(result.orderId(), supplier.name(), receiver.name(),
                 product.name(), 50, null));
     }
@@ -105,6 +107,8 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
         verify(deliveryGateway).deleteByOrderId(createdOrderId.get());
+        assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, createdOrderId.get()))
+                .isEqualTo("ABORTED");
         assertThat(orderRepository.findById(existing.getId())).isPresent();
         verifyNoInteractions(notificationSender);
     }
@@ -131,6 +135,8 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
                     .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
             verify(deliveryGateway).deleteByOrderId(createdOrderId.get());
+            assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, createdOrderId.get()))
+                    .isEqualTo("ABORTED");
             assertThat(orderRepository.findById(existing.getId())).isPresent();
             verifyNoInteractions(notificationSender);
         } finally {
@@ -195,6 +201,8 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
             assertThat(jdbcTemplate.queryForObject(
                     "SELECT count(*) FROM order_schema.p_orders WHERE order_id = ?", Integer.class, createdOrderId.get()))
                     .isZero();
+            assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, createdOrderId.get()))
+                    .isEqualTo("PROCESSING");
             return null;
         }).given(deliveryGateway).deleteByOrderId(any());
     }

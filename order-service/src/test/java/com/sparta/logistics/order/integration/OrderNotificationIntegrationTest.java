@@ -55,7 +55,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false", "spring.jpa.hibernate.ddl-auto=validate"
 })
 @TestPropertySource(properties = {
-        "spring.flyway.schemas=order_schema", "spring.jpa.properties.hibernate.default_schema=order_schema",
+        "spring.flyway.schemas=order_schema",
+        "spring.jpa.open-in-view=false", "spring.jpa.properties.hibernate.default_schema=order_schema",
         "slack.connect-timeout=1s", "slack.read-timeout=2s"
 })
 @ExtendWith(OutputCaptureExtension.class)

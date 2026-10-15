@@ -1,9 +1,18 @@
 package com.sparta.logistics.order.application;
 
+import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.common.exception.CommonErrorCode;
+import com.sparta.logistics.order.application.dto.OrderCreationAttempt;
+import com.sparta.logistics.order.application.dto.OrderCreationCommitResult;
 import com.sparta.logistics.order.application.dto.OrderResult;
 import com.sparta.logistics.order.application.event.OrderCreatedEvent;
+import com.sparta.logistics.order.domain.CreationFailureReason;
 import com.sparta.logistics.order.domain.Order;
+import com.sparta.logistics.order.domain.OrderCreation;
+import com.sparta.logistics.order.domain.OrderCreationRepository;
+import com.sparta.logistics.order.domain.OrderCreationStatus;
 import com.sparta.logistics.order.domain.OrderRepository;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -15,17 +24,71 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderWriter {
 
     private final OrderRepository orderRepository;
+    private final OrderCreationRepository creationRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    /** O-01. 첫 원격 변경 전에 생성 진행 기록을 별도 커밋한다. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void start(OrderCreationAttempt attempt) {
+        creationRepository.saveAndFlush(OrderCreation.start(attempt.attemptId(), attempt.orderId(), attempt.ordererId()));
+    }
 
     /**
      * O-01 주문의 로컬 저장. 원격 호출을 포함하지 않는다.
-     * Note: 별도 빈의 트랜잭션 프록시가 커밋까지 끝낸 뒤 반환하므로 호출자가 커밋 실패도 보상할 수 있다.
+     * Note: 별도 빈의 트랜잭션 프록시가 커밋까지 끝낸 뒤 반환하므로 호출자가 커밋 예외를 잡고 실제 결과를 다시 확인할 수 있다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrderResult save(Order order, String supplierCompanyName, String receiverCompanyName) {
+        OrderCreation creation = findCreation(order.getId());
+        creation.validateProcessing();
+        if (!creation.getOrdererId().equals(order.getOrdererId())) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
         Order savedOrder = orderRepository.saveAndFlush(order);
+        creation.complete(savedOrder.getDeliveryId());
         // Note: flush는 커밋이 아니다. 트랜잭션 안에서 발행해 커밋 성공 시에만 리스너가 실행되게 한다.
         eventPublisher.publishEvent(OrderCreatedEvent.from(savedOrder, supplierCompanyName, receiverCompanyName));
         return OrderResult.from(savedOrder);
+    }
+
+    /** O-01. 진행 기록 잠금 획득 후 같은 DB에서 주문과 완료 기록을 함께 확인한다. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrderCreationCommitResult resolveCreation(OrderCreationAttempt attempt) {
+        OrderCreation creation = findCreation(attempt);
+        Order order = orderRepository.findByIdForUpdate(attempt.orderId()).orElse(null);
+        if (creation.getStatus() == OrderCreationStatus.COMPLETED && order != null
+                && order.getOrdererId().equals(creation.getOrdererId())
+                && order.getDeliveryId().equals(creation.getDeliveryId())) {
+            return OrderCreationCommitResult.from(order);
+        }
+        if (creation.getStatus() == OrderCreationStatus.PROCESSING && order == null) {
+            return OrderCreationCommitResult.notCommitted();
+        }
+        return OrderCreationCommitResult.unknown();
+    }
+
+    /** O-01. 명확한 거절·확인된 배송 정리 후에만 생성 시도를 종료한다. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void abort(OrderCreationAttempt attempt, UUID deliveryId) {
+        findCreation(attempt).abort(deliveryId);
+    }
+
+    /** O-01. 미확정 결과나 삭제 보상 실패는 주문이 없어도 추적할 수 있게 남긴다. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void requireRecovery(OrderCreationAttempt attempt, UUID deliveryId, CreationFailureReason reason) {
+        findCreation(attempt).requireRecovery(deliveryId, reason);
+    }
+
+    private OrderCreation findCreation(UUID orderId) {
+        return creationRepository.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR));
+    }
+
+    private OrderCreation findCreation(OrderCreationAttempt attempt) {
+        OrderCreation creation = findCreation(attempt.orderId());
+        if (!creation.getId().equals(attempt.attemptId()) || !creation.getOrdererId().equals(attempt.ordererId())) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        return creation;
     }
 }
