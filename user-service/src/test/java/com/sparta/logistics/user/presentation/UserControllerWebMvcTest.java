@@ -6,7 +6,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,6 +17,7 @@ import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.user.application.UserQueryService;
+import com.sparta.logistics.user.application.UserService;
 import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.AffiliationType;
 import com.sparta.logistics.user.domain.UserErrorCode;
@@ -28,6 +31,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -41,6 +45,8 @@ class UserControllerWebMvcTest {
 
     @MockitoBean
     private UserQueryService userQueryService;
+    @MockitoBean
+    private UserService userService;
 
     private final UUID userId = UUID.randomUUID();
 
@@ -143,6 +149,54 @@ class UserControllerWebMvcTest {
         as(Role.MASTER, get("/api/v1/users").param("role", "ADMIN"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("수정은 MASTER 전용이고 USER가 부르면 FORBIDDEN")
+    void updateRequiresMaster() throws Exception {
+        as(Role.USER, patch("/api/v1/users/{userId}", userId).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"김철수\"}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("수정 요청에 공백만 있는 값이나 길이를 넘는 값이 있으면 VALIDATION_ERROR")
+    void updateRejectsBlankOrTooLong() throws Exception {
+        String body = "{\"name\":\"   \",\"slackId\":\"" + "U".repeat(51) + "\"}";
+
+        as(Role.MASTER, patch("/api/v1/users/{userId}", userId).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors.length()").value(2));
+    }
+
+    @Test
+    @DisplayName("수정은 보낸 필드만 Command에 담아 넘기고 수정된 UserResponse를 응답한다")
+    void update() throws Exception {
+        given(userService.update(eq(userId), any())).willReturn(result());
+
+        as(Role.MASTER, patch("/api/v1/users/{userId}", userId).contentType(MediaType.APPLICATION_JSON).content("{\"slackId\":\"U09\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userId").value(userId.toString()));
+        verify(userService).update(eq(userId), argThat(c -> "U09".equals(c.slackId()) && c.name() == null));
+    }
+
+    @Test
+    @DisplayName("삭제하면 SA U-08 메시지와 data null로 응답한다")
+    void deleteUser() throws Exception {
+        as(Role.MASTER, delete("/api/v1/users/{userId}", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("사용자가 삭제되었습니다."))
+                .andExpect(jsonPath("$.data").isEmpty());
+        verify(userService).delete(any(), eq(userId));
+    }
+
+    @Test
+    @DisplayName("삭제는 MASTER 전용이고 USER가 부르면 FORBIDDEN")
+    void deleteRequiresMaster() throws Exception {
+        as(Role.USER, delete("/api/v1/users/{userId}", userId))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(userService);
     }
 
     private ResultActions as(Role role, MockHttpServletRequestBuilder request) throws Exception {

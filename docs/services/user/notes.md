@@ -58,3 +58,20 @@
 ### 확인 질문
 - `UserQueryRepositoryImpl`이라는 이름에서 `Impl`을 빼면 무슨 일이 생기나?
 - 검색 결과가 0건일 때 count 쿼리는 실행되나?
+
+## U-06 수정, U-08 논리 삭제 (2026-10-15)
+### 처리 과정
+- domain: `User.updateProfile`(null은 유지, 배송담당자 소속 수정 거절).
+- application: `UserService.update`, `UserService.delete`(자기 자신 삭제 거절 후 `softDelete(master.username())`).
+- presentation: `PATCH /api/v1/users/{userId}`(`UpdateUserRequest`), `DELETE /api/v1/users/{userId}`. 둘 다 `@RequireRole(Role.MASTER)`.
+- 테스트: `UserTest` 1개, `UserServiceTest` 5개, `UserControllerWebMvcTest` 5개, `UserCommandIntegrationTest` 2개(updated_by·deleted_by에 MASTER 기록, 삭제 후 I-01 404).
+
+### 핵심
+- PATCH의 "보내지 않음"은 null로 표현한다. `@NotBlank`는 null도 거절하므로 쓰지 않고, `@Pattern`으로 "보냈다면 공백만은 안 된다"를 검사한다(`@Pattern`·`@Size`는 null을 통과시킨다).
+- 배송담당자 소속 고정은 Entity 메서드 안에서 검사한다. 어느 경로로 수정하든 같은 규칙이 지켜진다(user 결정 0001).
+- 변경은 Entity 메서드와 변경 감지(dirty checking)로 반영한다. `save`를 다시 부르지 않는다.
+- 자기 자신 삭제는 DB 조회 전에 거절한다. `updated_by`·`deleted_by`에는 Gateway가 넣은 `X-Username`이 남는다(`HeaderAuditorAware`).
+
+### 확인 질문
+- `updateProfile`에서 null 대신 `Optional`을 받으면 무엇이 좋아지고 무엇이 불편해지나?
+- 논리 삭제한 사용자의 기존 토큰은 언제 막히나?

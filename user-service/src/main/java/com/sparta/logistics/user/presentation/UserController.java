@@ -7,16 +7,22 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.response.ApiResponse;
 import com.sparta.logistics.common.response.PageResponse;
 import com.sparta.logistics.user.application.UserQueryService;
+import com.sparta.logistics.user.application.UserService;
+import com.sparta.logistics.user.presentation.dto.UpdateUserRequest;
 import com.sparta.logistics.user.presentation.dto.UserResponse;
 import com.sparta.logistics.user.presentation.dto.UserSearchRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserQueryService userQueryService;
+    private final UserService userService;
 
     /** Note: "/me"와 "/{userId}"가 둘 다 맞아 보여도 Spring MVC는 변수 없는 경로를 더 구체적인 것으로 보고 먼저 고른다. */
     @Operation(summary = "U-03 내 정보 조회")
@@ -46,5 +53,20 @@ public class UserController {
     @GetMapping
     public ApiResponse<PageResponse<UserResponse>> search(@ModelAttribute UserSearchRequest request, Pageable pageable) {
         return ApiResponse.ok(PageResponse.from(userQueryService.search(request.toCondition(), pageable), UserResponse::from));
+    }
+
+    @Operation(summary = "U-06 사용자 정보 수정")
+    @RequireRole(Role.MASTER)
+    @PatchMapping("/{userId}")
+    public ApiResponse<UserResponse> update(@PathVariable UUID userId, @Valid @RequestBody UpdateUserRequest request) {
+        return ApiResponse.ok(UserResponse.from(userService.update(userId, request.toCommand())));
+    }
+
+    @Operation(summary = "U-08 사용자 비활성화(논리 삭제)")
+    @RequireRole(Role.MASTER)
+    @DeleteMapping("/{userId}")
+    public ApiResponse<Void> delete(@CurrentUser UserContext user, @PathVariable UUID userId) {
+        userService.delete(user, userId);
+        return ApiResponse.ok("사용자가 삭제되었습니다.", null);
     }
 }

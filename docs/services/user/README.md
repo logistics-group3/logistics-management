@@ -21,7 +21,9 @@
 | U-03 | `GET /api/v1/users/me` | 로그인 | 구현 |  |
 | U-04 | `GET /api/v1/users/{userId}` | 본인, MASTER | 구현 | 권한 검사를 조회보다 먼저 해 USER는 없는 ID에도 403(존재 여부 비노출) |
 | U-05 | `GET /api/v1/users` | MASTER | 구현 | 정렬 허용 `createdAt`, `username`. 탈퇴자 제외 |
-| U-06~U-08 | `/api/v1/users/**` | MASTER | 예정 |  |
+| U-06 | `PATCH /api/v1/users/{userId}` | MASTER | 구현 | SA에 없는 규칙: 배송담당자의 `affiliationType`·`affiliationName` 수정은 400 `INVALID_REQUEST`, 공백만 있는 값은 400 `VALIDATION_ERROR` ([decisions/0001](decisions/0001-user-management-guards.md)) |
+| U-07 | `PATCH /api/v1/users/{userId}/role` | MASTER | 예정 |  |
+| U-08 | `DELETE /api/v1/users/{userId}` | MASTER | 구현 | 자기 자신 삭제 400 `INVALID_REQUEST`(SA와 같음) |
 | I-01 | `GET /internal/users/{userId}` | gateway, company, delivery | 구현 | DTO 그대로 반환(ADR 0010). 탈퇴 시 404 `USER_NOT_FOUND` |
 | I-14 | `GET /internal/users/delivery-managers?hubId=` | delivery | 구현 | `[{userId, slackId}]`를 감싸지 않고 반환. 없으면 `[]`, hubId 누락 400. 정렬하지 않는다(동점 처리는 delivery) |
 | 샘플 | `GET /api/v1/users/sample/me`, `/admin` | 로그인, MASTER | 구현 | 공통 인프라 검증용. 업무 API가 대체하면 정리한다 |
@@ -37,8 +39,8 @@
 - [x] U-01 회원가입, U-02 로그인, I-01 내부 조회 (통합 테스트, E2E)
 - [x] 기동 시 MASTER 계정 자동 생성(`MASTER_USERNAME`/`MASTER_PASSWORD`)
 - [x] U-03 내 정보 조회, U-04 단건 조회 (단위·WebMvc·통합 테스트, Gateway 경유 호출)
-- [x] U-05 검색 (WebMvc·통합 테스트, Gateway 경유 호출)
-- [ ] U-06~U-08 사용자 관리
+- [x] U-05 검색, U-06 수정, U-08 논리 삭제 (단위·WebMvc·통합 테스트, Gateway 경유 호출)
+- [ ] U-07 권한·배송담당자 지정
 - [x] I-14 허브별 배송담당자 목록 (통합 테스트, 내부 호출)
 
 ## 5. 협업 로그
