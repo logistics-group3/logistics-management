@@ -1,6 +1,8 @@
 package com.sparta.logistics.delivery.domain;
 
 import com.sparta.logistics.common.entity.BaseEntity;
+import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +15,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -72,7 +75,155 @@ public class Delivery extends BaseEntity {
     @Column(name = "destination_hub_id", nullable = false)
     private UUID destinationHubId;
 
-    @OneToMany(mappedBy = "delivery", cascade = CascadeType.ALL)
+    /**
+     * Note: cascade는 PERSIST만 둔다. 구간은 배송과 함께 처음 저장될 때만 따라 저장되면 되고, 이후 변경은 영속 상태의
+     * 변경 감지로 반영된다. 물리 삭제를 하지 않으므로 REMOVE와 orphanRemoval도 두지 않는다(논리 삭제는 softDelete가 구간까지 처리).
+     */
+    @OneToMany(mappedBy = "delivery", cascade = CascadeType.PERSIST)
     @OrderBy("sequence ASC")
     private List<DeliveryRoute> routes = new ArrayList<>();
+
+    /**
+     * I-09 배송 생성. 같은 허브면 집하·업체 배송 2구간, 다르면 집하·허브 이동·업체 배송 3구간을 만들고(ADR 0003)
+     * 구간마다 담당자를 배정한다. 어느 구간이든 후보가 없으면 저장 전에 DELIVERY_MANAGER_NOT_FOUND.
+     *
+     * @param hubTransferExpected 허브 이동 구간의 예상 거리·시간(I-03). 같은 허브면 쓰지 않는다
+     */
+    public static Delivery create(UUID orderId, UUID supplierCompanyId, UUID receiverCompanyId,
+                                  UUID departureHubId, UUID destinationHubId,
+                                  String pickupAddress, String deliveryAddress,
+                                  String recipientName, String recipientSlackId,
+                                  RouteInfo hubTransferExpected, ManagerAssigner assigner) {
+        Delivery delivery = new Delivery();
+        delivery.orderId = orderId;
+        delivery.supplierCompanyId = supplierCompanyId;
+        delivery.receiverCompanyId = receiverCompanyId;
+        delivery.departureHubId = departureHubId;
+        delivery.destinationHubId = destinationHubId;
+        delivery.pickupAddress = pickupAddress;
+        delivery.deliveryAddress = deliveryAddress;
+        delivery.recipientName = recipientName;
+        delivery.recipientSlackId = recipientSlackId;
+
+        delivery.addRoute(RouteType.PICKUP, null, departureHubId, null, assigner);
+        if (!delivery.isSameHub()) {
+            delivery.addRoute(RouteType.HUB_TRANSFER, departureHubId, destinationHubId, hubTransferExpected, assigner);
+        }
+        delivery.addRoute(RouteType.LAST_MILE, destinationHubId, null, null, assigner);
+        delivery.status = DeliveryStatus.PICKUP_WAITING;
+        return delivery;
+    }
+
+    /** 공급업체와 요청업체가 같은 허브 소속이면 허브 이동 구간이 없다. */
+    public boolean isSameHub() {
+        return departureHubId.equals(destinationHubId);
+    }
+
+    public List<DeliveryRoute> getRoutes() {
+        return Collections.unmodifiableList(routes);
+    }
+
+    public DeliveryRoute getRoute(UUID routeId) {
+        return routes.stream()
+                .filter(route -> routeId.equals(route.getId()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(DeliveryErrorCode.DELIVERY_ROUTE_NOT_FOUND));
+    }
+
+    /** 업체 배송 구간. 배송지·수령인 수정 권한(D-03)을 판단할 때 쓴다. */
+    public DeliveryRoute getLastMileRoute() {
+        return routes.get(routes.size() - 1);
+    }
+
+    /** 이 사용자가 담당하는 구간이 하나라도 있는가. 배송담당자의 조회 범위(SA 8.4)다. */
+    public boolean hasRouteManagedBy(UUID userId) {
+        return routes.stream().anyMatch(route -> route.isManagedBy(userId));
+    }
+
+    /** D-05 구간 상태 변경. 목표 상태는 MOVING, ARRIVED만 있다. 그 밖의 값은 허용되지 않는 전이다. */
+    public void changeRouteStatus(UUID routeId, RouteStatus target, RouteInfo actual) {
+        switch (target) {
+            case MOVING -> startRoute(routeId);
+            case ARRIVED -> arriveRoute(routeId, actual);
+            default -> throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+    }
+
+    /** 구간 출발. 앞 구간이 ARRIVED여야 한다(SA 2.5). */
+    public void startRoute(UUID routeId) {
+        DeliveryRoute route = getRoute(routeId);
+        if (route.getSequence() > 1 && routes.get(route.getSequence() - 2).getStatus() != RouteStatus.ARRIVED) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        route.start();
+        refreshStatus();
+    }
+
+    /** 구간 도착. 허브 이동은 실제 거리·시간이 필수다. */
+    public void arriveRoute(UUID routeId, RouteInfo actual) {
+        getRoute(routeId).arrive(actual);
+        refreshStatus();
+    }
+
+    /** I-11 배송 취소. 집하 시작 전(PICKUP_WAITING)에만 된다. 이미 취소됐으면 그대로 둔다(SA 7.3 멱등). */
+    public void cancel() {
+        if (status == DeliveryStatus.CANCELED) {
+            return;
+        }
+        if (status != DeliveryStatus.PICKUP_WAITING) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        routes.forEach(DeliveryRoute::cancel);
+        refreshStatus();
+    }
+
+    /**
+     * I-12 취소 원복(보상). 취소는 PICKUP_WAITING에서만 일어나므로 구간을 모두 WAITING으로 되돌리면 취소 전 상태다.
+     * 취소 상태가 아니면(이미 원복함) 아무것도 하지 않는다(SA 7.3 멱등).
+     */
+    public void revertCancel() {
+        if (status != DeliveryStatus.CANCELED) {
+            return;
+        }
+        routes.forEach(DeliveryRoute::revertCancel);
+        refreshStatus();
+    }
+
+    /** D-03 배송지·수령인 수정. 보낸 값만 바꾸고, 업체 배송 출발(OUT_FOR_DELIVERY) 뒤에는 409. */
+    public void updateRecipient(String deliveryAddress, String recipientName) {
+        if (!status.isRecipientEditable()) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (deliveryAddress != null) {
+            this.deliveryAddress = deliveryAddress;
+        }
+        if (recipientName != null) {
+            this.recipientName = recipientName;
+        }
+    }
+
+    /** D-04 재배정. 대상의 소속 허브가 구간 담당 허브가 아니면 400, 도착·취소된 구간이면 409. */
+    public void reassignRouteManager(UUID routeId, DeliveryManager manager) {
+        DeliveryRoute route = getRoute(routeId);
+        if (!route.getManagingHubId().equals(manager.hubId())) {
+            throw new BusinessException(DeliveryErrorCode.MANAGER_HUB_MISMATCH);
+        }
+        route.changeManager(manager.userId());
+    }
+
+    /** I-13 배송 삭제. 구간도 함께 논리 삭제한다(SA 7.5). 이미 삭제된 행은 그대로 둔다. */
+    @Override
+    public void softDelete(String username) {
+        super.softDelete(username);
+        routes.forEach(route -> route.softDelete(username));
+    }
+
+    private void addRoute(RouteType type, UUID departureHub, UUID arrivalHub, RouteInfo expected, ManagerAssigner assigner) {
+        UUID managerId = assigner.assign(type.managingHubId(departureHub, arrivalHub));
+        routes.add(new DeliveryRoute(this, routes.size() + 1, type, departureHub, arrivalHub, expected, managerId));
+    }
+
+    private void refreshStatus() {
+        this.status = DeliveryStatus.from(routes);
+    }
 }

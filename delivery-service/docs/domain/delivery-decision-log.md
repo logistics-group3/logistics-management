@@ -24,6 +24,7 @@
 | 13 | V1 DDL의 제약과 인덱스 범위 | 정합성 제약(PK·UNIQUE·FK)과 SA 5.6 인덱스만. 방어용 CHECK와 부분 인덱스는 기능 완성 후 실행계획 보고 추가 |
 | 14 | 테스트 기준 | 없으면 잡지 못하는 버그가 있는 테스트만. 상태 전이·멱등·배정·Saga 분기·권한 필터 중심, 단순 확인 테스트는 쓰지 않음 |
 | 15 | enum 컬럼 타입 | PostgreSQL enum 타입을 검토하고 구현까지 했다가 팀 규칙(VARCHAR + CHECK)으로 되돌림 |
+| 16 | 구현하며 정한 것(D-01~05, I-09~13) | cascade PERSIST만, 생성은 트랜잭션 밖 오케스트레이션 + 유니크 위반 시 기존 배송 반환, 수령인 404면 Slack ID NULL, 원복은 취소 상태일 때만, 에러 코드는 `DeliveryErrorCode` |
 
 ---
 
@@ -194,6 +195,23 @@ SA에 같은 용도의 내부 API가 이미 있으면 그 이름을 따른다.
 
 **결론** — 팀 규칙대로 `VARCHAR` + CHECK(`ck_p_deliveries_status`, `ck_p_delivery_routes_route_type`, `ck_p_delivery_routes_status`)로 둔다. 13에서 미룬 것은 팀 규칙에 없는 CHECK(`sequence >= 1`, 구간 유형별 허브 NULL 규칙)뿐이다.
 
+## 16. 구현하며 정한 것 (2026-10-15)
+
+**왜** — D-01~05, I-09~13을 한 번에 구현하면서 `[제안]`·`[미정]`으로 남아 있던 항목과 문서에 없던 세부를 코드로 정해야 했다.
+
+**어떻게** — SA와 충돌하지 않는 범위에서 가장 단순한 쪽을 골랐다.
+- `Delivery.routes` cascade: ALL → PERSIST. 구간은 처음 저장할 때만 따라 저장되면 되고 이후는 변경 감지다. 물리 삭제가 없으니 REMOVE·orphanRemoval은 두지 않고, `Delivery.softDelete`가 구간까지 논리 삭제한다.
+- I-09 멱등: 생성 서비스에 `@Transactional`을 두지 않는다. orderId 조회 → 원격 호출(I-03, I-14, I-01) → `saveAndFlush`(Spring Data 자체 트랜잭션). 동시 요청의 `order_id` 유니크 위반을 잡아 새 조회로 먼저 저장된 배송을 돌려준다(200). 트랜잭션 안에서 잡으면 rollback-only라 다시 읽을 수 없다.
+- 같은 배송 안 연속 배정 반영(§4-2 [제안]): 채택. 허브 단위 advisory lock: 생략(편차 1~2건).
+- 수령인 I-01 404(api.md §4 [미정]): Slack ID NULL로 진행. 503·타임아웃은 그대로 올린다.
+- I-12 원복: 취소 상태일 때만 바꾸고 그 밖에는 no-op 200.
+- D-05에 `WAITING`·`CANCELED`를 보내면 409 `INVALID_STATUS_TRANSITION`.
+- D-03 두 필드 모두 없음: 400 `VALIDATION_ERROR`(§D-03 [제안] 채택).
+- 에러 코드 위치(§9 [미정]): `DELIVERY_MANAGER_NOT_FOUND`, `MANAGER_HUB_MISMATCH`는 배송만 만드는 코드라 `DeliveryErrorCode`에 둔다(`docs/error-codes.md`도 delivery 표). `INVALID_STATUS_TRANSITION`은 이미 `CommonErrorCode`다.
+- I-09~I-12 응답은 하나의 DTO(`deliveryId, orderId, status`)로 맞췄다. SA보다 필드가 많을 뿐 빠진 것은 없다.
+
+**결론** — 위대로 구현했다. 요약은 [`docs/services/delivery/notes.md`](../../../docs/services/delivery/notes.md), 계약 차이는 [`docs/services/delivery/README.md`](../../../docs/services/delivery/README.md) 2절이다.
+
 ## 남은 일
 
 | 할 일 | 누구와 |
@@ -202,4 +220,4 @@ SA에 같은 용도의 내부 API가 이미 있으면 그 이름을 따른다.
 | I-03 내부 허브 경로 조회 | hub 담당 |
 | I-09 필드명, 404 전달, I-11·12·13 보상 순서 확인 | order 담당 |
 | 시연용 허브별 배송담당자 계정 | user 담당 |
-| SA 공통 에러 코드(`INVALID_STATUS_TRANSITION` 등)를 common에 둘지 | 팀 |
+| ~~SA 공통 에러 코드를 common에 둘지~~ → 16: 배송 코드는 `DeliveryErrorCode` | 팀 |

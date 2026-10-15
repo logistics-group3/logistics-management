@@ -1,6 +1,6 @@
 # 배송 API 명세 (delivery-service)
 
-> 최종 수정: 2026-10-15 · 담당: 한얼 · 상태: **설계 (구현 전)**
+> 최종 수정: 2026-10-15 · 담당: 한얼 · 상태: **구현 (D-01~05, I-09~13. I-03·I-14 제공 전이라 Gateway 경유 미확인)**
 > 기준: Notion SA(스파르타물류_SA문서_Master) v2.0 — 6.1 공통 규약 · 6.2 외부 API · 6.3 내부 API · 6.8 배송 API 상세 · 7.3 멱등성
 > 표기 — [SA] SA 원문 그대로 · [제안] SA에는 필드 목록만 있어 형식(JSON·상태 코드)을 채운 것, 구현하며 확정 · [미정] 상대 담당과 확인
 > 설계 배경(상태·배정 규칙)은 [`delivery.md`](delivery.md)
@@ -176,7 +176,7 @@ Error: 403 `FORBIDDEN` (담당하지 않은 배송) · 404 `DELIVERY_NOT_FOUND`
 | deliveryAddress | String | X | 최대 255자 |
 | recipientName | String | X | 최대 100자 |
 
-보낸 필드만 수정. [제안] 둘 다 없으면 400 `VALIDATION_ERROR`
+보낸 필드만 수정. 둘 다 없거나 공백만 보내면 400 `VALIDATION_ERROR` (구현으로 확정)
 ```http
 PATCH /api/v1/deliveries/f9c8a7b6-…
 Content-Type: application/json
@@ -227,7 +227,7 @@ Content-Type: application/json
 | `LAST_MILE` | `OUT_FOR_DELIVERY` | `DELIVERED` |
 
 Response `200 OK`: 수정된 `DeliveryResponse` (구간 포함)
-Error: 400 `VALIDATION_ERROR` (허브 이동 도착 시 실제 값 누락) · 403 `FORBIDDEN` · 404 `DELIVERY_ROUTE_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION`
+Error: 400 `VALIDATION_ERROR` (허브 이동 도착 시 실제 값 누락) · 403 `FORBIDDEN` · 404 `DELIVERY_ROUTE_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (`status`에 `WAITING`·`CANCELED`를 보낸 경우 포함)
 
 ---
 
@@ -259,9 +259,9 @@ Error: 400 `VALIDATION_ERROR` (허브 이동 도착 시 실제 값 누락) · 40
   "receiverManagerId": "a1b2c3d4-…"
 }
 ```
-Response `201 Created` ([제안] 같은 `orderId` 재요청이면 `200 OK` + 기존 값)
+Response `201 Created`, 같은 `orderId` 재요청·동시 요청이면 `200 OK` + 기존 값 (구현으로 확정). 응답은 I-10~I-12와 같은 DTO라 `orderId`도 담는다
 ```json
-{ "deliveryId": "f9c8a7b6-5e4d-4c3b-9b0a-0f9e8d7c6b54", "status": "PICKUP_WAITING" }
+{ "deliveryId": "f9c8a7b6-5e4d-4c3b-9b0a-0f9e8d7c6b54", "orderId": "e8b7f6a5-4d3c-4b2a-8a9f-9e8d7c6b5a43", "status": "PICKUP_WAITING" }
 ```
 Error: 404 `DELIVERY_MANAGER_NOT_FOUND` (저장 전 확인 → 남는 데이터 없음, order는 그대로 404) · 400 `VALIDATION_ERROR` · 503 `SERVICE_UNAVAILABLE` (I-03·I-14 실패 → order가 I-13 보상)
 
@@ -278,16 +278,16 @@ Error: 404 `DELIVERY_NOT_FOUND`
 `PICKUP_WAITING`일 때만. 배송·구간 모두 `CANCELED`.
 Response `200 OK` (이미 `CANCELED`여도 200)
 ```json
-{ "deliveryId": "f9c8a7b6-…", "status": "CANCELED" }
+{ "deliveryId": "f9c8a7b6-…", "orderId": "e8b7f6a5-…", "status": "CANCELED" }
 ```
 Error: 404 `DELIVERY_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (집하 시작)
 
 ### I-12. 취소 원복 (보상)
 `POST /internal/deliveries/{deliveryId}/cancel-revert` · 호출: order (주문 취소 저장 실패 시) · 멱등키 `deliveryId`
-취소는 `PICKUP_WAITING`에서만 일어나므로 `PICKUP_WAITING` + 구간 전부 `WAITING`으로 되돌린다. 원복 후 재요청은 no-op.
+취소는 `PICKUP_WAITING`에서만 일어나므로 `PICKUP_WAITING` + 구간 전부 `WAITING`으로 되돌린다. 취소 상태가 아니면(원복 후 재요청 등) no-op으로 현재 상태를 돌려준다.
 Response `200 OK`
 ```json
-{ "deliveryId": "f9c8a7b6-…", "status": "PICKUP_WAITING" }
+{ "deliveryId": "f9c8a7b6-…", "orderId": "e8b7f6a5-…", "status": "PICKUP_WAITING" }
 ```
 Error: 404 `DELIVERY_NOT_FOUND`
 
@@ -322,10 +322,10 @@ Error: 404 `USER_NOT_FOUND` (없거나 탈퇴)
 
 | 배송에서 쓰는 곳 | 쓰는 필드 | 결과 처리 |
 |---|---|---|
-| I-09 수령인 Slack ID | `receiverManagerId` → `slackId` | 성공 → `recipient_slack_id`. [미정] 404면 Slack ID 없이(NULL 허용 컬럼) 진행할지, 실패시킬지 |
+| I-09 수령인 Slack ID | `receiverManagerId` → `slackId` | 성공 → `recipient_slack_id`. 404면 Slack ID 없이(NULL) 진행한다(구현으로 확정). 503·타임아웃은 그대로 올라가 order가 보상 |
 | D-04 재배정 검증 | `isDeliveryManager`, `hubId` | 404 또는 `isDeliveryManager=false` → 404 `DELIVERY_MANAGER_NOT_FOUND` / `hubId` ≠ 구간 담당 허브 → 400 `MANAGER_HUB_MISMATCH` |
 
-> 현재 레포 구현(`InternalUserResponse`)에는 `hubId`가 없다 → **user 담당에게 추가 요청** (SA에는 있음)
+> 10/15 저장소 확인: user `InternalUserResult`에 `hubId`가 있다
 
 ### I-03. 허브 간 경로 (hub) [제안]
 `GET /internal/hub-routes?departureHubId={공급업체 허브}&arrivalHubId={요청업체 허브}`
@@ -339,9 +339,9 @@ Response `200 OK`
 |---|---|
 | distanceKm · durationMinutes | `HUB_TRANSFER` 구간 `expected_distance_km` · `expected_duration_minutes` |
 
-Error: [미정] 경로 없음 404 코드명(예: `HUB_ROUTE_NOT_FOUND`) — P2P 272건이 다 있으면 생기지 않음. 생기면 그대로 order에 전달 (주문 실패)
+Error: [미정] 경로 없음 404 코드명(예: `HUB_ROUTE_NOT_FOUND`) — P2P 272건이 다 있으면 생기지 않음. 생기면 그대로 order에 전달 (주문 실패, `FeignErrorDecoder`가 코드를 보존)
 
-> 레포 미구현 → hub 담당 (SA 04 외부 `GET /api/v1/hub-routes/search`와 별개의 **내부** 경로)
+> 10/15 기준 hub 미구현 → hub 담당. delivery는 이 계약대로 `HubClient`를 만들어 두었다 (SA 04 외부 `GET /api/v1/hub-routes/search`와 별개의 **내부** 경로)
 
 ### I-14. 허브별 배송담당자 목록 (user) [제안]
 `GET /internal/users/delivery-managers?hubId={구간 담당 허브}`
@@ -361,7 +361,7 @@ Response `200 OK` — 배열 그대로 (래퍼 없음)
 |---|---|
 | I-09 구간별 후보 | 후보마다 담당 건수(`WAITING`·`MOVING` 구간 수)를 세고 최소인 사람, 동점이면 userId 순 |
 
-> 레포 미구현 → **user 담당** (`p_users.hub_id` 컬럼·CHECK와 함께)
+> 10/15 기준 user 미구현 → **user 담당**. delivery는 이 계약대로 `UserClient`를 만들어 두었다
 
 ---
 

@@ -9,4 +9,12 @@ import java.math.BigDecimal;
  */
 @Embeddable
 public record RouteInfo(BigDecimal distanceKm, Integer durationMinutes) {
+
+    boolean hasBoth() {
+        return distanceKm != null && durationMinutes != null;
+    }
+
+    boolean isEmpty() {
+        return distanceKm == null && durationMinutes == null;
+    }
 }

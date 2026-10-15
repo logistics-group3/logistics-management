@@ -1,6 +1,6 @@
 # 배송 도메인 설계 (delivery-service)
 
-> 최종 수정: 2026-10-14 · 담당: 한얼 · 상태: **설계 (구현 전)**
+> 최종 수정: 2026-10-15 · 담당: 한얼 · 상태: **구현 (구현하며 정한 것은 결정 로그 16)**
 > 기준: **Notion SA(스파르타물류_SA문서_Master) v2.0** (2026-10-13, 멘토 피드백 반영) — 1.5 #10·#13, 2.3, 2.5, 5.6, 6.2, 6.3, 6.8, 7.1~7.3, 8.4
 > 표기 — [SA] SA 확정 · [제안] SA에 없음, 팀 합의 후 [SA] · [미정] 결정 필요
 > 설계가 어떻게 정해졌는지는 [`delivery-decision-log.md`](delivery-decision-log.md)에 있다.
@@ -144,7 +144,7 @@ MASTER는 1~6을 대신할 수 있다.
 - 구간은 **순번대로만** 진행한다. 앞 구간이 `ARRIVED`여야 다음 구간을 `MOVING`으로 바꿀 수 있다 → 아니면 409 `INVALID_STATUS_TRANSITION`
 - 구간 상태는 `WAITING → MOVING → ARRIVED` 한 단계씩. 건너뛰기·되돌리기, 도착·취소된 구간 변경은 409
 - 취소는 **집하 시작 전(`PICKUP_WAITING`)에만**. 그 뒤는 409 `INVALID_STATUS_TRANSITION`
-- [제안] 취소 원복(I-12)은 `PICKUP_WAITING`에서만 취소되므로 "`PICKUP_WAITING` + 구간 전부 `WAITING`"으로 되돌리면 된다 (이전 상태를 따로 저장할 필요 없음)
+- [구현] 취소 원복(I-12)은 `PICKUP_WAITING`에서만 취소되므로 "`PICKUP_WAITING` + 구간 전부 `WAITING`"으로 되돌리면 된다 (이전 상태를 따로 저장할 필요 없음)
 
 **코드에서 지킬 것** — 상태 규칙은 엔티티와 enum 안에 둔다
 ```
@@ -193,8 +193,8 @@ DeliveryStatus.from(routes)                                   // 구간 상태 �
 후보 0명 → 404 DELIVERY_MANAGER_NOT_FOUND (저장 전에 확인 → 남는 데이터 없음) → order는 주문 실패
 ```
 - I-14는 구간 담당 허브 수만큼 부른다 (공급업체 허브, 요청업체 허브 — 같으면 1번)
-- 한 배송 안에서 집하·허브 이동은 같은 허브라 같은 사람이 뽑힐 수 있다. [제안] 두 번째 구간을 고를 때 첫 번째 배정을 담당 건수에 더해서 센다 (SA 예시도 집하·허브 이동 담당자가 같음)
-- [제안] 동시 주문: 같은 허브에 두 주문이 동시에 들어오면 같은 사람을 고를 수 있다 → 배송 생성 트랜잭션에서 허브 단위 잠금 `pg_advisory_xact_lock(hashtext(:hubId))` 후 세기. 편차가 1~2건이라 MVP에서는 생략 가능
+- 한 배송 안에서 집하·허브 이동은 같은 허브라 같은 사람이 뽑힐 수 있다. [구현] 두 번째 구간을 고를 때 첫 번째 배정을 담당 건수에 더해서 센다 (SA 예시도 집하·허브 이동 담당자가 같음)
+- [제안] 동시 주문: 같은 허브에 두 주문이 동시에 들어오면 같은 사람을 고를 수 있다 → 배송 생성 트랜잭션에서 허브 단위 잠금 `pg_advisory_xact_lock(hashtext(:hubId))` 후 세기. 편차가 1~2건이라 MVP에서는 생략 가능 → 생략(결정 로그 16)
 
 ### 4-3. 재배정 — D-04 (MASTER) [SA]
 
@@ -424,14 +424,14 @@ erDiagram
 |---|---|---|---|
 | `DELIVERY_NOT_FOUND` | 404 | 배송 없음 | `DeliveryErrorCode` |
 | `DELIVERY_ROUTE_NOT_FOUND` | 404 | 구간 없음 / 다른 배송의 구간 | `DeliveryErrorCode` |
-| `DELIVERY_MANAGER_NOT_FOUND` | 404 | 구간 담당 허브에 배송담당자 0명 (→ **주문 실패**), 재배정 대상이 없거나 배송담당자 아님 | SA 공통 |
-| `MANAGER_HUB_MISMATCH` | 400 | 재배정 대상 소속 허브 ≠ 구간 담당 허브 | SA 공통 |
-| `INVALID_STATUS_TRANSITION` | 409 | 앞 구간 도착 전 출발, 도착·취소된 구간 변경·재배정, 집하 시작 후 취소, 업체 배송 출발 후 배송지 수정 | SA 공통 |
+| `DELIVERY_MANAGER_NOT_FOUND` | 404 | 구간 담당 허브에 배송담당자 0명 (→ **주문 실패**), 재배정 대상이 없거나 배송담당자 아님 | `DeliveryErrorCode` (SA 6.1 공통 표) |
+| `MANAGER_HUB_MISMATCH` | 400 | 재배정 대상 소속 허브 ≠ 구간 담당 허브 | `DeliveryErrorCode` (SA 6.1 공통 표) |
+| `INVALID_STATUS_TRANSITION` | 409 | 앞 구간 도착 전 출발, 도착·취소된 구간 변경·재배정, 집하 시작 후 취소, 업체 배송 출발 후 배송지 수정 | `CommonErrorCode` |
 | `VALIDATION_ERROR` | 400 | 허브 이동 도착 시 실제 값 누락 등 | 공통 |
 | `FORBIDDEN` | 403 | 담당 구간이 아님 | 공통 |
 | `SERVICE_UNAVAILABLE` | 503 | hub·user 호출 실패 | 공통 |
 
-> SA가 공통 에러 코드로 둔 `DELIVERY_MANAGER_NOT_FOUND`·`MANAGER_HUB_MISMATCH`·`INVALID_STATUS_TRANSITION`을 common `CommonErrorCode`에 넣을지, 서비스 enum에 둘지 [미정] (order도 같은 코드를 그대로 돌려줘야 함)
+> SA가 공통 에러 코드로 둔 `DELIVERY_MANAGER_NOT_FOUND`·`MANAGER_HUB_MISMATCH`·`INVALID_STATUS_TRANSITION`중 앞의 둘은 `DeliveryErrorCode`, `INVALID_STATUS_TRANSITION`은 이미 `CommonErrorCode`에 있다(결정 로그 16). order는 `FeignErrorDecoder`로 같은 코드를 그대로 돌려준다
 
 ---
 
@@ -443,9 +443,9 @@ erDiagram
 | 2 | I-03 `GET /internal/hub-routes?departureHubId=&arrivalHubId=` | hub 담당 | SA에 있음 · 응답 `hubRouteId, distanceKm, durationMinutes` |
 | 3 | I-09 요청 필드, 404 그대로 전달, I-11·12·13 보상 순서 | **order 담당** | SA 7.1·7.2 · 필드명만 확인 |
 | 4 | 시연용 배송담당자 계정 | user 담당 | 시연에 쓰는 허브마다 `is_delivery_manager = true` + `hub_id` 계정이 없으면 주문이 404 |
-| 5 | SA 공통 에러 코드 위치 | 팀 | §9 [미정] |
+| 5 | SA 공통 에러 코드 위치 | 팀 | 해결: §9, 결정 로그 16 |
 | 6 | Notion 설계 문서 페이지 | 팀 | SA v2.0 이전 내용. 저장소 SA는 v2.0 |
-| 7 | 같은 배송 안 연속 배정 반영, 허브 단위 잠금 | 나 | [제안] §4-2 |
+| 7 | 같은 배송 안 연속 배정 반영, 허브 단위 잠금 | 나 | 해결: 반영함, 잠금 생략(결정 로그 16) |
 | 8 | Feign 타임아웃 | 나 (인프라) | 해결(10/15 확인): `config-repo/application.yml`이 SA v2.0과 같은 connect 5초 / read 20초 |
 | 9 | I-09에서 수령인 I-01이 404일 때, I-14 응답에 `name` 필요 여부, I-03 경로 없음 코드명 | user·hub 담당 | [`delivery-api.md`](delivery-api.md) §4의 [미정] |
 

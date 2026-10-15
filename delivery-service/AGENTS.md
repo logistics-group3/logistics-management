@@ -21,6 +21,7 @@
 ## 모듈 규칙
 - 패키지 `com.sparta.logistics.delivery`, 스키마 `delivery_schema`, DB 계정 `delivery_app`.
 - 배송은 집하 → 허브 이동 → 업체 배송 3구간이다. 두 업체가 같은 허브 소속이면 허브 이동 구간을 만들지 않는다. 주문 1건 = 배송 1건이다.
+- 마이그레이션에서 테이블을 만들거나 컬럼을 추가하면 `COMMENT ON TABLE/COLUMN`으로 설명을 함께 단다(SA 5장 설명 기준, Audit 컬럼 제외). DB 도구와 ERD에서 바로 보이게 하기 위해서다.
 - 상태 전이는 SA 2.5를 따르고 Entity 메서드에서 검증한다. 위반은 `INVALID_STATUS_TRANSITION`(공통 코드)이다.
 - 구간 담당자는 구간 출발지를 관리하는 허브 소속 배송담당자 중 담당 건수가 가장 적은 사람을 자동 배정한다. 없으면 `DELIVERY_MANAGER_NOT_FOUND`로 실패한다.
 - 배송 생성·삭제는 외부 API로 열지 않는다. I-09, I-13은 orderId로 멱등하게 처리한다.
