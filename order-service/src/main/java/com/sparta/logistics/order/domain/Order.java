@@ -112,6 +112,19 @@ public class Order extends BaseEntity {
         this.requestNote = requestNote;
     }
 
+    /** O-05. 주문의 상태만 검증한다. 집하 시작 여부의 최종 판단과 배송 취소는 delivery가 원자적으로 수행한다. */
+    public void validateCancelable() {
+        if (status != OrderStatus.ORDERED) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+    }
+
+    /** 배송 취소 성공을 확인한 뒤 로컬 트랜잭션에서 호출한다. */
+    public void cancel() {
+        validateCancelable();
+        this.status = OrderStatus.CANCELED;
+    }
+
     private static long calculateTotalPrice(long unitPrice, int quantity) {
         try {
             // Note: 원 단위 BIGINT 계약(SA 5.5)을 지킨다. 일반 곱셈은 오버플로 때 예외 없이 잘린 금액을 만들 수 있다.

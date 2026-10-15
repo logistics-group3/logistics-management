@@ -5,7 +5,7 @@
 # 스파르타 물류 SA 문서
 
 > MSA 기반 국내 B2B 물류 관리 및 배송 시스템 — System Architecture
-작성일: 2026-10-12 · 최종 수정: 2026-10-13 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
+작성일: 2026-10-12 · 최종 수정: 2026-10-15 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
 >
 
 **변경 이력**
@@ -16,6 +16,7 @@
 | v1.1 | 2026-10-12 | [SA 제작 미팅](https://app.notion.com/p/SA-3f77bd823b7580eaaab5f0f9e1248abf?pvs=21) 결정 반영: 출고 허브 결정 방식(요청업체 허브 우선, 부족분은 가까운 허브 순으로 모아서 출고), 주문 권한(요청업체 관리자 본인), Gateway 권한 캐시 60초, PK는 UUID로 확정, Kafka는 고도화 단계로 이동, docker-compose 형식 복구 |
 | v1.2 | 2026-10-13 | 추가 요구사항 반영: 배송담당자 소속 허브(`p_users.hub_id`)와 출발지 허브 기준 배정 검증, 배송담당자 없음(`DELIVERY_MANAGER_NOT_FOUND`)·소속 허브 불일치(`MANAGER_HUB_MISMATCH`) 에러 추가, user → hub 호출 추가, I-12 응답·재시도 표현 정리 |
 | v2.0 | 2026-10-13 | 멘토 피드백 반영: 재고 관리 전체를 고도화로 이동(공급업체가 항상 출고), 배송을 집하·허브 이동·업체 배송 3구간으로 재설계, 배송담당자 자동 배정(없으면 주문 실패), 담당자·상태 변경 API를 구간 단위로 통합(D-04 POST 재배정, D-05 구간 상태 변경), 주문 `total_price` 저장, 배송에 업체 간 배송 컬럼 추가, 시스템 구조도 유즈케이스별 분리, 인프라도에 기술 스택 표시, Feign 타임아웃 connect 5초·read 20초, Saga 방식 비교와 팀 논의 정리 |
+| v2.0 주문 보강 | 2026-10-15 | 주문 담당자 승인으로 취소 진행 기록·중복 실행 보호·미확정 결과 수동 복구를 추가했다. 공개 주문 상태는 유지한다([order ADR 0006](../services/order/decisions/0006-order-cancellation-progress.md)). |
 
 ---
 
@@ -531,6 +532,7 @@ erDiagram
 
 ```mermaid
 erDiagram
+    p_orders ||--o{ p_order_cancellations : "취소 시도"
     p_orders {
         uuid order_id PK "서비스에서 선발급"
         uuid orderer_id "논리 참조: 주문자"
@@ -544,6 +546,13 @@ erDiagram
         uuid delivery_id UK "논리 참조: 배송"
         varchar request_note "(500) 요청사항"
         varchar status "(20) ORDERED 또는 CANCELED"
+    }
+    p_order_cancellations {
+        uuid order_cancellation_id PK "취소 시도 ID"
+        uuid order_id FK "같은 서비스의 주문"
+        uuid delivery_id "논리 참조: 배송"
+        varchar status "(20) 취소 진행 상태"
+        varchar failure_reason "(30) 복구 필요 사유"
     }
 ```
 
@@ -731,6 +740,21 @@ erDiagram
 | Audit 컬럼 6개 |  |  | 공통 |
 - 인덱스: `orderer_id`, `supplier_company_id`, `receiver_company_id`, `created_at`
 - 배송 진행 상태는 delivery-service가 관리하므로 주문에는 중복 저장하지 않는다.
+
+**`p_order_cancellations` — 취소 진행 기록** (2026-10-15 주문 담당자 승인, order ADR 0006)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `order_cancellation_id` | UUID | PK | 취소 시도 식별자, 원격 호출 전에 선발급 |
+| `status` | VARCHAR(20) | NOT NULL, CHECK | `PROCESSING`, `COMPLETED`, `ABORTED`, `RECOVERY_REQUIRED` |
+| `failure_reason` | VARCHAR(30) | NULL, CHECK | `DELIVERY_RESULT_UNKNOWN`, `ORDER_COMMIT_UNKNOWN`, `REVERT_FAILED`. RECOVERY_REQUIRED일 때만 필수 |
+| `order_id` | UUID | NOT NULL, FK | 같은 order_schema의 p_orders 참조 |
+| `delivery_id` | UUID | NOT NULL, 논리 참조 | 취소 대상 배송 |
+| Audit 컬럼 6개 | | | 공통 |
+
+- 미해결 시도 부분 유니크: `order_id WHERE deleted_at IS NULL AND status IN ('PROCESSING', 'RECOVERY_REQUIRED')`.
+- 조회 인덱스: `order_id`, `delivery_id` (활성 행). 공개 주문 상태와 분리하며 기록을 자동 만료시키지 않는다.
+- 완료·중단 기록도 이력으로 남긴다. delivery 테이블에는 물리 FK를 만들지 않는다.
 
 ### 5.6 delivery_schema
 
@@ -1870,7 +1894,7 @@ Authorization: Bearer {accessToken}
 }
 ```
 
-**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (이미 취소됨, 집하가 시작됨) · 503 `SERVICE_UNAVAILABLE`
+**Error**: 403 `FORBIDDEN` · 404 `ORDER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (이미 취소됨, 집하가 시작됨, 취소 진행 중·결과 확인 필요) · 500 `INTERNAL_SERVER_ERROR` (주문 저장·복구 실패) · 503 `SERVICE_UNAVAILABLE`
 
 #### O-06. 주문 삭제
 
@@ -2178,22 +2202,40 @@ sequenceDiagram
     participant D as delivery-service
 
     C->>O: POST /api/v1/orders/{orderId}/cancel
-    O->>O: 주문자 본인 또는 MASTER 확인, status = ORDERED 확인
-    O->>D: 배송 취소 (I-11)
-    alt 집하가 이미 시작됨
-        D-->>O: 409 INVALID_STATUS_TRANSITION
-        O-->>C: 409 취소 불가
+    O->>O: 권한·ORDERED 확인, PROCESSING 기록 커밋
+    O->>D: 배송 취소 I-11 (DB 트랜잭션 밖, 1회)
+    alt 명확한 거절
+        D-->>O: 4xx (집하 시작 등)
+        O->>O: ABORTED 기록
+        O-->>C: 동일 오류 코드
+    else 결과 불확실
+        D-->>O: 타임아웃·5xx·잘못된 성공 응답
+        O->>O: RECOVERY_REQUIRED 기록, 실행권 유지
+        O-->>C: 503 결과 확인 필요
     else 배송 취소 성공
-        D-->>O: 200 (배송·구간 CANCELED)
-        O->>O: 주문 status = CANCELED (로컬 트랜잭션)
-        alt 주문 저장 실패
-            O->>D: [보상] 배송 취소 원복 (I-12)
-            O-->>C: 500 취소 실패 (상태 원복)
+        D-->>O: 200 status=CANCELED
+        O->>O: 주문 CANCELED + 시도 COMPLETED 커밋
+        alt 주문 저장 중 예외
+            O->>O: 새 트랜잭션으로 커밋 결과 확인
+            alt 실제 커밋 완료
+                O-->>C: 200 취소 완료
+            else 롤백 확인
+                O->>D: 배송 취소 원복 I-12
+                O->>O: 원복 성공 ABORTED, 실패 RECOVERY_REQUIRED
+                O-->>C: 500 취소 실패
+            else 결과 확인 불가
+                O->>O: RECOVERY_REQUIRED 유지, 자동 원복 없음
+                O-->>C: 500 결과 확인 필요
+            end
         else 저장 성공
             O-->>C: 200 취소 완료
         end
     end
 ```
+
+같은 주문에 미해결 시도가 있으면 새 취소를 409로 거부한다. 상태 확인·진행 기록과 주문 변경은 짧은 로컬 트랜잭션으로 나누고 원격 호출 중에는 DB 트랜잭션을 유지하지 않는다.
+I-11은 1회 호출하고 I-12는 응답 없는 통신 실패에만 최대 3회 시도한다. 타임아웃 뒤 지연 완료와 새 시도가 겹칠 수 있으므로 진행 기록을 시간만으로 해제하지 않는다.
+상세 실패 분류와 수동 복구 기준은 [주문 예외 처리 설계](../services/order/failure-handling.md)에 있다.
 
 ### 7.3 멱등성 설계
 
@@ -2552,6 +2594,27 @@ Table order_schema.p_orders {
   }
 }
 
+Table order_schema.p_order_cancellations {
+  order_cancellation_id uuid [pk]
+  status varchar(20) [not null, note: 'PROCESSING, COMPLETED, ABORTED, RECOVERY_REQUIRED']
+  failure_reason varchar(30) [note: 'RECOVERY_REQUIRED일 때만 필수. DELIVERY_RESULT_UNKNOWN, ORDER_COMMIT_UNKNOWN, REVERT_FAILED']
+  order_id uuid [not null]
+  delivery_id uuid [not null, note: 'delivery_schema 논리 참조. 물리 FK 없음']
+  created_at timestamp [not null]
+  created_by varchar(100) [not null]
+  updated_at timestamp [not null]
+  updated_by varchar(100) [not null]
+  deleted_at timestamp
+  deleted_by varchar(100)
+
+  indexes {
+    order_id
+    delivery_id
+  }
+  Note: '미해결 시도의 부분 유니크 인덱스는 V2 SQL 참고. deleted_at IS NULL AND status IN (PROCESSING, RECOVERY_REQUIRED)'
+}
+Ref: order_schema.p_order_cancellations.order_id > order_schema.p_orders.order_id
+
 // ========== delivery-service ==========
 Table delivery_schema.p_deliveries {
   delivery_id uuid [pk]
@@ -2625,6 +2688,7 @@ TableGroup company_service {
 
 TableGroup order_service {
   order_schema.p_orders
+  order_schema.p_order_cancellations
 }
 
 TableGroup delivery_service {

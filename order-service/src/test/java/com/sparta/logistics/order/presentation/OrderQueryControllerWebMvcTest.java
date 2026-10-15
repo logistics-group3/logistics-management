@@ -13,6 +13,7 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.order.application.OrderQueryService;
 import com.sparta.logistics.order.application.OrderService;
+import com.sparta.logistics.order.application.OrderCancellationService;
 import com.sparta.logistics.order.application.dto.OrderResult;
 import com.sparta.logistics.order.application.dto.OrderSearchCondition;
 import com.sparta.logistics.order.domain.Order;
@@ -44,6 +45,8 @@ class OrderQueryControllerWebMvcTest {
     private OrderService orderService;
     @MockitoBean
     private OrderQueryService orderQueryService;
+    @MockitoBean
+    private OrderCancellationService orderCancellationService;
 
     private final UUID userId = UUID.randomUUID();
 

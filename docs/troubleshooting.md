@@ -119,3 +119,11 @@
 - 해결: 새 테스트가 생성한 주문 UUID만 기록하고 `@AfterEach`의 finally에서 해당 fixture 행을 정리한다. 전체 테이블이나 다른 테스트의 데이터는 삭제하지 않는다.
 - 확인: 전체 build 성공, 주문 152개·전체 XML 250개, 실패·오류·skip 0. Swagger 계약 테스트도 함께 통과했다.
 - 배운 점: HTTP 테스트는 서버 스레드에서 별도 트랜잭션을 쓰므로 테스트 메서드의 롤백만으로 격리되지 않는다. 공유 DB를 쓰면 자신이 만든 데이터의 수명도 관리한다.
+
+### TS-012 POST 401 테스트에서 응답 본문이 null로 전달됨
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: OrderCancellationHttpIntegrationTest에서 미인증 POST의 상태는 401이었지만 body가 null이어서 ObjectMapper.readTree가 `argument "content" is null`로 실패했다.
+- 원인: 테스트 드라이버 차이로 확인했다. SimpleClientHttpRequestFactory에서는 본문이 null이고 같은 API를 JdkClientHttpRequestFactory로 호출하면 공통 UNAUTHORIZED 본문을 읽었다. HttpURLConnection 내부의 정확한 본문 누락 경로는 미확인이다.
+- 해결: 해당 테스트 드라이버를 Java 17 HttpClient 기반 JdkClientHttpRequestFactory로 바꾸고 연결 1초·읽기 10초 제한을 유지했다. 서비스의 인증·예외 응답 코드는 변경하지 않았다.
+- 확인: HTTP/Feign 취소 테스트 18개와 전체 build 통과. I-11 1회·I-12 통신 실패 최대 3회·I-12 5xx 1회도 함께 확인해 드라이버의 상태 코드 재전송이 섞이지 않음을 검증했다.

@@ -6,6 +6,8 @@ import com.sparta.logistics.common.response.ApiResponse;
 import com.sparta.logistics.common.response.PageResponse;
 import com.sparta.logistics.order.application.OrderQueryService;
 import com.sparta.logistics.order.application.OrderService;
+import com.sparta.logistics.order.application.OrderCancellationService;
+import com.sparta.logistics.order.presentation.dto.CancelOrderResponse;
 import com.sparta.logistics.order.presentation.dto.CreateOrderRequest;
 import com.sparta.logistics.order.presentation.dto.OrderResponse;
 import com.sparta.logistics.order.presentation.dto.OrderSearchRequest;
@@ -30,7 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "주문", description = "주문 생성·검색·단건 조회·요청사항 수정")
+@Tag(name = "주문", description = "주문 생성·검색·단건 조회·요청사항 수정·취소")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/orders")
@@ -38,6 +40,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderQueryService orderQueryService;
+    private final OrderCancellationService orderCancellationService;
 
     @Operation(summary = "O-01 주문 생성", description = "요청업체 관리자 본인 또는 MASTER가 주문한다.")
     @PostMapping
@@ -66,5 +69,11 @@ public class OrderController {
     public ApiResponse<OrderResponse> update(@CurrentUser UserContext user, @PathVariable UUID orderId,
             @Valid @RequestBody UpdateOrderRequest request) {
         return ApiResponse.ok(OrderResponse.from(orderService.updateRequestNote(user, orderId, request.toCommand())));
+    }
+
+    @Operation(summary = "O-05 주문 취소", description = "주문자 본인 또는 MASTER가 집하 시작 전 주문을 취소한다.")
+    @PostMapping("/{orderId}/cancel")
+    public ApiResponse<CancelOrderResponse> cancel(@CurrentUser UserContext user, @PathVariable UUID orderId) {
+        return ApiResponse.ok("주문이 취소되었습니다.", CancelOrderResponse.from(orderCancellationService.cancel(user, orderId)));
     }
 }
