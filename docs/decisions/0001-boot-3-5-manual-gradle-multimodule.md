@@ -25,3 +25,14 @@
 ## 결과
 - 버전은 루트 `build.gradle`과 `gradle.properties` 두 곳에서만 관리한다.
 - Boot 3.5.x의 OSS 지원이 끝나면 4.x 이전을 따로 검토해야 한다.
+
+## 팀원 ADR 보완: seungkeun ADR-02 기술 스택과 버전
+> 원문: 최승근, Notion "스파르타물류 기술 결정 문서 (ADR)". 원문 문장을 그대로 옮겼다. 이 ADR과 다른 점: 없음. 둘 다 Java 17, Spring Boot 3.5.x, Spring Cloud 2025.0.x, 루트 Gradle에서 버전을 관리한다. 원문은 "Spring Boot 3.5 오픈소스 지원 종료일 확인"을 팀 확인 항목으로 남겼다.
+
+### 트레이드오프
+- Boot 3.5는 오픈소스 지원이 곧 끝나거나 이미 끝났을 수 있습니다. 정확한 종료일은 발표 전에 spring.io에서 확인해야 합니다. 4.x 전환은 고도화 항목입니다.
+- Cloud 2025.0부터 Gateway 스타터가 `spring-cloud-starter-gateway-server-webflux`로, 설정 접두사가 `spring.cloud.gateway.server.webflux.*`로 바뀝니다. 예전 자료를 보고 설정하면 적용이 안 되므로 주의합니다.
+
+### 면접 답변
+> "학습 목표가 MSA 설계였기 때문에, 자료가 많고 검증된 Boot 3.x의 마지막 라인인 3.5와 호환 트레인인 Cloud 2025.0을 골랐습니다. 지원 기간이 짧다는 것은 알고 있고, 4.x 전환은 다음 단계로 두었습니다."
+- **Q. 왜 Java 21의 가상 스레드를 쓰지 않았나요?** 동기 Feign 호출이 많아 스레드 대기가 생기긴 하지만, 이번 트래픽 규모에서는 병목이 아닙니다. 가상 스레드는 synchronized 고정(pinning) 같은 주의점도 있어 이번 범위에서 뺐습니다.

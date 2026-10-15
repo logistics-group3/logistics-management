@@ -1,19 +1,22 @@
 ---
 name: learning-note
-description: 사용자가 개념, 원리, 방법, 비교를 물었을 때 답을 docs/learning/qna/에 날짜별 학습 노트로 저장한다. 작업 지시나 단순 상태 확인에는 쓰지 않는다.
+description: 사용자가 개념, 원리, 방법, 비교를 물었을 때 답을 docs/learning/<이름>/qna/에 학습 노트로 저장한다. 하루 정리는 사용자가 요청했을 때("오늘 배운 거 정리해 줘") docs/learning/<이름>/daily/에 쓴다. "오늘은 여기까지"라고만 하면 쓰지 않고 한 줄로 제안한다. 작업 지시나 단순 상태 확인에는 쓰지 않는다.
 ---
 
 # learning-note
 
 ## 언제
-- 사용자가 지식이나 방법을 묻는 질문을 했을 때 (판단 기준: `docs/agents/learning-guide.md` 2절)
+- **질문 노트**: 사용자가 지식이나 방법을 묻는 질문을 했을 때(판단 기준: `docs/agents/learning-guide.md` 2절). 답한 뒤 사용자 동의를 기다리지 않고 저장한다.
+- **하루 정리**: 사용자가 하루 작업을 마칠 때. 에이전트가 답 끝에 한 줄로 제안하고, 사용자가 원하면 쓴다(아래 "하루 정리"). 원본은 KMH 브랜치의 `learn-note` 스킬이다.
 
-## 절차
+`<이름>`은 팀원 영문 이름이다(haneol, junhyun, kej, kmh, seungkeun). `git config user.name`이나 대화로 알 수 없으면 사용자에게 묻는다.
+
+## 질문 노트 절차
 1. 채팅에서 핵심 답을 짧게 먼저 준다.
-2. `../../../docs/learning/seungkeun/qna`에서 같은 주제의 노트를 찾는다. 있으면 그 노트를 보강하고 `updated`를 갱신한다.
-3. 없으면 `../../../docs/learning/seungkeun/qna`를 만든다. 날짜는 질문한 날이다.
-4. `../../../docs/learning/seungkeun/README.md` 표에 한 줄을 추가하거나 갱신한다. 최신 노트가 위로 오게 한다.
-5. 채팅 마지막 줄에 `노트 저장: <경로>`를 남긴다.
+2. `docs/learning/<이름>/qna/`에서 같은 주제의 노트를 찾는다. 있으면 그 노트를 보강하고 `updated`를 갱신한다.
+3. 없으면 `docs/learning/<이름>/qna/YYYY-MM-DD-<영문-kebab-slug>.md`를 만든다. 날짜는 질문한 날이다.
+4. `docs/learning/<이름>/README.md` 표에 한 줄을 추가하거나 갱신한다. 최신 노트가 위로 오게 한다.
+5. 채팅 마지막 줄에 `기록: <경로>`를 남긴다. 사람은 PR에서 기록을 검토한다.
 
 ## 노트 형식
 ```markdown
@@ -46,6 +49,22 @@ tags: [spring, gradle, ...]
 ## 참고
 - <공식 문서, 확인한 실행 결과>
 ```
+
+## 하루 정리
+1. 자료를 모은다: 오늘 커밋(`git log --since=midnight --author="$(git config user.name)" --stat`), 이 대화에서 다룬 질문·구현, 오늘 쓴 구현 노트(`docs/services/*/notes.md`). 구현 노트와 질문 노트에 이미 있는 내용은 다시 쓰지 않고 링크한다.
+2. `docs/learning/<이름>/daily/YYYY-MM-DD.md`를 만든다.
+   ```markdown
+   # YYYY-MM-DD
+   ## 오늘 한 일
+   - 작업 요약(커밋, API ID)
+   ## 배운 것
+   - **{개념}**: 한두 줄 설명 — 우리 코드 위치나 관련 문서
+   ## 헷갈렸던 것, 아직 모르는 것
+   ## 다음에 할 일
+   ```
+3. 해결한 문제가 있으면 `troubleshooting` 스킬로 따로 남긴다.
+4. 사용자가 실제로 다룬 내용만 쓴다. 다루지 않은 개념을 채워 넣지 않는다.
+5. 답 끝에 `기록: <경로>`를 남긴다.
 
 ## 규칙
 - 대화 맥락 없이 독립적으로 읽히게 쓴다. 블로그 초안으로 그대로 옮겨 쓸 수 있어야 한다.

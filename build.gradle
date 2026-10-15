@@ -12,7 +12,7 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
 
-    // Note: 셸 JAVA_HOME(21)과 무관하게 컴파일·테스트·bootRun을 JDK 17로 고정하는 설정. 팀원 간 JDK 차이를 빌드 수준에서 없앤다. (docs/learning/qna/2026-10-13-gradle-toolchain-and-initializr.md)
+    // Note: 셸 JAVA_HOME(21)과 무관하게 컴파일·테스트·bootRun을 JDK 17로 고정하는 설정. 팀원 간 JDK 차이를 빌드 수준에서 없앤다. (docs/learning/junhyun/qna/2026-10-13-gradle-toolchain-and-initializr.md)
     java {
         toolchain {
             languageVersion = JavaLanguageVersion.of(17)

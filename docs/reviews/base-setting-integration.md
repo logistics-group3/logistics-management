@@ -1,7 +1,9 @@
 # 공통 인프라 브랜치 선별 통합
 
+> 팀 검토 전의 선별 기록이다. 표의 판단은 당시 판단 그대로 두고, 팀 검토로 바뀐 항목에는 "→ 이후 변경"을 붙였다. 현재 기준은 [ADR 0008 후속 결정](../decisions/0008-base-setting-integration.md)이다.
+
 - 날짜: 2026-10-14 (KST)
-- 통합 브랜치: `codex/base-setting-integration`
+- 통합 브랜치: `codex/base-setting-integration`(로컬 원본), 원격 `integration/base-setting`
 - 시작점: `origin/main`, `993b4e12d5488dd1b53d039bc4212cc697f50553` (Initial commit)
 - 범위: 공통 인프라·인증 기반 선별, 구현, 로컬 검증, 로컬 커밋, PR 초안. 원격 push·main 변경은 제외한다.
 
@@ -32,13 +34,13 @@ main 대비 변경뿐 아니라 브랜치끼리의 중복·차이를 비교했�
 | DB 비밀번호 | KMH `infra/postgres/init.sh` | `.env`와 실제 계정 비밀번호를 같이 사용. 원본은 SQL에 문자열을 직접 삽입 | 방식 채택, quoted heredoc과 psql 변수 인용으로 수정. postgres 환경에 5개 비밀번호 전달 |
 | DB 스키마 격리 | seungkeun `docker/postgres/init/01-schemas.sql:3` | public 접근을 명시적으로 제거 | `REVOKE ALL ON SCHEMA public FROM PUBLIC` 채택. 각 서비스는 자기 스키마 소유·접근 유지 |
 | 스키마 변경 | junhyun Flyway 설정·user `V1__create_p_users.sql` | 변경 이력과 SA의 CHECK·DEFAULT·부분 인덱스를 관리 | 채택. Hibernate validate와 기존 통합 테스트 유지 |
-| 페이징·정렬 | junhyun resolver, KEJ Pageables, haneol/seungkeun QueryDSL helper | 크기·기본 정렬은 중복. 허용 정렬 필드 검증은 유용하나 현재 검색 API가 없음 | 현재 resolver 유지. whitelist helper는 보류, 검색 API 구현 시 API별 검증 필요 |
-| 공통 자동 설정 | KEJ MVC/JPA/Feign 분리, seungkeun 조건부 빈 | 라이브러리화 장점이 있으나 현재 스캔이 동작함 | 전면 개편 보류. 현재 필요보다 변경 범위가 큼 |
+| 페이징·정렬 | junhyun resolver, KEJ Pageables, haneol/seungkeun QueryDSL helper | 크기·기본 정렬은 중복. 허용 정렬 필드 검증은 유용하나 현재 검색 API가 없음 | 현재 resolver 유지. whitelist helper는 보류, 검색 API 구현 시 API별 검증 필요. → 이후 변경: common에 도우미 추가(0008 후속 결정 2) |
+| 공통 자동 설정 | KEJ MVC/JPA/Feign 분리, seungkeun 조건부 빈 | 라이브러리화 장점이 있으나 현재 스캔이 동작함 | 전면 개편 보류. 현재 필요보다 변경 범위가 큼. → 이후 변경: 조건부 자동 설정으로 전환(ADR 0009) |
 | DB 5개·설정 refresh | haneol compose·ADR-0002/0006 | 별도 DB·자동 reload 제안. SA 변경 또는 개인 결정으로 명시됨 | 제외. 단일 PostgreSQL+서비스별 스키마, 수동 설정 반영 유지 |
-| MASTER 자동 생성 | haneol·KEJ·KMH initializer | 편리하지만 기동 시 계정 생성·기존 사용자 충돌 등의 별도 정책 필요 | 제외. 명시적 `script/promote-master.sh` 유지 |
+| MASTER 자동 생성 | haneol·KEJ·KMH initializer | 편리하지만 기동 시 계정 생성·기존 사용자 충돌 등의 별도 정책 필요 | 제외. 명시적 `script/promote-master.sh` 유지. → 이후 변경: 기동 시 자동 생성(0008 후속 결정 3) |
 | 생성 전용 Audit·비동기 알림 | KEJ/seungkeun BaseCreatedEntity, seungkeun AsyncConfig | 사용 대상은 고도화 범위. DiscardPolicy는 실패 로그 요구와 다름 | 제외. 업무 기능·미래 추상화는 추가하지 않음 |
 | SA·모듈별 문서 | junhyun v2.0 SA, KMH 이전 SA·모듈 규칙 | 최신 기록은 재고 고도화 이동·배송 3구간·자동 배정. 이전 문서는 다름 | v2.0 유지. 오래된 SA와 선구현 U-03/U-08 제외 |
-| 협업 문서 | KMH `Docs/README.md:56-67`, agent 계약 로그, KEJ IDE/Docker 안내 | 정보별 정본·상태와 개발 환경 안내는 유용 | `docs/agents/document-map.md`와 README에 현재 구현 기준으로 재작성 |
+| 협업 문서 | KMH `Docs/README.md:56-67`, agent 계약 로그, KEJ IDE/Docker 안내 | 정보별 정본·상태와 개발 환경 안내는 유용 | `docs/agents/document-map.md`와 README에 현재 구현 기준으로 재작성. → 이후 변경: 문서 지도 `docs/README.md`와 `docs/services/`로 대체 |
 | 개인 환경 | junhyun `.idea/`, `.claude/`; haneol `org.gradle.java.home` | 개인 도구·학습 패널·타 PC 절대 경로는 공통 실행에 불필요 | 제외. 공통 `.agents` 스킬과 텍스트 규칙 유지. 외부 도구는 선택 사항 |
 
 ## 합의와 구현 상태 구분

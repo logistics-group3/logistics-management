@@ -10,7 +10,7 @@
 - [x] Gradle 멀티 모듈 뼈대 (Boot 3.5.16, Cloud 2025.0.3, Gradle 8.14.3, toolchain 17)
 - [x] 작업 규칙(AGENTS.md, docs/agents, .agents/skills), 기록 체계, 플러그인, 학습 패널
 
-**공통 인프라 스텝** (스텝마다 커밋하고 바로 다음 스텝으로 간다. 전체 리뷰는 마지막에 한다. 스텝 설명은 docs/learning/steps/)
+**공통 인프라 스텝** (스텝마다 커밋하고 바로 다음 스텝으로 간다. 전체 리뷰는 마지막에 한다. 스텝 설명은 docs/learning/junhyun/steps/)
 - [x] 1. Docker 인프라: compose, Dockerfile 템플릿, init.sql, .env.example. `docker compose up` 후 서비스 6개가 Eureka에 UP으로 등록됨 확인 (완료 기준 1)
 - [x] 2. config-server (native, 8888): 서비스 6개가 config에서 설정을 받아 기동, Gateway 라우팅으로 user-service 도달 확인
 - [x] 3. common 응답·예외: ApiResponse, PageResponse, ErrorCode(인터페이스)+CommonErrorCode, GlobalExceptionHandler. 테스트 5개 통과
@@ -32,7 +32,7 @@
 3. 팀 공유: Flyway 규칙(스텝 12 "팀원에게 알릴 것"), JaCoCo 도입은 보류 중
 
 ## 직접 해보기
-공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `../learning/seungkeun/steps`에 있다.
+공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `docs/learning/junhyun/steps/`에 있다.
 
 1. `cp .env.example .env`
 2. `./gradlew bootJar` 후 `docker compose up -d --build`

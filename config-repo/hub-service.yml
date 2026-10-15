@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/logistics?currentSchema=hub_schema
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/logistics?currentSchema=hub_schema
     username: hub_app
     password: ${HUB_DB_PASSWORD:hub_local_pw}
   jpa:

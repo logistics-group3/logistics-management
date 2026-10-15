@@ -8,13 +8,16 @@ cd "$(dirname "$0")/.."
 DOC=docs/error-codes.md
 fail=0
 
-# ErrorCode를 구현한 enum 파일만 대상이다. 상수는 "    NAME(" 로 시작하는 줄이다. 결과: "코드 모듈" 한 줄씩
-pairs=$(grep -rlE 'enum [A-Za-z]+ implements ErrorCode' --include='*ErrorCode.java' . \
-  | grep '/src/main/java/' | grep -v '/build/' | sort \
-  | while read -r file; do
-      module="${file#./}"; module="${module%%/*}"
-      grep -oE '^    [A-Z][A-Z0-9_]*\(' "$file" | tr -d ' (' | sed "s/\$/ $module/"
-    done)
+# 저장소 루트 모듈의 main 소스 중 ErrorCode를 구현한 enum만 대상이다. 결과: "코드 모듈" 한 줄씩
+# 추적 중인 파일과 아직 add하지 않은 새 파일을 함께 본다. .gitignore된 경로와 .claude/worktrees 같은 다른 사본은 제외한다.
+files=$(git ls-files --cached --others --exclude-standard -- '*ErrorCode.java' | grep -E '^[^/]+/src/main/java/' | sort -u || true)
+pairs=$(for file in $files; do
+  grep -qE 'enum [A-Za-z]+ implements ErrorCode' "$file" 2>/dev/null || continue
+  module="${file%%/*}"
+  # 상수는 들여쓰기(공백·탭 모두) 뒤 "NAME(" 로 시작하는 줄이다
+  { grep -E '^[[:space:]]+[A-Z][A-Z0-9_]*[[:space:]]*\(' "$file" || true; } \
+    | sed -E 's/^[[:space:]]+([A-Z][A-Z0-9_]*).*/\1/' | sed "s/\$/ $module/"
+done)
 
 for code in $(awk '{print $1}' <<<"$pairs" | sort | uniq -d); do
   printf '  FAIL  중복: %s (%s)\n' "$code" "$(awk -v c="$code" '$1 == c {print $2}' <<<"$pairs" | xargs)"
