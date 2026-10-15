@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 22 | [허브 조회 API](step-22-hub-query-api.md) | feat(hub): 허브 조회 API(H-01, H-02, I-02) 추가 |
 | 21 | [새로 시작 안내와 전체 검증](step-21-final-verification.md) | docs(infra): 통합 후 DB 새로 시작 안내와 전체 검증 기록 |
 | 20 | [에러 코드 규칙·통합 목록](step-20-error-code-rules.md) | docs(common): 에러 코드 이름 규칙·통합 목록과 중복 검사 추가 |
 | 19 | [MASTER 계정 자동 생성](step-19-master-seed.md) | feat(user): 기동 시 MASTER 계정 자동 생성 |

@@ -32,8 +32,8 @@
 ## hub-service
 | 코드 | HTTP | 의미 | 상태 |
 |---|---|---|---|
-| `HUB_NOT_FOUND` | 404 | 허브가 없음 | 예정 |
-| `HUB_ROUTE_NOT_FOUND` | 404 | 허브 간 경로가 없음 | 예정 |
+| `HUB_NOT_FOUND` | 404 | 허브가 없음 | 구현 |
+| `HUB_ROUTE_NOT_FOUND` | 404 | 허브 간 경로가 없음 | 구현 |
 
 ## company-service
 | 코드 | HTTP | 의미 | 상태 |
