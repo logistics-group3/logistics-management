@@ -2,11 +2,13 @@ package com.sparta.logistics.user.application;
 
 import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.user.application.dto.DeliveryManagerResult;
 import com.sparta.logistics.user.application.dto.InternalUserResult;
 import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.User;
 import com.sparta.logistics.user.domain.UserErrorCode;
 import com.sparta.logistics.user.domain.UserRepository;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,17 @@ public class UserQueryService {
     /** 탈퇴 사용자는 @SQLRestriction으로 조회되지 않아 404가 된다(SA I-01). */
     public InternalUserResult getInternalUser(UUID userId) {
         return InternalUserResult.from(findUser(userId));
+    }
+
+    /**
+     * I-14 허브 소속 배송담당자 목록. 없으면 빈 목록이다(SA 6.3).
+     * Note: 담당자가 없을 때 404로 실패시킬지는 호출하는 쪽의 업무 판단이다. user는 사실(빈 목록)만 돌려주고,
+     * delivery가 그 결과로 DELIVERY_MANAGER_NOT_FOUND를 낼지 정한다.
+     */
+    public List<DeliveryManagerResult> getDeliveryManagers(UUID hubId) {
+        return userRepository.findAllByHubIdAndDeliveryManagerTrue(hubId).stream()
+                .map(DeliveryManagerResult::from)
+                .toList();
     }
 
     private User findUser(UUID userId) {

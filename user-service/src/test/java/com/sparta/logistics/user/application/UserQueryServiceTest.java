@@ -12,10 +12,12 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.user.UserFixture;
+import com.sparta.logistics.user.application.dto.DeliveryManagerResult;
 import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.User;
 import com.sparta.logistics.user.domain.UserErrorCode;
 import com.sparta.logistics.user.domain.UserRepository;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -99,6 +101,26 @@ class UserQueryServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("허브 배송담당자 목록은 userId와 slackId만 담아 돌려준다")
+    void getDeliveryManagers() {
+        UUID hubId = UUID.randomUUID();
+        given(userRepository.findAllByHubIdAndDeliveryManagerTrue(hubId)).willReturn(List.of(hong));
+
+        List<DeliveryManagerResult> result = userQueryService.getDeliveryManagers(hubId);
+
+        assertThat(result).containsExactly(new DeliveryManagerResult(hong.getId(), "U01ABCDE2FG"));
+    }
+
+    @Test
+    @DisplayName("허브에 배송담당자가 없으면 예외가 아니라 빈 목록이다")
+    void getDeliveryManagersEmpty() {
+        UUID hubId = UUID.randomUUID();
+        given(userRepository.findAllByHubIdAndDeliveryManagerTrue(hubId)).willReturn(List.of());
+
+        assertThat(userQueryService.getDeliveryManagers(hubId)).isEmpty();
     }
 
     private UserContext contextOf(UUID userId, Role role) {

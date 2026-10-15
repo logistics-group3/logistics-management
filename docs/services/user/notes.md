@@ -23,3 +23,20 @@
 ### 메모
 - 응답의 `createdAt`은 `2026-10-15T15:33:46.799332`처럼 마이크로초까지 나온다. SA 예시(`2026-10-13T09:00:00`)는 초 단위다. 모든 서비스의 날짜 형식에 걸리는 문제라 user에서 따로 바꾸지 않았다. 맞추려면 common Jackson 설정에서 팀 합의가 필요하다.
 - Git Bash에서 `curl -d`로 한글을 보내면 400이 난다(`docs/troubleshooting.md` TS-005). UTF-8로 저장한 파일을 `--data-binary @file`로 보내면 된다.
+
+## I-14 허브별 배송담당자 목록 (2026-10-15)
+### 처리 과정
+- domain: `UserRepository.findAllByHubIdAndDeliveryManagerTrue(hubId)`. Spring Data가 메서드 이름으로 쿼리를 만들므로 infrastructure 코드는 없다. 마이그레이션도 V1의 부분 인덱스 `idx_p_users_hub_id`를 그대로 쓴다.
+- application: `DeliveryManagerResult(userId, slackId)`, `UserQueryService.getDeliveryManagers`.
+- presentation: `InternalUserController`에 `GET /internal/users/delivery-managers?hubId=`. 감싸지 않은 배열을 반환한다(ADR 0010).
+- 테스트: `UserQueryServiceTest` 2개, `InternalUserControllerWebMvcTest` 3개, `UserQueryIntegrationTest` 2개(쿼리 필터, 내부 API).
+
+### 핵심
+- 담당자가 없으면 404가 아니라 빈 배열이다. 그것을 실패로 볼지는 호출하는 delivery가 정한다(`DELIVERY_MANAGER_NOT_FOUND`).
+- 탈퇴자는 `@SQLRestriction`이 메서드 이름 쿼리에도 붙어 빠진다. 그 조건(`deleted_at IS NULL`)이 부분 인덱스 조건과 같아 PostgreSQL이 인덱스를 쓸 수 있다(실행 계획은 미확인).
+- `/delivery-managers`와 `/{userId}`가 함께 있어도 변수 없는 경로가 먼저 매칭된다.
+- 계약은 `userId`, `slackId` 두 필드만 둔다. 계약이 작을수록 user 내부 변경이 다른 서비스로 번지지 않는다.
+
+### 확인 질문
+- 메서드 이름 쿼리를 네이티브 쿼리로 바꾸면 탈퇴자가 섞이는 이유는?
+- hubId로 허브 존재를 확인(I-02)하지 않는 이유는?
