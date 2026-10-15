@@ -13,7 +13,8 @@ hub-service의 허브·허브 간 경로 조회 기능 구현을 준비한다.
 - [x] `HubErrorCode`(`HUB_NOT_FOUND`, `HUB_ROUTE_NOT_FOUND`)를 작성하고 `docs/error-codes.md` 상태를 구현으로 갱신했다(2026-10-15).
 - [x] `HubRepository`(domain)와 `HubJpaRepository`(infrastructure/persistence)를 메서드 없이 골격만 만들었다(2026-10-15). 조회 메서드는 사용하는 단계에서 추가한다.
 - [x] 허브 조회 API H-01·H-02·I-02를 구현했다(2026-10-15). `HubRepository`(`findById`, `search`), QueryDSL `HubQueryRepositoryImpl`(keyword 이름·주소 부분 일치, 정렬 허용 `createdAt`·`name`, PK를 마지막 정렬 기준으로 추가, count 분리), `HubQueryService`, `HubController`, `InternalHubController`, DTO 2개. `.\gradlew.bat :hub-service:test`로 20개 통과(서비스 단위 5, MVC 6, PostgreSQL 통합 9). 통합 테스트는 직접 넣은 허브로 검색·정렬·페이징·논리 삭제 제외·404·잘못된 정렬 400·내부 응답 비래핑을 확인했다. 설명은 `docs/learning/steps/step-22-hub-query-api.md`.
-- [ ] `HubRouteRepository`와 경로 조회 메서드(`findById`, H-03 `search`)를 작성한다.
+- [x] 주문 취소·Saga 보상을 위한 허브 재고 처리 설계를 정리했다(2026-10-15, ADR은 아직 작성하지 않았고 사용자가 요청할 때 추가한다). 재고 부족 시 주문은 성공하고 `WAITING_STOCK`, 입고는 즉시 반영, 대기 주문은 order가 같은 `orderId`로 재시도한다. 문서 작업이며 코드는 바꾸지 않았다.
+- [x] `HubRouteRepository`(`findById`, `search`)와 QueryDSL `HubRouteQueryRepositoryImpl`을 구현했다(2026-10-15). 출발·도착 허브 ID 선택 필터, 정렬 허용 `createdAt`·`distanceKm`·`durationMinutes`에 PK tie-breaker, 목록은 두 허브 fetch join(별칭 `departureHub`·`arrivalHub`), count는 분리했다. 단건은 `HubRouteJpaRepository.findById`를 `@EntityGraph`로 오버라이드했다. `HubRouteRepositoryIntegrationTest` 7개(필터 조합, 논리 삭제 제외, 정렬·tie-breaker, 허용하지 않은 정렬 거부, 목록·단건 쿼리 1회로 N+1 없음)를 포함해 `:hub-service:test` 30개 통과. I-03용 `findByDepartureHubIdAndArrivalHubId`는 쓰는 단계에서 추가한다.
 - [ ] 빈 경로 테이블에 방향별 경로 272개를 생성한다(허브 17개 적재는 위에서 완료).
 - [ ] 경로 조회 API H-03·H-04와 내부 조회 API I-03을 구현한다(H-01·H-02·I-02는 위에서 완료).
 - [ ] 검색·정렬·페이징·오류 응답과 DB 제약을 검증한다.
@@ -79,6 +80,12 @@ hub-service의 허브·허브 간 경로 조회 기능 구현을 준비한다.
    - 실제 실행 후 허브 검색·단건·경로 검색·단건, 내부 API 두 개, 재기동 후 데이터 건수를 확인한다. 공통 `script/e2e-check.sh`만으로 신규 허브 API 검증을 대체하지 않는다.
    - 단계가 끝날 때 이 파일에 실제 변경·검증 결과를 누적한다. 구현 스텝의 설명과 검증 근거는 `docs/agents/learning-guide.md` 4절에 따라 `docs/learning/steps/`에도 기록한다.
 
+7. (경로 조회 이후, 팀 공유 후) 재고 기능을 구현한다.
+   - 기준은 위 진행 상태의 재고 설계 항목이다(ADR은 요청 시 작성). 팀 공유에서 합의가 달라지면 이 항목을 먼저 고친다.
+   - 범위: `p_hub_stocks`·`p_hub_stock_histories` 마이그레이션, H-06 입고(즉시 반영, 요청 멱등 키), I-04 재고 생성, I-05 차감(전량 확보 또는 대기, 부족 시 409 대신 "확보 안 됨" 정상 응답, `orderId` 멱등), I-06 복원, H-05 재고 검색(수량 확인용). 여러 허브 모아 출고는 후순위다.
+   - 재고 행 락 방식을 정하고, 입고와 차감의 동시 요청 테스트와 멱등 테스트를 작성한다.
+   - SA 5.3·6.3 재고 절은 v1.2 초안이므로 응답과 상태는 위 설계에 맞게 조정하고, SA 수정은 팀 공유 후 팀과 한다.
+
 ## 직접 해보기
 1. 현재 브랜치와 구현 시작점을 확인한다.
    - CLI: 저장소 루트에서 `git branch --show-current`, `git status --short`, `rg --files hub-service`를 실행한다.
@@ -111,4 +118,5 @@ hub-service의 허브·허브 간 경로 조회 기능 구현을 준비한다.
 - 관련 결정: `docs/decisions/0007-flyway-schema-migration.md`, `docs/decisions/0009-common-conditional-auto-configuration.md`, `docs/decisions/0010-internal-api-unwrapped-response.md`. 구현 시 원문을 확인한다. 이번 문서 작성으로 새 설계 결정은 확정하지 않았다.
 - 문자열 정렬 순서는 DB 콜레이션에 따른다. 컨테이너 PostgreSQL 16에서 `name,asc`가 가나다 순이 아니어서 통합 테스트는 순서 대신 오름·내림차순이 역순인지를 검증한다. 시드 후 허브 목록을 가나다 순으로 보여줘야 하면 콜레이션 지정 여부를 결정해야 한다(미결정).
 - 허브 조회 API는 시드가 없어 실제 기동 호출·Gateway 경유·Swagger 확인은 하지 않았다. 시드 적재 후 검증한다.
+- 재고 팀 공유 대기: order(`WAITING_STOCK`, 재시도 스케줄러, I-05 "확보 안 됨" 처리), company(I-04 호출), SA 수정(결정 9, 5.3절, I-05, 주문 상태)은 다른 담당자·팀 정본 소관이라 개발 후 공유한다. 미결은 재고 있을 때 집하 구간 생략 여부와 입고 장기 지연 시 자동 취소다. hub가 order를 호출하지 않고 order가 재시도하는 이유(순환 호출·이중 쓰기 회피)와 대안(hub 직접 호출, Kafka 이벤트)은 ADR로 남길 때 정리한다.
 - 인계 유지 규칙: 이 문서의 다섯 섹션 제목을 유지한다. 완료 체크에는 검증 근거를 붙이고, 실제 완료한 작업 상세는 지우지 않고 누적한다.

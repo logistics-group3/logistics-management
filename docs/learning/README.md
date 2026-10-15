@@ -7,6 +7,7 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-15 | [common과 common-core를 나눈 이유와 설계상 이점](qna/2026-10-15-common-vs-common-core-split.md) | 중급 | gradle, multi-module, webflux, spring-mvc, msa | choiseungkeun |
 | 2026-10-15 | [BusinessException을 상속한 도메인 예외를 따로 만드는 것이 나은가, ErrorCode만 갈아 끼우는 것이 나은가](qna/2026-10-15-business-exception-subclass-vs-error-code.md) | 중급 | spring, exception, error-code, msa | choiseungkeun |
 | 2026-10-14 | [JaCoCo로 테스트 커버리지 재기 - 원리, 리포트 읽는 법, 함정](qna/2026-10-14-jacoco-coverage.md) | 중급 | jacoco, coverage, testing | Junhyun An |
 | 2026-10-14 | [Flyway와 JaCoCo는 무엇이고 이 프로젝트에 왜 필요한가](qna/2026-10-14-flyway-and-jacoco.md) | 중급 | flyway, migration, jacoco, coverage | Junhyun An |
