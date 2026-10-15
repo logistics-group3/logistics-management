@@ -12,7 +12,7 @@ hub-service의 허브·허브 간 경로 조회 기능 구현을 준비한다.
 - [x] `Hub`, `HubRoute` Entity와 `V1__create_hub_tables.sql`(CHECK 3개, 두 허브 FK, 부분 유니크 인덱스)을 작성했다(2026-10-15). `HubRoute.create`의 불변식 위반은 `BusinessException(CommonErrorCode.INVALID_REQUEST)`로 던진다(처음엔 `IllegalArgumentException`으로 했다가 교체). 컴파일만 확인했고 Flyway·Hibernate validate·DB 제약은 통합 테스트 전까지 미검증이다.
 - [x] `HubErrorCode`(`HUB_NOT_FOUND`, `HUB_ROUTE_NOT_FOUND`)를 작성하고 `docs/error-codes.md` 상태를 구현으로 갱신했다(2026-10-15).
 - [x] `HubRepository`(domain)와 `HubJpaRepository`(infrastructure/persistence)를 메서드 없이 골격만 만들었다(2026-10-15). 조회 메서드는 사용하는 단계에서 추가한다.
-- [x] 허브 조회 API H-01·H-02·I-02를 구현했다(2026-10-15). `HubRepository`(`findById`, `search`), QueryDSL `HubQueryRepositoryImpl`(keyword 이름·주소 부분 일치, 정렬 허용 `createdAt`·`name`, PK를 마지막 정렬 기준으로 추가, count 분리), `HubQueryService`, `HubController`, `InternalHubController`, DTO 2개. `.\gradlew.bat :hub-service:test`로 20개 통과(서비스 단위 5, MVC 6, PostgreSQL 통합 9). 통합 테스트는 직접 넣은 허브로 검색·정렬·페이징·논리 삭제 제외·404·잘못된 정렬 400·내부 응답 비래핑을 확인했다. 설명은 `docs/learning/steps/step-22-hub-query-api.md`.
+- [x] 허브 조회 API H-01·H-02·I-02를 구현했다 (2026-10-15). `HubRepository`(`findById`, `search`), QueryDSL `HubQueryRepositoryImpl`(keyword 이름·주소 부분 일치, 정렬 허용 `createdAt`·`name`, PK를 마지막 정렬 기준으로 추가, count 분리), `HubQueryService`, `HubController`, `InternalHubController`, DTO 2개. `.\gradlew.bat :hub-service:test`로 20개 통과 (서비스 단위 5, MVC 6, PostgreSQL 통합 9). 통합 테스트는 직접 넣은 허브로 검색·정렬·페이징·논리 삭제 제외·404·잘못된 정렬 400·내부 응답 비래핑을 확인했다. 설명은 `../learning/seungkeun/steps`.
 - [x] 주문 취소·Saga 보상을 위한 허브 재고 처리 설계를 정리했다(2026-10-15, ADR은 아직 작성하지 않았고 사용자가 요청할 때 추가한다). 재고 부족 시 주문은 성공하고 `WAITING_STOCK`, 입고는 즉시 반영, 대기 주문은 order가 같은 `orderId`로 재시도한다. 문서 작업이며 코드는 바꾸지 않았다.
 - [x] `HubRouteRepository`(`findById`, `search`)와 QueryDSL `HubRouteQueryRepositoryImpl`을 구현했다(2026-10-15). 출발·도착 허브 ID 선택 필터, 정렬 허용 `createdAt`·`distanceKm`·`durationMinutes`에 PK tie-breaker, 목록은 두 허브 fetch join(별칭 `departureHub`·`arrivalHub`), count는 분리했다. 단건은 `HubRouteJpaRepository.findById`를 `@EntityGraph`로 오버라이드했다. `HubRouteRepositoryIntegrationTest` 7개(필터 조합, 논리 삭제 제외, 정렬·tie-breaker, 허용하지 않은 정렬 거부, 목록·단건 쿼리 1회로 N+1 없음)를 포함해 `:hub-service:test` 30개 통과. I-03용 `findByDepartureHubIdAndArrivalHubId`는 쓰는 단계에서 추가한다.
 - [ ] 빈 경로 테이블에 방향별 경로 272개를 생성한다(허브 17개 적재는 위에서 완료).
@@ -78,7 +78,7 @@ hub-service의 허브·허브 간 경로 조회 기능 구현을 준비한다.
    - PowerShell에서 `.\gradlew.bat :hub-service:test`, `.\gradlew.bat build`를 순서대로 실행하고 통과·실패 수와 원인을 기록한다. JAVA_HOME은 바꾸지 않는다.
    - `HubErrorCode`를 구현하면 `docs/error-codes.md`의 두 코드 상태를 함께 갱신하고 Git Bash에서 `bash script/error-codes-check.sh`를 실행한다.
    - 실제 실행 후 허브 검색·단건·경로 검색·단건, 내부 API 두 개, 재기동 후 데이터 건수를 확인한다. 공통 `script/e2e-check.sh`만으로 신규 허브 API 검증을 대체하지 않는다.
-   - 단계가 끝날 때 이 파일에 실제 변경·검증 결과를 누적한다. 구현 스텝의 설명과 검증 근거는 `docs/agents/learning-guide.md` 4절에 따라 `docs/learning/steps/`에도 기록한다.
+   - 단계가 끝날 때 이 파일에 실제 변경·검증 결과를 누적한다. 구현 스텝의 설명과 검증 근거는 `docs/agents/learning-guide.md` 4절에 따라 `../learning/seungkeun/steps`에도 기록한다.
 
 7. (경로 조회 이후, 팀 공유 후) 재고 기능을 구현한다.
    - 기준은 위 진행 상태의 재고 설계 항목이다(ADR은 요청 시 작성). 팀 공유에서 합의가 달라지면 이 항목을 먼저 고친다.

@@ -26,7 +26,7 @@ feat(infra): 공통 인프라 통합 — 팀 검토 의견 반영
 | 20 | `docs(common)` | 에러 코드 이름 규칙, `docs/error-codes.md`, `script/error-codes-check.sh`, `INVALID_STATUS_TRANSITION` 공통화 | KMH, haneol |
 | 21 | `docs(infra)` | 통합 후 DB 새로 시작 안내, `init.sh` 주석, 검증 기록 | 팀 결정 |
 
-스텝별 설명은 `docs/learning/steps/step-13` ~ `step-21`에 있다.
+스텝별 설명은 `../learning/seungkeun/steps` ~ `step-21`에 있다.
 
 ## 결과 (Result)
 | 검사 | 결과 |
