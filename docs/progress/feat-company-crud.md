@@ -48,6 +48,7 @@ company-service 4단계(presentation)와 Gateway 확인 완료, 커밋 대기
 ## 메모
 - 설계 기준: `docs/SA/sparta-logistics-sa.md` v2.0.
 - 가격 타입이 규칙 문서(domain.md, migration.md)와 다르다: `docs/services/company/decisions/0003-price-bigint.md`
+- SA 구조 그림에 `common-core`가 없는 문제는 팀 안건으로 `docs/decisions/0014-common-core-in-sa-structure.md`(제안)에 남겼다.
 - 커밋 규칙: `docs/guides/git-workflow.md`. AI 공동 작성자 표기는 넣지 않는다.
 - Windows Git Bash에서 `curl -d`로 한국어 JSON을 보내면 깨져 400이 난다. 한국어 본문은 UTF-8 파일로 `--data-binary @file`을 쓴다.
 - 기존 DB 볼륨에 Flyway 이전 테이블이 남아 있으면 user-service가 `non-empty schema ... no schema history table`로 기동하지 못한다. `script/run.sh --reset`으로 볼륨을 지운다(데이터 삭제).
