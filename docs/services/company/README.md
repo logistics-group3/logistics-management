@@ -6,7 +6,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 담당자 | 미정 |
+| 담당자 | kej-2356 |
 | 포트 | 8083 |
 | 스키마·DB 계정 | `company_schema` / `company_app` |
 | 책임 | 업체 CRUD, 상품(업체 하위 리소스) CRUD |
@@ -16,23 +16,24 @@
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| C-01~C-05 | `/api/v1/companies/**` | 로그인, 업체 관리자, MASTER | 예정 |  |
-| P-01~P-05 | `/api/v1/products`, `/api/v1/companies/{companyId}/products/**` | 로그인, 업체 관리자, MASTER | 예정 |  |
-| I-07 | `GET /internal/companies/{companyId}` | order | 예정 |  |
-| I-08 | `GET /internal/products/{productId}` | order | 예정 |  |
+| C-01~C-05 | `/api/v1/companies/**` | 로그인, 업체 관리자, MASTER | 구현 | C-01에서 MASTER가 managerId를 비우면 400 `VALIDATION_ERROR` |
+| P-01~P-05 | `/api/v1/products`, `/api/v1/companies/{companyId}/products/**` | 로그인, 업체 관리자, MASTER | 구현 |  |
+| I-07 | `GET /internal/companies/{companyId}` | order | 구현 | 응답 `companyId, name, hubId, address, managerId`, 없거나 삭제됨 404 `COMPANY_NOT_FOUND` |
+| I-08 | `GET /internal/products/{productId}` | order | 구현 | 응답 `productId, companyId, name, price`, 없거나 삭제됨 404 `PRODUCT_NOT_FOUND` |
 
 ## 3. 호출하는 다른 서비스 API
 
 | API | 제공 서비스 | 용도 | 재시도 |
 |---|---|---|---|
-| I-01 `GET /internal/users/{userId}` | user | 업체 관리자 지정 시 사용자 확인 | GET이라 가능 |
-| I-02 `GET /internal/hubs/{hubId}` | hub | 소속 허브 확인 | GET이라 가능 |
+| I-01 `GET /internal/users/{userId}` | user | 업체 관리자 지정 시 사용자 확인. `UserClient` 구현 | GET이라 가능(`IdempotentRetryConfig`) |
+| I-02 `GET /internal/hubs/{hubId}` | hub | 소속 허브 확인. `HubClient` 구현, hub 쪽은 아직 미구현(hub 협업 로그 HUB-001) | GET이라 가능(`IdempotentRetryConfig`) |
 
 ## 4. 구현 현황
 
-- [ ] 업체·상품 Entity와 Flyway 마이그레이션
-- [ ] C-01~C-05, P-01~P-05
-- [ ] I-07, I-08 내부 API
+- [x] 업체·상품 Entity와 Flyway 마이그레이션
+- [x] 업체·상품 검색(QueryDSL), user·hub FeignClient
+- [x] C-01~C-05, P-01~P-05
+- [x] I-07, I-08 내부 API
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
 
