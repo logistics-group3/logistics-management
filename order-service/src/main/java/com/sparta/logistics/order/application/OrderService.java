@@ -13,14 +13,13 @@ import feign.FeignException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * O-01 주문 생성 흐름. 외부 어댑터를 연결하기 전에는 테스트에서 명시적으로 빈을 등록한다.
- * 실제 어댑터가 준비되면 Spring 빈으로 등록해 트랜잭션 프록시를 거쳐 호출한다.
- */
+/** O-01 주문 생성 흐름. 외부 호출과 로컬 주문 저장을 구분한다. */
 @Slf4j
+@Service
 @RequiredArgsConstructor
 public class OrderService {
 

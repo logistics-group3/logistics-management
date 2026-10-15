@@ -3,7 +3,8 @@
 - 날짜: 2026-10-15
 - 브랜치: `feat/order-create`
 - 기반 커밋: `216a768 feat(order): 주문 엔티티와 저장소 기반 구현`
-- 현재 변경: application 구현·테스트·문서, 미커밋
+- 커밋: `3b5a39c feat(order): 주문 생성 흐름과 실패 보상 구현`
+- 후속 연결: 실제 Feign·Controller·HTTP 검증은 [스텝 38](step-38-order-feign-controller.md)에 기록했다.
 
 ## 만든 것
 
@@ -41,8 +42,8 @@
 
 ## 다음 단계
 
-실제 company·delivery Feign 어댑터와 OrderService의 Spring 빈 등록을 연결한다. I-13은 서비스에서 재시도하므로 어댑터에서 다시 재시도하지 않는다.
-Controller·Request·Response를 추가하고 Gateway를 통한 정상·오류 호출을 검증한 뒤 커밋 후 Slack 알림으로 이어간다. 현재는 외부 서비스를 Mock으로 검증한 상태다.
+이 단계 이후 실제 Feign 어댑터·OrderService 빈 등록·Controller를 연결했다(스텝 38). I-13은 서비스에서 재시도하므로 Feign 재시도를 끈다.
+남은 작업은 팀 서비스 실제 데이터 연동과 커밋 후 Slack 알림이다. 이 문서의 검증 수치는 application 구현 당시 기록이다.
 
 ## 기록
 

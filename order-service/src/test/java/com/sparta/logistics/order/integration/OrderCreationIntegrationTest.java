@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -37,7 +36,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** 외부 통신만 Mock으로 대체하고 OrderWriter의 실제 트랜잭션 프록시와 PostgreSQL을 검증한다. */
-@Import(OrderService.class)
 @TestPropertySource(properties = {
         "spring.flyway.schemas=order_schema",
         "spring.jpa.properties.hibernate.default_schema=order_schema"

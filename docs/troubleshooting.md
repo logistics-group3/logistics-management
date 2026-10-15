@@ -78,3 +78,19 @@
 - 원인: 바깥 `verify`를 시작한 뒤 인자를 평가하면서 다른 `verify`가 실행돼, 첫 검증을 마치기 전에 다음 검증을 시작했다.
 - 해결: 주문 ID를 지역 변수로 먼저 캡처한 뒤 별도 문장으로 삭제 호출을 검증했다. 업무 코드는 변경하지 않았고 application 단위 테스트 23개가 통과했다.
 - 배운 점: Mockito 검증을 포함하는 헬퍼는 다른 `verify`의 인자 안에서 실행하지 않는다.
+
+### TS-007 HTTP 테스트 드라이버가 503을 재전송해 재시도 횟수가 두 배로 측정됨
+
+- 서비스·작성: order-service / Junhyun An / 2026-10-15
+- 문제: Feign·보상 호출이 예상 3회 대신 6회, 1회 대신 2회로 관측됐다. 서로 다른 orderId가 두 묶음으로 나타났다.
+- 원인: TestRestTemplate이 선택한 Apache HTTP 클라이언트가 주문 API의 503 응답을 자동 재전송했다. `HttpRequestRetryExec` 로그에서 1초 후 요청 재실행을 확인했다.
+- 해결: 테스트 드라이버에 `SimpleClientHttpRequestFactory`를 지정했다. 내부 Feign 정책은 유지했고 HTTP 통합 테스트 13개가 통과했다.
+- 배운 점: 최초 주문 요청의 재시도와 하위 API 재시도를 구분해야 한다. 기대 호출 횟수를 늘려 테스트를 통과시키지 않는다.
+
+### TS-008 지정 서비스 기동 시 의존 PostgreSQL도 재생성됨
+
+- 서비스·작성: order-service 로컬 실행 / Junhyun An / 2026-10-15
+- 문제: `script/run.sh order-service` 실행 중 PostgreSQL 컨테이너도 재생성됐다.
+- 원인: 스크립트의 `docker compose up -d order-service`는 의존 서비스도 조정한다. PostgreSQL 재생성을 촉발한 정확한 구성·이미지 차이는 미확인이다.
+- 확인: 기존 pgdata 볼륨 재사용·초기화 생략, `.env` 해시 유지, 나머지 7개 컨테이너 ID·시작 시각 유지, 비즈니스 서비스 5개와 Gateway health UP을 확인했다. 볼륨 삭제·초기화 명령은 실행하지 않았다.
+- 후속 실행 방법: 의존 서비스가 이미 정상인 경우 주문 이미지 빌드 뒤 `docker compose up -d --no-deps --no-build order-service`로 대상만 교체한다. 공동 스크립트의 기본 동작은 별도 팀 검토 대상으로 두고 이번에 수정하지 않았다.
