@@ -16,7 +16,7 @@ user-service 남은 API(U-03~U-08, I-14) 구현·검증·커밋 완료, PR 대�
 - [x] 문서: `docs/services/user/README.md`, `docs/services/user/notes.md`, `docs/troubleshooting.md` TS-006
 - [ ] `script/run.sh --check` 자동 E2E: 이 PC에 Python이 없어 미실행(TS-006). 같은 항목을 curl로 직접 확인함
 - [x] 커밋: API별 7개로 나눴다(2026-10-15). 중간 커밋마다 `:user-service:test` 통과를 확인했다
-- [ ] PR(dev 대상). `script/e2e-check.sh`, `docs/guides/local-run.md`, `docs/troubleshooting.md`는 공용이라 팀 전체 리뷰
+- [x] PR: https://github.com/logistics-group3/logistics-management/pull/2 (dev 대상, 2026-10-15). `script/e2e-check.sh`, `docs/guides/local-run.md`, `docs/troubleshooting.md`는 공용이라 팀 전체 리뷰
 - 면접 포인트: 원격 호출을 트랜잭션 밖으로 뺀 이유와 self-invocation, 권한 검사와 조회 순서가 정보 노출에 주는 영향, QueryDSL 동적 조건과 정렬 허용 목록
 
 ## 다음 단계
