@@ -1,7 +1,7 @@
 # codex/logistics-test-ui
 
 ## 지금 하는 일
-이메일만 받는 가입·Slack DM 구현과 프런트 포함 빌드 지침을 검증했다. UI 커밋 5aaf586에 이어 변경을 커밋·푸시하고 dev 대상 PR을 준비한다.
+이메일만 받는 가입·Slack DM과 프런트 포함 빌드 지침을 커밋·푸시했다. dev 대상 [PR #7](https://github.com/logistics-group3/logistics-management/pull/7)에서 팀 리뷰를 기다린다.
 
 ## 진행 상태
 
@@ -32,13 +32,13 @@
 - [x] 사용자 후속 요청으로 가입의 Slack 멤버 ID 입력을 제거했다. U-01 필수 이메일·V3 nullable slackId·기존 값 보존, 입력/요청에 ID 없는 실제 가입→주문→배송 E2E 확인
 - [x] PR 제출 전 user 88개 실행·전체 build 729개(실패·오류·skip 0), 프런트 build·lint·format·단위 41개, 브라우저 E2E 15개(43.5초) 통과. 실제 Slack 발송 없음
 - [x] AGENTS·CLAUDE·품질 기준·PR 템플릿에 백엔드/프런트 검증 구분과 [전체 빌드 정본](../guides/full-build.md) 연결
-- [ ] 이번 변경 커밋·브랜치 푸시·dev 대상 PR 생성, PR 링크와 CI 상태 확인
+- [x] `e9b3bca feat(order): 이메일 가입과 배송담당자 Slack DM 구현` 커밋·브랜치 푸시. 이전 UI `5aaf586`과 함께 dev 대상 [PR #7](https://github.com/logistics-group3/logistics-management/pull/7) 생성, OPEN·충돌 없음 확인. 제출 시 docs-guard 검사 실행을 확인했고 최종 상태는 PR에서 확인한다.
 - 면접 포인트: USER 본인 담당 연결과 MASTER 재배정의 요청 차이, 큰 정수 JSON 전송, 멱등키 없는 생성의 결과 미확정 처리, Webhook과 봇 DM의 차이
 
 ## 다음 단계
 
 1. http://127.0.0.1:5174/signup 에서 회원가입부터 테스트한다. 계정·시나리오는 [frontend README](../../frontend/README.md)에 있다.
-2. UI 커밋은 5aaf586이다. 이메일 전용 가입·DM과 AI 빌드 지침을 함께 제출한다. [실행 안내](../guides/slack-dm.md)·[검증 기록](../reviews/slack-dm.md)을 기준으로 user·delivery 계약과 공용 compose 설정을 리뷰한다.
+2. [PR #7](https://github.com/logistics-group3/logistics-management/pull/7)에서 user·delivery 계약과 공용 compose 설정을 리뷰한다. UI 커밋은 5aaf586, 이메일 가입·DM·AI 빌드 지침은 e9b3bca다. [실행 안내](../guides/slack-dm.md)·[검증 기록](../reviews/slack-dm.md)이 근거다. 병합은 수행하지 않았다.
 3. 후속 범위는 업체·상품 삭제, 상품 수정, 계정 역할 변경·비활성화, 배송 수정/재배정·cross-hub 연동이다. I-03 준비 전에는 다른 허브 간 주문 제한을 유지한다.
 
 아래는 구현 때 사용한 최초 계획이다. 최종 구현·검증 사실은 위 완료 항목과 검증 기록이 기준이다.
