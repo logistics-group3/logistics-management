@@ -39,7 +39,7 @@ I-09~I-13 구현 전 [주문 연동 실패 계약](../order/integration-contract
 | I-03 `GET /internal/hub-routes?departureHubId=&arrivalHubId=` | hub | 허브 이동 구간 예상 거리·시간. 같은 허브면 부르지 않는다 | 가능(`IdempotentRetryConfig`) |
 | I-14 `GET /internal/users/delivery-managers?hubId=` | user | 담당자 자동 배정 후보. 구간 담당 허브마다 1번 | 가능(`IdempotentRetryConfig`) |
 
-delivery 초기 구현 시 I-03·I-14는 미구현이었다. PR 준비에서 대조한 dev `1384a5d`에는 user I-14가 반영됐고 hub I-03은 아직 없다. 실제 호출 검증은 허브 구현·데이터 준비 후 확인한다.
+delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 dev `df419a4`에는 user I-14·hub I-02가 반영됐고 hub I-03 Controller는 아직 없다. 실제 호출 검증은 허브 구현·데이터 준비 후 확인한다.
 
 ## 4. 구현 현황
 

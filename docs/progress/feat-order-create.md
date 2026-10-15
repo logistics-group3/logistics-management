@@ -1,7 +1,7 @@
 # feat/order-create
 
 ## 지금 하는 일
-사용자 요청으로 feat/order-create 푸시와 dev 대상 PR을 준비한다. 최신 dev 1384a5d와의 공유 문서 충돌을 격리 worktree에서 해결하고 합친 상태의 빌드·연동 계약을 확인한다.
+feat/order-create를 푸시하고 dev 대상 PR #6을 생성했다. 최신 dev df419a4까지 격리 worktree에서 통합·검증하고 주문 구현·테스트·팀 연동 확인 사항을 PR에 기록했다.
 
 ## 진행 상태
 - [x] `git fetch origin`으로 원격 `dev`를 확인했다.
@@ -109,8 +109,11 @@
 
 - [x] 최신 dev 통합 상태에서 `./gradlew build --console=plain` 성공. 55개 Gradle 작업을 새로 실행했고 주문 421개·전체 XML 659개, 실패·오류·skip 0이다. 에러 코드 27개 검사도 통과했다. 타 서비스 실제 HTTP 연동·새 배포를 수행한 결과는 아니다.
 
+- [x] PR #6 생성 후 dev에 반영된 허브 변경 df419a4도 통합했다. 최종 전체 build 성공, 주문 421개·전체 XML 689개, 실패·오류·skip 0이다. 허브 작업 6개를 새로 실행하고 직전 통과한 다른 모듈 결과를 재사용했다. 에러 코드 29개 검사 통과.
+- [x] https://github.com/logistics-group3/logistics-management/pull/6 에 구현·검증·팀별 연동 확인 사항을 게시했다. 생성 직후 docs-check·error-codes-check가 통과했으며 최신 head의 CI 상태는 PR에서 확인한다. 실제 서비스 간 업무 흐름은 미검증으로 명시했다.
+
 ## 다음 단계
-1. PR 준비 중이다. 최신 dev와의 빌드 확인 후 현재 브랜치를 푸시하고 구현·검증·협업 확인 사항을 STAR 형식 본문으로 게시한다.
+1. [PR #6](https://github.com/logistics-group3/logistics-management/pull/6)의 리뷰·검사를 확인한다. 대상은 dev이며 병합은 아직 수행하지 않았다. CI는 문서·에러 코드 검사이고 Gradle 전체 빌드는 로컬 격리 검증 결과다.
 2. 기본 주문 API O-01~O-06 구현은 완료했다. [스텝 46](../learning/junhyun/steps/step-46-order-deletion.md)과 [연동 계약](../services/order/integration-contract.md)으로 현재 범위와 재시도 규칙을 확인한다.
 3. 팀 company·delivery의 실제 업무 구현·데이터가 준비되면 생성·취소·삭제·실패 보상을 통합 검증한다. COMPANY-001·DELIVERY-001·DELIVERY-002는 OPEN이며 대역 테스트를 실제 제공 서비스 검증으로 표시하지 않는다.
 4. 생성 진행 조회·생성/취소 운영 복구·시간 예산·관측·Outbox는 선택 후속이다. 이번 기본 기능 완료 조건에 추가하지 않는다. 지연 생성 자동 복구는 DELIVERY-002의 추가 계약이 필요하다.
@@ -132,12 +135,12 @@
 
 ## 메모
 - 작업일: 2026-10-15 (Asia/Seoul). 브랜치 생성·기능 추천 이후 사용자가 주문 기반(Entity·마이그레이션·Repository·테스트) 구현과 설명을 요청했다.
-- 팀 브랜치 규칙은 `docs/guides/git-workflow.md`의 `feat/{모듈}-{작업}`이며 통합 대상은 `dev`다. 기반 커밋은 `216a768`이며 푸시는 수행하지 않았다.
-- 브랜치 생성 당시 dev의 company·delivery는 골격이었다. PR 준비에서 확인한 dev 1384a5d에는 user·company·delivery 구현이 반영됐으며, 다른 팀원의 미병합 브랜치를 가져오지는 않았다.
+- 팀 브랜치 규칙은 `docs/guides/git-workflow.md`의 `feat/{모듈}-{작업}`이며 통합 대상은 `dev`다. 기반 커밋은 `216a768`이며 초기 구현 단계에서는 푸시하지 않았다. 2026-10-15 후속 요청으로 feat/order-create를 푸시하고 PR #6을 생성했다.
+- 브랜치 생성 당시 dev의 company·delivery는 골격이었다. PR 준비에서 dev 1384a5d의 user·company·delivery와 이어진 df419a4의 허브 조회·I-02 구현을 통합했다. 다른 팀원의 미병합 브랜치를 따로 가져오지는 않았다.
 - 서비스 ADR 0001·0002는 `제안` 상태이며 재고 처리와 취소 조건에 SA v2.0과 다른 내용이 있다. 현재 기준은 재고 확인·차감 없음, 집하 시작 전(`PICKUP_WAITING`) 취소다.
 - 보관한 stash: `pre-order-branch-2026-10-15: preserve README newline`, 생성 시 객체 `8b7392d5755626822b727ee5cbb5cb0a74752320`. 새 README에는 이미 줄바꿈이 있다. 기존 README 전체를 새 브랜치에 덮어쓰지 않는다.
 - 기반·application·Feign·Controller·Slack은 구현했다. 격리 Gateway·비동기·HTTP 대역 검증과 실제 Webhook 테스트 1건의 200·ok 확인까지 마쳤다. 팀 서비스 실제 데이터로 주문 전체 흐름을 검증하는 단계는 남아 있다.
-- 기반은 `216a768`, application은 `3b5a39c`, Feign·Controller는 `9b48adc`, Slack은 `7a3f93f`에 커밋했다. 푸시는 수행하지 않았다.
+- 기반은 `216a768`, application은 `3b5a39c`, Feign·Controller는 `9b48adc`, Slack은 `7a3f93f`에 커밋했다. 해당 구현 단계에서는 푸시하지 않았다.
 - Slack 연동 기록은 `af0ba34`, O-02·O-03은 `9a41925`, O-04는 `6ac9b8a`, O-05는 `2e5fcc1`, 생성 기록·V3는 `39f704a`에 커밋했다. 멱등키·V4는 ed9f8d0에 커밋했다. O-06의 최종 커밋 제목은 `feat(order): 주문 삭제와 재요청 복구 구현`이다. 공통·다른 서비스 소스는 유지했다.
 - `docs/learning/junhyun/README.md`와 qna의 common-core-split-easy·downstream-error-propagation·github-ai-review-auto-approval 변경은 별도 작업이므로 보존한다. 이 progress 맨 앞의 GitHub 학습 기록도 해당 작업의 변경이다.
 - O-04는 상태 검증이 있는 짧은 로컬 쓰기 트랜잭션이다. 응답 Audit를 위해 flush하지만 생성용 OrderWriter·이벤트를 거치지 않는다. 격리 Gateway 검증의 user 인증 응답은 HTTP 대역이며 실제 Slack 메시지는 추가로 보내지 않았다.
