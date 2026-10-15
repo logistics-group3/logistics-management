@@ -32,7 +32,7 @@
 3. 팀 공유: Flyway 규칙(스텝 12 "팀원에게 알릴 것"), JaCoCo 도입은 보류 중
 
 ## 직접 해보기
-공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `docs/learning/steps/`에 있다.
+공통 인프라 전체를 처음부터 띄우고 검증하는 순서다. 스텝별 상세는 `../learning/seungkeun/steps`에 있다.
 
 1. `cp .env.example .env`
 2. `./gradlew bootJar` 후 `docker compose up -d --build`
