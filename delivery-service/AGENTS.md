@@ -12,12 +12,27 @@
 - 고치는 계층의 규칙: [`docs/agents/rules/`](../docs/agents/rules/README.md)
 - 서비스 결정: [`docs/services/delivery/decisions/`](../docs/services/delivery/decisions/README.md)
 
+## 작업 방식
+- 작업은 태스크(`T01`, `T02` ...) 단위로 브랜치 `feat/delivery-T{nn}` 하나에서 진행하고, 세부 작업은 커밋으로 나눈다. 규칙은 [`docs/workflow.md`](docs/workflow.md)에 있다.
+- 커밋할 때마다 [`docs/tasks/T{nn}.md`](docs/tasks/README.md)의 "작업 기록"에 그 커밋 항목을 같은 커밋에 넣는다.
+- 배송 도메인 설명과 API 상세는 [`docs/domain/`](docs/domain/delivery.md)에 있다. 설계를 판단하기 전에 읽는다.
+- 대화에서 설계 결정이 나면 그 응답 안에서 바로 [`docs/domain/delivery-decision-log.md`](docs/domain/delivery-decision-log.md)에 추가한다. 컨텍스트가 압축되기 전에 남기기 위해서다. 형식은 [`docs/workflow.md`](docs/workflow.md) 6절을 따른다.
+
 ## 모듈 규칙
 - 패키지 `com.sparta.logistics.delivery`, 스키마 `delivery_schema`, DB 계정 `delivery_app`.
 - 배송은 집하 → 허브 이동 → 업체 배송 3구간이다. 두 업체가 같은 허브 소속이면 허브 이동 구간을 만들지 않는다. 주문 1건 = 배송 1건이다.
+- 마이그레이션에서 테이블을 만들거나 컬럼을 추가하면 `COMMENT ON TABLE/COLUMN`으로 설명을 함께 단다(SA 5장 설명 기준, Audit 컬럼 제외). DB 도구와 ERD에서 바로 보이게 하기 위해서다.
 - 상태 전이는 SA 2.5를 따르고 Entity 메서드에서 검증한다. 위반은 `INVALID_STATUS_TRANSITION`(공통 코드)이다.
 - 구간 담당자는 구간 출발지를 관리하는 허브 소속 배송담당자 중 담당 건수가 가장 적은 사람을 자동 배정한다. 없으면 `DELIVERY_MANAGER_NOT_FOUND`로 실패한다.
 - 배송 생성·삭제는 외부 API로 열지 않는다. I-09, I-13은 orderId로 멱등하게 처리한다.
+
+## delivery 코드 규칙
+팀 레이어 규칙(`docs/agents/rules/`) 위에 delivery 담당자가 정한 규칙이다. 팀 규칙과 다른 곳은 이유를 결정 로그 17·18에 남겼다.
+- **조회와 명령을 나눈다.** 조회(`DeliveryQueryService`)는 `application/DeliveryQueryRepository`(QueryDSL `@QueryProjection`)로 필요한 컬럼만 DTO로 읽는다. 명령(`DeliveryService`, `DeliveryCreationService`)은 domain `DeliveryRepository`(JPA `findById`, `save`)로 Entity를 다룬다.
+- **값을 바꾸지 않는 변환은 만들지 않는다.** Result 하나로 응답이 되면 그대로 응답한다(`ApiResponse.ok(result)`, 내부 API는 DTO 그대로). Result 하나를 감싸거나 필드를 1:1로 복사하는 `Response`는 만들지 않는다.
+- **`Response`는 여러 Result를 합쳐야 응답이 될 때만 둔다.** 예: `DeliveryResponse` = `DeliverySummaryResult` + `List<DeliveryRouteResult>`. 합치는 일이 서비스 안에서 일어나면 `application/dto`에 둔다. 응답 모양은 `@JsonUnwrapped` 같은 Jackson 설정으로 맞추고 필드를 복사하지 않는다.
+- **의미가 있는 변환은 둔다.** `Request` → `Command`(웹 검증을 application에 넘기지 않음), Feign DTO → 배송 용어(`RouteInfo`, `DeliveryManager`, `delivery.md` 2-2).
+- 응답 형식을 건드리는 변경은 외부 API JSON 구조가 그대로인지 확인한다(MockMvc 응답 비교).
 
 ## 다른 모듈이 필요할 때
 - 다른 모듈의 코드는 직접 고치지 않는다. 그 서비스의 `docs/services/{service}/README.md` 협업 로그에 `OPEN`으로 요청을 남기고, 답이 필요한 작업이면 멈춘다.

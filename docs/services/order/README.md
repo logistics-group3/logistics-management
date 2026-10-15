@@ -40,4 +40,9 @@
 
 작성 규칙은 [서비스 협업 창구](../README.md#협업-로그-규칙)를 따른다. 다른 서비스에 요청할 때는 **그 서비스의** 협업 로그에 쓴다.
 
-아직 기록이 없다.
+### ORDER-001 주문 취소 가능 상태 변경 확인 요청 (delivery ADR 0003)
+- 상태: OPEN
+- 작성: delivery / 한얼 / 2026-10-15
+- 관련: I-11, I-12, SA 2.5·7.2, [delivery ADR 0003](../delivery/decisions/0003-delivery-three-legs-sa-v2.md), [order ADR 0002](decisions/0002-order-cancel-before-departure.md)
+- 내용: delivery는 SA v2.0의 3구간 모델을 채택했다(delivery ADR 0003, 0001 대체). 배송은 `PICKUP_WAITING`에서 시작하고, I-11 배송 취소는 `PICKUP_WAITING`에서만 성공한다. 그 밖의 상태에서는 409 `INVALID_STATUS_TRANSITION`을 반환한다. order ADR 0002는 "모든 배송은 HUB_WAITING으로 시작(ADR-11)"을 근거로 취소 조건을 `HUB_WAITING`으로 두고 있어 근거가 바뀌었다. order 쪽 취소 조건과 ADR 0002 채택 여부를 확인해 달라.
+- 결정:

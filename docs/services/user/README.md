@@ -46,4 +46,9 @@
 
 작성 규칙은 [서비스 협업 창구](../README.md#협업-로그-규칙)를 따른다. 다른 서비스에 요청할 때는 **그 서비스의** 협업 로그에 쓴다.
 
-아직 기록이 없다.
+### USER-001 I-14 허브별 배송담당자 목록 구현과 응답 확인 요청
+- 상태: OPEN
+- 작성: delivery / 한얼 / 2026-10-15
+- 관련: I-14, I-01, SA 6.3, delivery I-09 자동 배정, D-04 재배정
+- 내용: delivery는 배송 생성(I-09) 때 구간 담당 허브마다 I-14를 호출해 자동 배정 후보를 받는다. delivery 쪽 Feign은 `GET /internal/users/delivery-managers?hubId=` → `[{ userId, slackId }]`(탈퇴자·배송담당자 아닌 사용자 제외)로 구현했다. 후보가 없으면 빈 배열을 기대한다(404가 아니라 빈 배열이어야 delivery가 `DELIVERY_MANAGER_NOT_FOUND`로 판단한다). I-14가 아직 없어 I-09가 실제 연동에서는 실패한다. 구현 일정과 빈 배열 응답 여부를 알려 달라. I-01(`userId, isDeliveryManager, hubId, slackId`)은 이미 있어 그대로 쓴다.
+- 결정:
