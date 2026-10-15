@@ -6,8 +6,12 @@ import static org.awaitility.Awaitility.await;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.common.support.PostgresIntegrationTest;
+import com.sparta.logistics.order.application.OrderWriter;
+import com.sparta.logistics.order.application.dto.CreateOrderCommand;
+import com.sparta.logistics.order.application.dto.OrderCreationAttempt;
 import com.sparta.logistics.order.support.HttpStubServer;
 import com.sparta.logistics.order.support.HttpStubServer.RecordedRequest;
 import com.sparta.logistics.order.support.HttpStubServer.Reply;
@@ -20,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,6 +82,8 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     private ObjectMapper mapper;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private OrderWriter writer;
 
     private final UUID userId = UUID.randomUUID();
     private final UUID supplierId = UUID.randomUUID();
@@ -85,6 +92,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     private final UUID departureHubId = UUID.randomUUID();
     private final UUID destinationHubId = UUID.randomUUID();
     private final UUID deliveryId = UUID.randomUUID();
+    private final Set<UUID> directFixtureIds = new HashSet<>();
 
     @BeforeEach
     void resetStub() {
@@ -100,7 +108,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     @AfterEach
     void cleanUpCreatedFixtures() throws Exception {
         jdbc.execute("ALTER TABLE order_schema.p_order_creations DROP CONSTRAINT IF EXISTS ck_test_creation_completion");
-        Set<UUID> ids = new HashSet<>();
+        Set<UUID> ids = new HashSet<>(directFixtureIds);
         for (RecordedRequest request : STUB.requests("POST", "/internal/deliveries")) {
             ids.add(UUID.fromString(mapper.readTree(request.body()).path("orderId").asText()));
         }
@@ -338,16 +346,114 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT failure_reason FROM order_schema.p_order_creations WHERE order_id=?", String.class, orderId)).isEqualTo(reason);
     }
 
+    @Test
+    @DisplayName("같은 키는 회사 장애·주문 변경 후에도 최초 201 본문을 재사용하며 외부 호출을 늘리지 않는다")
+    void replaysOriginalResponseThroughHttp() throws Exception {
+        AtomicBoolean failReads = new AtomicBoolean();
+        STUB.reset(request -> failReads.get() && request.method().equals("GET") ? failure(503, "SERVICE_UNAVAILABLE") : normalReply(request));
+        ResponseEntity<String> first = create("replay-key", defaultBody());
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        UUID id = UUID.fromString(mapper.readTree(first.getBody()).path("data").path("orderId").asText());
+        jdbc.update("UPDATE order_schema.p_orders SET request_note='changed', status='CANCELED', updated_at=now() WHERE order_id=?", id);
+        failReads.set(true);
+
+        ResponseEntity<String> replay = create("replay-key", defaultBody());
+
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(mapper.readTree(replay.getBody())).isEqualTo(mapper.readTree(first.getBody()));
+        assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
+        assertThat(STUB.requests("GET", "/internal/")).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("JSON 순서·공백·UUID 대소문자·요청사항 생략과 null은 같은 논리 요청으로 인식한다")
+    void comparesParsedRequestRatherThanRawJson() throws Exception {
+        ObjectNode firstBody = (ObjectNode) mapper.readTree(defaultBody());
+        firstBody.remove("requestNote");
+        ResponseEntity<String> first = create("semantic-key", firstBody.toString());
+        String secondBody = """
+                { "requestNote": null, "quantity": 50, "productId": "%s",
+                  "receiverCompanyId": "%s", "supplierCompanyId": "%s" }
+                """.formatted(productId.toString().toUpperCase(), receiverId, supplierId);
+
+        ResponseEntity<String> replay = create("semantic-key", secondBody);
+
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(mapper.readTree(replay.getBody())).isEqualTo(mapper.readTree(first.getBody()));
+        assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("같은 키로 수량을 바꾸면 409이고 회사·배송을 다시 호출하지 않는다")
+    void rejectsChangedBodyThroughHttp() throws Exception {
+        assertThat(create("conflict-key", defaultBody()).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        ObjectNode changed = (ObjectNode) mapper.readTree(defaultBody());
+        changed.put("quantity", 51);
+
+        assertError(create("conflict-key", changed.toString()), HttpStatus.CONFLICT, "ORDER_IDEMPOTENCY_KEY_CONFLICT");
+        assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
+        assertThat(STUB.requests("GET", "/internal/")).hasSize(3);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @DisplayName("실패 종료와 복구 대기의 같은 키는 원래 요청을 재실행하지 않고 409로 구분한다")
+    void refusesRetryOfFailedAttempt(boolean uncertain) throws Exception {
+        STUB.reset(request -> request.method().equals("POST")
+                ? failure(uncertain ? 500 : 404, uncertain ? "INTERNAL_SERVER_ERROR" : "DELIVERY_MANAGER_NOT_FOUND") : normalReply(request));
+        assertError(create("failed-key", defaultBody()), uncertain ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.NOT_FOUND,
+                uncertain ? "SERVICE_UNAVAILABLE" : "DELIVERY_MANAGER_NOT_FOUND");
+
+        assertError(create("failed-key", defaultBody()), HttpStatus.CONFLICT,
+                uncertain ? "ORDER_CREATION_RECOVERY_REQUIRED" : "ORDER_CREATION_ABORTED");
+        assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
+        assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/")).hasSize(uncertain ? 1 : 0);
+    }
+
+    @Test
+    @DisplayName("이미 진행 중인 키의 HTTP 재요청은 외부 호출 없이 409다")
+    void rejectsInProgressKey() throws Exception {
+        OrderCreationAttempt attempt = new OrderCreationAttempt(UUID.randomUUID(), UUID.randomUUID(), userId);
+        directFixtureIds.add(attempt.orderId());
+        writer.start(attempt, new CreateOrderCommand(supplierId, receiverId, productId, 50, "오전 도착 희망").identity("pending-key"));
+
+        assertError(create("pending-key", defaultBody()), HttpStatus.CONFLICT, "ORDER_CREATION_IN_PROGRESS");
+        assertThat(STUB.requests("GET", "/")).isEmpty();
+        assertThat(STUB.requests("POST", "/")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("OpenAPI에 필수 멱등키 헤더와 길이·문자 규칙이 표시된다")
+    void documentsIdempotencyKey() throws Exception {
+        JsonNode doc = mapper.readTree(http.getForEntity("/v3/api-docs", String.class).getBody());
+        JsonNode parameters = doc.path("paths").path("/api/v1/orders").path("post").path("parameters");
+        JsonNode key = java.util.stream.StreamSupport.stream(parameters.spliterator(), false)
+                .filter(parameter -> parameter.path("name").asText().equals("Idempotency-Key")).findFirst().orElseThrow();
+        assertThat(key.path("in").asText()).isEqualTo("header");
+        assertThat(key.path("required").asBoolean()).isTrue();
+        assertThat(key.path("schema").path("maxLength").asInt()).isEqualTo(128);
+        assertThat(key.path("schema").path("minLength").asInt()).isEqualTo(1);
+        assertThat(key.path("schema").path("pattern").asText()).isEqualTo("[A-Za-z0-9._:-]+");
+    }
+
     private ResponseEntity<String> create() {
+        return create(UUID.randomUUID().toString(), defaultBody());
+    }
+
+    private ResponseEntity<String> create(String key, String body) {
         HttpHeaders headers = new HttpHeaders();
+        headers.set("Idempotency-Key", key);
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(UserHeaders.USER_ID, userId.toString());
         headers.set(UserHeaders.USERNAME, "junhyun");
         headers.set(UserHeaders.ROLE, "USER");
         headers.set(UserHeaders.DELIVERY_MANAGER, "false");
-        String body = json(Map.of("supplierCompanyId", supplierId, "receiverCompanyId", receiverId,
-                "productId", productId, "quantity", 50, "requestNote", "오전 도착 희망"));
         return http.postForEntity("/api/v1/orders", new HttpEntity<>(body, headers), String.class);
+    }
+
+    private String defaultBody() {
+        return json(Map.of("supplierCompanyId", supplierId, "receiverCompanyId", receiverId,
+                "productId", productId, "quantity", 50, "requestNote", "오전 도착 희망"));
     }
 
     private Reply normalReply(RecordedRequest request) {

@@ -76,7 +76,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
     void commitsOrderBeforeReturning() {
         stubExternalServices();
 
-        OrderResult result = service.create(user, command(null));
+        OrderResult result = service.create(user, "test-key", command(null));
 
         assertThat(result.orderId()).isEqualTo(createdOrderId.get());
         assertThat(result.ordererId()).isEqualTo(user.userId());
@@ -102,7 +102,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
         stubExternalServices();
         assertRollbackBeforeCompensation();
 
-        assertThatThrownBy(() -> service.create(user, command(null)))
+        assertThatThrownBy(() -> service.create(user, "test-key", command(null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
@@ -130,7 +130,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
             stubExternalServices();
             assertRollbackBeforeCompensation();
 
-            assertThatThrownBy(() -> service.create(user, command(requestNote)))
+            assertThatThrownBy(() -> service.create(user, "test-key", command(requestNote)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
@@ -148,7 +148,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
     @DisplayName("기존 DB 트랜잭션 안에서 주문 생성을 호출하면 외부 호출 전에 차단한다")
     void rejectsAnOuterTransaction() {
         assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(
-                status -> service.create(user, command(null))))
+                status -> service.create(user, "test-key", command(null))))
                 .isInstanceOf(IllegalTransactionStateException.class);
         verifyNoInteractions(companyReader, deliveryGateway);
     }

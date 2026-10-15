@@ -25,6 +25,7 @@ import com.sparta.logistics.order.domain.CreationFailureReason;
 import com.sparta.logistics.order.domain.Order;
 import com.sparta.logistics.order.domain.OrderRepository;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderCreationServiceTest {
@@ -65,7 +67,7 @@ class OrderCreationServiceTest {
     @Test
     @DisplayName("진행 기록을 커밋하지 못하면 배송 생성을 시작하지 않는다")
     void stopsBeforeDeliveryWhenStartFails() {
-        willThrow(databaseFailure()).given(writer).start(any());
+        willThrow(databaseFailure()).given(writer).start(any(), any());
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
         verifyNoInteractions(delivery);
@@ -83,7 +85,7 @@ class OrderCreationServiceTest {
         });
         given(writer.resolveCreation(any())).willAnswer(invocation -> OrderCreationCommitResult.from(saved.get()));
 
-        OrderResult result = service.create(user, command);
+        OrderResult result = service.create(user, "test-key", command);
 
         assertThat(result.orderId()).isEqualTo(saved.get().getId());
         assertThat(result.deliveryId()).isEqualTo(deliveryId);
@@ -194,6 +196,28 @@ class OrderCreationServiceTest {
         verify(delivery).deleteByOrderId(any());
     }
 
+    @Test
+    @DisplayName("키 확보 경쟁에서 진 요청은 새 트랜잭션에서 확인한 기존 결과만 반환한다")
+    void replaysAfterConcurrentClaimConflict() {
+        OrderResult result = OrderResult.from(Order.create(UUID.randomUUID(), user.userId(), supplierId, receiverId,
+                productId, "원래 상품", 10_000L, 2, deliveryId, command.requestNote()));
+        given(writer.findReplay(any(), any())).willReturn(Optional.empty()).willReturn(Optional.of(result));
+        willThrow(new DataIntegrityViolationException("duplicate key")).given(writer).start(any(), any());
+
+        assertThat(service.create(user, "test-key", command)).isEqualTo(result);
+        verifyNoInteractions(delivery);
+        verify(writer, never()).save(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("유니크 오류 후에도 해당 키가 없으면 새 배송을 실행하지 않고 내부 오류로 처리한다")
+    void failsClosedForUnrelatedConstraintFailure() {
+        willThrow(new DataIntegrityViolationException("other constraint")).given(writer).start(any(), any());
+
+        assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        verifyNoInteractions(delivery);
+    }
+
     private void failSave(OrderCreationCommitResult result) {
         given(delivery.create(any())).willReturn(deliveryId);
         given(writer.save(any(), any(), any())).willThrow(databaseFailure());
@@ -201,7 +225,7 @@ class OrderCreationServiceTest {
     }
 
     private void assertFailure(CommonErrorCode code) {
-        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(code);
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).extracting("errorCode").isEqualTo(code);
     }
 
     private static DataAccessResourceFailureException databaseFailure() {

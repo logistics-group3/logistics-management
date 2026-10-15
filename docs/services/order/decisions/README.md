@@ -13,3 +13,4 @@ order-service 안의 되돌리기 어려운 결정이다. 여러 서비스에 �
 | 0005 | [정수 원화 주문 금액: long·BIGINT](0005-order-money-integer-krw.md) | 채택 | Junhyun An 원복 요청 |
 | 0006 | [주문 취소 진행 기록과 중복 실행 보호](0006-order-cancellation-progress.md) | 채택 (주문 담당자) | Junhyun An 진행 기록 추가 승인 |
 | 0007 | [주문 생성 진행 기록과 커밋 결과 재확인](0007-order-creation-progress.md) | 채택 (주문 담당자) | Junhyun An O-01 보강 구현 요청 |
+| 0008 | [주문 생성 멱등키와 최초 응답 재사용](0008-order-idempotency-key.md) | 채택 (주문 담당자) | Junhyun An 중복 주문 방지 요청 |

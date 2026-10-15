@@ -4,17 +4,22 @@ import com.sparta.logistics.common.auth.CurrentUser;
 import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.response.ApiResponse;
 import com.sparta.logistics.common.response.PageResponse;
+import com.sparta.logistics.order.application.OrderCancellationService;
 import com.sparta.logistics.order.application.OrderQueryService;
 import com.sparta.logistics.order.application.OrderService;
-import com.sparta.logistics.order.application.OrderCancellationService;
+import com.sparta.logistics.order.domain.OrderRequestIdentity;
 import com.sparta.logistics.order.presentation.dto.CancelOrderResponse;
 import com.sparta.logistics.order.presentation.dto.CreateOrderRequest;
 import com.sparta.logistics.order.presentation.dto.OrderResponse;
 import com.sparta.logistics.order.presentation.dto.OrderSearchRequest;
 import com.sparta.logistics.order.presentation.dto.UpdateOrderRequest;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
@@ -28,6 +33,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,8 +51,13 @@ public class OrderController {
     @Operation(summary = "O-01 주문 생성", description = "요청업체 관리자 본인 또는 MASTER가 주문한다.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<OrderResponse> create(@CurrentUser UserContext user, @Valid @RequestBody CreateOrderRequest request) {
-        return ApiResponse.created("주문이 생성되었습니다.", OrderResponse.from(orderService.create(user, request.toCommand())));
+    public ApiResponse<OrderResponse> create(@CurrentUser UserContext user,
+            @Parameter(description = "새 주문마다 새 키, 재시도는 같은 키와 본문. UUID 권장", example = "8f2d6f94-a287-4b6d-82c9-4828a2a72ef3")
+            @RequestHeader("Idempotency-Key") @NotBlank(message = "Idempotency-Key는 필수입니다.")
+            @Size(min = 1, max = OrderRequestIdentity.MAX_KEY_LENGTH, message = "멱등키는 1~128자여야 합니다.")
+            @Pattern(regexp = OrderRequestIdentity.KEY_PATTERN, message = "멱등키는 영문·숫자와 . _ : - 만 사용할 수 있습니다.") String idempotencyKey,
+            @Valid @RequestBody CreateOrderRequest request) {
+        return ApiResponse.created("주문이 생성되었습니다.", OrderResponse.from(orderService.create(user, idempotencyKey, request.toCommand())));
     }
 
     @Operation(summary = "O-02 주문 검색", description = "USER는 본인 주문만, MASTER는 전체 주문을 검색한다. 정렬은 createdAt·quantity를 허용한다.")

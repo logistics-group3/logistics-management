@@ -58,7 +58,7 @@ class OrderControllerWebMvcTest {
         OrderResult result = new OrderResult(UUID.randomUUID(), userId, supplierId, receiverId, productId,
                 "마른오징어", 12_000L, 50, 600_000L, "오전 도착 희망", OrderStatus.ORDERED, UUID.randomUUID(),
                 LocalDateTime.of(2026, 10, 15, 12, 0), LocalDateTime.of(2026, 10, 15, 12, 0));
-        given(orderService.create(any(), any())).willReturn(result);
+        given(orderService.create(any(), any(), any())).willReturn(result);
 
         mockMvc.perform(authenticatedPost(body("50", "오전 도착 희망")))
                 .andExpect(status().isCreated())
@@ -73,7 +73,7 @@ class OrderControllerWebMvcTest {
                 .andExpect(jsonPath("$.data.deliveryId").value(result.deliveryId().toString()))
                 .andExpect(jsonPath("$.data.createdAt").isString());
 
-        verify(orderService).create(new UserContext(userId, "junhyun", Role.USER, false),
+        verify(orderService).create(new UserContext(userId, "junhyun", Role.USER, false), "test-key",
                 new CreateOrderCommand(supplierId, receiverId, productId, 50, "오전 도착 희망"));
     }
 
@@ -127,7 +127,7 @@ class OrderControllerWebMvcTest {
     @Test
     @DisplayName("서비스의 소유자 검증 실패를 공통 403 응답으로 전달한다")
     void preservesForbidden() throws Exception {
-        given(orderService.create(any(), any())).willThrow(new BusinessException(CommonErrorCode.FORBIDDEN));
+        given(orderService.create(any(), any(), any())).willThrow(new BusinessException(CommonErrorCode.FORBIDDEN));
         mockMvc.perform(authenticatedPost(body("50", "요청사항")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
@@ -136,18 +136,51 @@ class OrderControllerWebMvcTest {
     @Test
     @DisplayName("하위 서비스 장애를 공통 503 응답으로 전달한다")
     void preservesUnavailable() throws Exception {
-        given(orderService.create(any(), any())).willThrow(new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE));
+        given(orderService.create(any(), any(), any())).willThrow(new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE));
         mockMvc.perform(authenticatedPost(body("50", "요청사항")))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"));
     }
 
+    @Test
+    @DisplayName("멱등키가 없으면 생성 서비스를 호출하지 않고 400이다")
+    void requiresIdempotencyKey() throws Exception {
+        mockMvc.perform(authenticatedPost(body("50", "요청사항"), null))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        verifyNoInteractions(orderService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "key,key", "한글", "key/key"})
+    @DisplayName("빈 키·공백·허용되지 않은 문자의 키는 400이다")
+    void rejectsInvalidKey(String key) throws Exception {
+        mockMvc.perform(authenticatedPost(body("50", "요청사항"), key))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        verifyNoInteractions(orderService);
+    }
+
+    @Test
+    @DisplayName("129자 키와 여러 개의 키 헤더는 거부한다")
+    void rejectsLongAndRepeatedHeaders() throws Exception {
+        mockMvc.perform(authenticatedPost(body("50", "요청사항"), "a".repeat(129)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(authenticatedPost(body("50", "요청사항")).header("Idempotency-Key", "second-key"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(orderService);
+    }
+
     private MockHttpServletRequestBuilder authenticatedPost(String body) {
-        return post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content(body)
+        return authenticatedPost(body, "test-key");
+    }
+
+    private MockHttpServletRequestBuilder authenticatedPost(String body, String key) {
+        MockHttpServletRequestBuilder request = post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content(body)
                 .header(UserHeaders.USER_ID, userId.toString())
                 .header(UserHeaders.USERNAME, "junhyun")
                 .header(UserHeaders.ROLE, "USER")
                 .header(UserHeaders.DELIVERY_MANAGER, "false");
+        if (key != null) request.header("Idempotency-Key", key);
+        return request;
     }
 
     private String body(String quantity, String requestNote) {

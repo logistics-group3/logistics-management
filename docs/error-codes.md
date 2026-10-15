@@ -45,6 +45,10 @@
 | 코드 | HTTP | 의미 | 상태 |
 |---|---|---|---|
 | `ORDER_NOT_FOUND` | 404 | 주문이 없거나 삭제됨 | 구현 |
+| `ORDER_IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 사용자·멱등키에 다른 주문 본문 사용 | 구현 |
+| `ORDER_CREATION_IN_PROGRESS` | 409 | 같은 키의 주문 생성 처리 중, 새 실행 없음 | 구현 |
+| `ORDER_CREATION_ABORTED` | 409 | 같은 키의 생성이 실패로 종료됨, 재실행 없음 | 구현 |
+| `ORDER_CREATION_RECOVERY_REQUIRED` | 409 | 생성 결과 확인 필요 또는 생성 기록 논리 삭제, 재실행 없음 | 구현 |
 | `ORDER_NOT_DELETABLE` | 409 | 취소 또는 배송 완료 전 주문 삭제 | 예정 |
 
 ## delivery-service

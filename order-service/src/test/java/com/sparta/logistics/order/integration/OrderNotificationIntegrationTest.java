@@ -219,6 +219,7 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
 
     private ResponseEntity<String> create() {
         HttpHeaders headers = new HttpHeaders();
+        headers.set("Idempotency-Key", UUID.randomUUID().toString());
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(UserHeaders.USER_ID, userId.toString());
         headers.set(UserHeaders.USERNAME, "junhyun");

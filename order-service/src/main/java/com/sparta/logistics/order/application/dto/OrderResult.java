@@ -1,6 +1,7 @@
 package com.sparta.logistics.order.application.dto;
 
 import com.sparta.logistics.order.domain.Order;
+import com.sparta.logistics.order.domain.OrderCreationSnapshot;
 import com.sparta.logistics.order.domain.OrderStatus;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -16,5 +17,12 @@ public record OrderResult(UUID orderId, UUID ordererId, UUID supplierCompanyId, 
                 order.getReceiverCompanyId(), order.getProductId(), order.getProductName(), order.getUnitPrice(),
                 order.getQuantity(), order.getTotalPrice(), order.getRequestNote(), order.getStatus(),
                 order.getDeliveryId(), order.getCreatedAt(), order.getUpdatedAt());
+    }
+
+    public static OrderResult from(OrderCreationSnapshot snapshot) {
+        return new OrderResult(snapshot.orderId(), snapshot.ordererId(), snapshot.supplierCompanyId(),
+                snapshot.receiverCompanyId(), snapshot.productId(), snapshot.productName(), snapshot.unitPrice(),
+                snapshot.quantity(), snapshot.totalPrice(), snapshot.requestNote(), snapshot.status(),
+                snapshot.deliveryId(), snapshot.createdAt(), snapshot.updatedAt());
     }
 }

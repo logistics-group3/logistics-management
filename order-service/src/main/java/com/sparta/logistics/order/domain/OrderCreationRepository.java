@@ -8,4 +8,6 @@ public interface OrderCreationRepository {
     OrderCreation saveAndFlush(OrderCreation creation);
 
     Optional<OrderCreation> findByOrderIdForUpdate(UUID orderId);
+
+    Optional<OrderCreation> findByKeyIncludingDeleted(UUID ordererId, String key);
 }

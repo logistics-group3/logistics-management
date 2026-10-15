@@ -15,10 +15,13 @@ import com.sparta.logistics.order.domain.CreationFailureReason;
 import com.sparta.logistics.order.domain.Order;
 import com.sparta.logistics.order.domain.OrderErrorCode;
 import com.sparta.logistics.order.domain.OrderRepository;
+import com.sparta.logistics.order.domain.OrderRequestIdentity;
 import feign.FeignException;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,8 +41,11 @@ public class OrderService {
 
     /** O-01. 요청업체 관리자 또는 MASTER만 주문하며 배송 생성·주문 저장 실패를 단계별로 보상한다. */
     @Transactional(propagation = Propagation.NEVER)
-    public OrderResult create(UserContext user, CreateOrderCommand command) {
+    public OrderResult create(UserContext user, String idempotencyKey, CreateOrderCommand command) {
         // Note: 원격 호출을 DB 트랜잭션 안에 두지 않는다. 저장은 OrderWriter의 독립 트랜잭션으로만 수행한다.
+        OrderRequestIdentity identity = command.identity(idempotencyKey);
+        Optional<OrderResult> replay = orderWriter.findReplay(user.userId(), identity);
+        if (replay.isPresent()) return replay.get();
         OrderCreationAttempt attempt = new OrderCreationAttempt(UUID.randomUUID(), UUID.randomUUID(), user.userId());
         UUID orderId = attempt.orderId();
         CompanyResult supplier;
@@ -59,7 +65,11 @@ public class OrderService {
         }
 
         try {
-            orderWriter.start(attempt);
+            orderWriter.start(attempt, identity);
+        } catch (DataIntegrityViolationException conflict) {
+            // Note: 동시 INSERT의 패자는 이미 롤백된 뒤 새 트랜잭션에서 승자의 기록을 읽는다. 원격 배송 생성은 한 요청만 한다.
+            return orderWriter.findReplay(user.userId(), identity)
+                    .orElseThrow(() -> new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR));
         } catch (RuntimeException exception) {
             log.error("주문 생성 시작 기록 실패: orderId={}, attemptId={}, cause={}",
                     orderId, attempt.attemptId(), exception.getClass().getSimpleName());

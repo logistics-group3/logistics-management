@@ -12,6 +12,8 @@ import com.sparta.logistics.order.domain.OrderCreation;
 import com.sparta.logistics.order.domain.OrderCreationRepository;
 import com.sparta.logistics.order.domain.OrderCreationStatus;
 import com.sparta.logistics.order.domain.OrderRepository;
+import com.sparta.logistics.order.domain.OrderRequestIdentity;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,8 +31,15 @@ public class OrderWriter {
 
     /** O-01. 첫 원격 변경 전에 생성 진행 기록을 별도 커밋한다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void start(OrderCreationAttempt attempt) {
-        creationRepository.saveAndFlush(OrderCreation.start(attempt.attemptId(), attempt.orderId(), attempt.ordererId()));
+    public void start(OrderCreationAttempt attempt, OrderRequestIdentity identity) {
+        creationRepository.saveAndFlush(OrderCreation.start(attempt.attemptId(), attempt.orderId(), attempt.ordererId(), identity));
+    }
+
+    /** O-01. 같은 사용자의 키만 조회하며 완료 응답은 현재 주문 대신 최초 스냅샷으로 반환한다. */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public Optional<OrderResult> findReplay(UUID userId, OrderRequestIdentity identity) {
+        return creationRepository.findByKeyIncludingDeleted(userId, identity.key())
+                .map(creation -> OrderResult.from(creation.replay(identity)));
     }
 
     /**
@@ -45,7 +54,7 @@ public class OrderWriter {
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
         }
         Order savedOrder = orderRepository.saveAndFlush(order);
-        creation.complete(savedOrder.getDeliveryId());
+        creation.completeWithSnapshot(savedOrder);
         // Note: flush는 커밋이 아니다. 트랜잭션 안에서 발행해 커밋 성공 시에만 리스너가 실행되게 한다.
         eventPublisher.publishEvent(OrderCreatedEvent.from(savedOrder, supplierCompanyName, receiverCompanyName));
         return OrderResult.from(savedOrder);
@@ -59,7 +68,8 @@ public class OrderWriter {
         if (creation.getStatus() == OrderCreationStatus.COMPLETED && order != null
                 && order.getOrdererId().equals(creation.getOrdererId())
                 && order.getDeliveryId().equals(creation.getDeliveryId())) {
-            return OrderCreationCommitResult.from(order);
+            return creation.getResponseSnapshot() == null ? OrderCreationCommitResult.from(order)
+                    : OrderCreationCommitResult.from(creation.getResponseSnapshot());
         }
         if (creation.getStatus() == OrderCreationStatus.PROCESSING && order == null) {
             return OrderCreationCommitResult.notCommitted();

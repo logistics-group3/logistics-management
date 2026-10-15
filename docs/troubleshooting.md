@@ -135,3 +135,11 @@
 - 원인: 두 타입의 단순 이름이 같아 Java가 Entity와 애너테이션을 구분할 수 없었다.
 - 해결: Entity import를 유지하고 테스트 aspect의 순서는 `@org.springframework.core.annotation.Order(...)`로 명시했다. 제품 코드의 타입 이름과 트랜잭션 설정은 바꾸지 않았다.
 - 확인: 생성 기록 PostgreSQL 통합 테스트 15개와 전체 build 통과. 실제 커밋 뒤 예외·잠금 대기·롤백·생성 이벤트 1회 검증을 포함한다.
+
+### TS-014 DTO 변환 메서드 오버로드 뒤 Mockito 인자 타입 추론이 모호해짐
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: 최초 응답 스냅샷용 OrderResult.from 오버로드를 추가한 뒤 기존 테스트의 `OrderResult.from(invocation.getArgument(0))`가 `reference to from is ambiguous`로 컴파일에 실패했다.
+- 원인: Mockito getArgument의 제네릭 반환 타입과 두 from 오버로드가 겹쳐 Java가 Order와 OrderCreationSnapshot 중 인자 타입을 확정하지 못했다.
+- 해결: 테스트에서 `invocation.getArgument(0, Order.class)`로 실제 Writer 인자 타입을 명시했다. 제품 코드의 DTO 변환 계약은 유지했다.
+- 확인: 주문 347개와 전체 build 통과. 타입을 명시한 기존 생성 서비스 테스트도 포함한다.

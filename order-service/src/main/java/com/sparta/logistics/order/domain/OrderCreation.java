@@ -13,7 +13,9 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.SqlTypes;
 
 /** 주문 행이 만들어지기 전부터 생성 결과를 추적한다(order ADR 0007). */
 @Getter
@@ -45,6 +47,16 @@ public class OrderCreation extends BaseEntity {
     @Column(name = "delivery_id")
     private UUID deliveryId;
 
+    @Column(name = "idempotency_key", length = 128)
+    private String idempotencyKey;
+
+    @Column(name = "request_hash", length = 67)
+    private String requestHash;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "response_snapshot", columnDefinition = "jsonb")
+    private OrderCreationSnapshot responseSnapshot;
+
     public static OrderCreation start(UUID id, UUID orderId, UUID ordererId) {
         if (id == null || orderId == null || ordererId == null) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
@@ -57,13 +69,47 @@ public class OrderCreation extends BaseEntity {
         return creation;
     }
 
+    public static OrderCreation start(UUID id, UUID orderId, UUID ordererId, OrderRequestIdentity identity) {
+        if (identity == null) throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        OrderCreation creation = start(id, orderId, ordererId);
+        creation.idempotencyKey = identity.key();
+        creation.requestHash = identity.requestHash();
+        return creation;
+    }
+
     public void complete(UUID deliveryId) {
         validateProcessing();
-        if (deliveryId == null) {
+        if (deliveryId == null || idempotencyKey != null) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
         this.deliveryId = deliveryId;
         status = OrderCreationStatus.COMPLETED;
+    }
+
+    public void completeWithSnapshot(Order order) {
+        validateProcessing();
+        if (order == null || !orderId.equals(order.getId()) || !ordererId.equals(order.getOrdererId())) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+        deliveryId = order.getDeliveryId();
+        responseSnapshot = OrderCreationSnapshot.from(order);
+        status = OrderCreationStatus.COMPLETED;
+    }
+
+    public OrderCreationSnapshot replay(OrderRequestIdentity identity) {
+        if (!identity.key().equals(idempotencyKey) || !identity.requestHash().equals(requestHash)) {
+            throw new BusinessException(OrderErrorCode.ORDER_IDEMPOTENCY_KEY_CONFLICT);
+        }
+        if (isDeleted()) throw new BusinessException(OrderErrorCode.ORDER_CREATION_RECOVERY_REQUIRED);
+        return switch (status) {
+            case PROCESSING -> throw new BusinessException(OrderErrorCode.ORDER_CREATION_IN_PROGRESS);
+            case ABORTED -> throw new BusinessException(OrderErrorCode.ORDER_CREATION_ABORTED);
+            case RECOVERY_REQUIRED -> throw new BusinessException(OrderErrorCode.ORDER_CREATION_RECOVERY_REQUIRED);
+            case COMPLETED -> {
+                if (responseSnapshot == null) throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+                yield responseSnapshot;
+            }
+        };
     }
 
     public void abort(UUID deliveryId) {

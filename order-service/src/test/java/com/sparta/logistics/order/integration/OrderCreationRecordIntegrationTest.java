@@ -119,7 +119,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
     void recordsBeforeRemoteMutation() {
         stubExternalServices();
 
-        OrderResult result = service.create(user, command);
+        OrderResult result = service.create(user, "test-key", command);
 
         assertThat(recordStatus(result.orderId())).isEqualTo("COMPLETED");
         assertThat(jdbc.queryForObject("SELECT delivery_id FROM order_schema.p_order_creations WHERE order_id=?", UUID.class, result.orderId()))
@@ -133,7 +133,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
         stubExternalServices();
         faults.afterCommit.set(true);
 
-        OrderResult result = service.create(user, command);
+        OrderResult result = service.create(user, "test-key", command);
 
         assertThat(orders.findById(result.orderId())).isPresent();
         assertThat(recordStatus(result.orderId())).isEqualTo("COMPLETED");
@@ -148,7 +148,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
         faults.afterCommit.set(true);
         faults.verification.set(true);
 
-        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
         UUID orderId = fixtureIds.get(0);
         assertThat(orders.findById(orderId)).isPresent();
@@ -170,7 +170,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
             return null;
         }).given(delivery).deleteByOrderId(any());
 
-        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
         assertThat(recordStatus(fixtureIds.get(0))).isEqualTo("ABORTED");
         verifyNoInteractions(notification);
@@ -192,8 +192,8 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
                 locked.countDown();
                 try { assertThat(release.await(10, TimeUnit.SECONDS)).isTrue(); }
                 catch (InterruptedException exception) { Thread.currentThread().interrupt(); throw new AssertionError(exception); }
-                orders.saveAndFlush(order(attempt.orderId()));
-                creation.complete(deliveryId);
+                Order saved = orders.saveAndFlush(order(attempt.orderId()));
+                creation.completeWithSnapshot(saved);
                 if (rollback) status.setRollbackOnly();
             }));
             assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
@@ -219,7 +219,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
         OrderCreationAttempt attempt = start();
         writer.abort(attempt, null);
 
-        assertThatThrownBy(() -> writer.start(new OrderCreationAttempt(UUID.randomUUID(), attempt.orderId(), user.userId())))
+        assertThatThrownBy(() -> writer.start(new OrderCreationAttempt(UUID.randomUUID(), attempt.orderId(), user.userId()), command.identity("different-key")))
                 .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("uk_p_order_creations_order_id");
         assertThat(recordStatus(attempt.orderId())).isEqualTo("ABORTED");
     }
@@ -269,7 +269,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
     private OrderCreationAttempt start() {
         OrderCreationAttempt attempt = new OrderCreationAttempt(UUID.randomUUID(), UUID.randomUUID(), user.userId());
         fixtureIds.add(attempt.orderId());
-        writer.start(attempt);
+        writer.start(attempt, command.identity("test-key"));
         return attempt;
     }
 

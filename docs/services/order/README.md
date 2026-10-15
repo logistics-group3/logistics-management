@@ -10,13 +10,13 @@
 | 포트 | 8084 |
 | 스키마·DB 계정 | `order_schema` / `order_app` |
 | 책임 | 주문 생성(Saga 오케스트레이션)·조회·요청사항 수정·취소·삭제, Slack 알림 |
-| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations` (SA 5.5·주문 ADR 0006·0007) |
+| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations` (SA 5.5·주문 ADR 0006~0008) |
 
 ## 2. 제공 API (계약)
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | 생성 진행 기록·커밋 재확인·보상·Feign·커밋 후 Slack. 제공 서비스는 HTTP 대역 검증, 실제 Slack 연결 테스트는 별도 200·ok 확인 |
+| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | Idempotency-Key 필수·최초 응답 재사용·동시 생성 차단. 생성 진행 기록·커밋 재확인·보상·커밋 후 Slack |
 | O-02 | `GET /api/v1/orders` | 로그인, USER는 본인 주문만 | 구현 | 선택 필터·QueryDSL·페이지·정렬, 내용과 count에 같은 권한 조건 |
 | O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
 | O-04 | `PATCH /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | requestNote 필수·공백 불가·최대 500자. 취소된 주문은 409 INVALID_STATUS_TRANSITION |
@@ -48,6 +48,11 @@
 - [x] 실제 주문 DB 커밋·flush 실패·커밋 실패·트랜잭션 경계 검증 (PostgreSQL 통합 테스트 4개)
 - [x] O-01 실제 Feign 어댑터·Spring 빈 조립·Controller 연결
 - [x] O-01 생성 진행 기록·V3, 저장 예외 후 같은 DB의 진행 기록 잠금·커밋 결과 재확인
+- [x] O-01 필수 Idempotency-Key·V4: 사용자별 키 UNIQUE·요청 지문·최초 응답 JSONB, 완료 재사용·처리 중/실패/복구 대기 409
+- [x] 멱등성 테스트 55개 추가. 현재 주문 347개·전체 XML 445개, 실패·오류·skip 0. 전체 build 통과
+- [x] 실제 PostgreSQL 동시 INSERT 경쟁·유니크 실패 후 재조회, 다른 사용자·대소문자 구분, 삭제 이력 차단, V3 기존 행 유지 검증
+- [x] 격리 Gateway·JWT·Feign·PostgreSQL 재요청 검증: 201·400·401·409·500·503, 헤더 전달·원래 응답 보존·배송 1회 확인
+- [x] 로컬 주문 서비스만 교체·Flyway V4·키 UNIQUE·JSONB·health UP·Gateway 필수 헤더 문서 확인. 기존 3개 테이블·나머지 8개 컨테이너·.env·Webhook 유지
 - [x] 주문 INSERT·생성 COMPLETED·이벤트를 같은 트랜잭션으로 처리. 실제 커밋 확인 시 결과 재사용·삭제 및 이벤트 재발행 없음
 - [x] I-09 미확정 결과는 I-13 성공 후에도 복구 대기. 확인된 미저장만 삭제 결과에 따라 ABORTED 또는 DELIVERY_DELETE_FAILED
 - [x] Controller 11개·실제 HTTP/Feign 13개 추가 검증. 주문 모듈 전체 93개 통과
@@ -62,7 +67,7 @@
 - [x] 조회 API 테스트 44개 추가. 조회 단계 주문 152개·전체 테스트 XML 250개, 실패·오류·skip 0
 - [x] 수정 API 테스트 39개 추가. 수정 단계 주문 191개·전체 테스트 XML 289개, 실패·오류·skip 0
 - [x] 취소 테스트 61개 추가. 취소 단계 주문 252개·전체 XML 350개, 실패·오류·skip 0. 전체 build 통과
-- [x] 생성 보강 테스트 40개 추가. 현재 주문 292개·전체 XML 390개, 실패·오류·skip 0. 전체 build 통과
+- [x] 생성 보강 단계 테스트 40개 추가. 당시 주문 292개·전체 XML 390개, 실패·오류·skip 0. 전체 build 통과
 - [x] 실제 커밋 뒤 반환 예외·재확인 실패·잠금 대기·이벤트 1회·완료 기록 실패 롤백·지연 배송 생성 기록 보존 확인
 - [x] 격리 Gateway·JWT·실제 Feign·PostgreSQL 생성 보강 검증: 201·400·401·500·503, 시작 기록 실패 시 원격 호출 없음
 - [x] 로컬 주문 서비스·V3 반영, 생성 기록 FK 없음·health UP·Gateway O-01 문서·미인증 401 확인. 기존 주문·취소 기록·다른 컨테이너·.env 유지
@@ -95,7 +100,9 @@ O-05는 본문 없이 호출하며 성공 데이터는 orderId·status=CANCELED�
 진행 기록은 2026-10-15 주문 담당자의 명시적 승인으로 V2에 추가했고 SA의 주문 영역에 반영했다. 구현 이유·재현은 [스텝 43](../../learning/junhyun/steps/step-43-order-cancellation.md), 생성·취소의 상세 실패 행렬과 후속 보강안은 [예외 처리 설계](failure-handling.md)에 있다.
 
 O-01은 배송 생성 전에 p_order_creations를 커밋하고 주문과 COMPLETED를 함께 저장한다. 저장 예외가 나도 커밋이 확인되면 201을 반환하며, 조회 실패·상태 불일치에는 배송을 삭제하지 않는다. I-09 타임아웃 보상은 기존대로 시도하지만 지연 생성이 끝났다는 보장이 없어 RECOVERY_REQUIRED를 유지한다.
-외부 주문 멱등키·전체 요청 저장·자동 재실행·복구 API는 아직 없다. 생성 기록은 새 요청의 실행 추적이며 사용자 재요청의 중복 주문 방지 기능은 아니다. 구현 이유는 [스텝 44](../../learning/junhyun/steps/step-44-order-creation-progress.md), 타 서비스가 읽을 내용은 [연동 실패 계약](integration-contract.md)에 정리했다.
+O-01 호출자는 `Idempotency-Key`를 반드시 보낸다. 새 주문에 새 키를 만들고 응답 유실·네트워크 재시도에는 **같은 키와 같은 본문**을 사용한다. UUID를 권장하며 1~128자 영문·숫자·`.`·`_`·`:`·`-`만 허용한다. 사용자 ID별로 구분하며 대소문자를 구별한다.
+같은 키·본문의 완료 요청은 최초 생성 응답으로 201을 반환한다. 요청사항 수정·취소 이후에도 생성 응답은 그대로이며 현재 상태는 O-03에서 조회한다. 다른 본문·처리 중·실패 종료·복구 대기는 각 전용 코드로 409다. 키는 자동 만료하지 않는다([ADR 0008](decisions/0008-order-idempotency-key.md)).
+전체 원본 요청 저장·자동 재실행·복구 API는 아직 없다. 생성 기록·커밋 재확인은 [스텝 44](../../learning/junhyun/steps/step-44-order-creation-progress.md), 멱등키 구현 이유는 [스텝 45](../../learning/junhyun/steps/step-45-order-idempotency-key.md), 타 서비스의 호출·재시도 규칙은 [연동 실패 계약](integration-contract.md)에 정리했다.
 
 ## 5. 협업 로그
 

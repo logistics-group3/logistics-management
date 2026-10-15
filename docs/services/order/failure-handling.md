@@ -2,7 +2,7 @@
 
 - 작성: Junhyun An 작업 / 2026-10-15
 - 기준: 현재 O-01~O-05 코드, [SA 7장](../../SA/sparta-logistics-sa.md), [주문 ADR 0006](decisions/0006-order-cancellation-progress.md)
-- 상태: O-01 생성·O-05 취소의 진행 기록과 커밋 재확인은 구현했다. 외부 생성 멱등키·복구 API·자동 재실행은 후속 설계다. 타 서비스 담당자는 [연동 계약](integration-contract.md)을 함께 읽는다.
+- 상태: O-01 생성·O-05 취소의 진행 기록·커밋 재확인과 외부 생성 멱등키를 구현했다. 복구 API·자동 재실행은 후속 설계다. 타 서비스 담당자는 [연동 계약](integration-contract.md)을 함께 읽는다.
 
 ## 1. 오류 코드보다 먼저 결정할 것
 
@@ -48,15 +48,21 @@ Controller마다 try/catch를 반복하지 않는다. application에서는 **보
 
 ## 3. 주문 생성 O-01: 구현한 실패 흐름
 
-정상 경로는 `업체·상품·권한 확인 → PROCESSING 커밋 → I-09 → 주문·COMPLETED 커밋`이다. 진행 기록 시작을 커밋하지 못하면 I-09를 호출하지 않는다.
+정상 경로는 `사용자·키 조회 → 새 키이면 업체·상품·권한 확인 → PROCESSING 커밋 → I-09 → 주문·COMPLETED·최초 응답 커밋`이다. 진행 기록 시작을 커밋하지 못하면 I-09를 호출하지 않는다.
 
 | 실패 지점 | 응답 | 현재 처리 |
 |---|---|---|
-| 요청 형식·수량 검증 | 400 VALIDATION_ERROR | Controller에서 종료, 생성 기록 없음 |
+| 헤더 누락·형식, 본문·수량 검증 | 400 VALIDATION_ERROR | Controller에서 종료, 새 생성 기록 없음 |
+| 같은 사용자·키, 다른 유효한 본문 | 409 ORDER_IDEMPOTENCY_KEY_CONFLICT | 기존 요청 유지, 회사·배송 호출 없음 |
+| 같은 키·본문, 완료 | 201 | 최초 생성 스냅샷 재사용, 생성·알림 재실행 없음 |
+| 같은 키·본문, 처리 중 | 409 ORDER_CREATION_IN_PROGRESS | 기존 요청 유지, 새 키로 우회하지 않음 |
+| 같은 키·본문, 실패 종료 | 409 ORDER_CREATION_ABORTED | 같은 키 재실행 없음 |
+| 같은 키·본문, 복구 대기·기록 삭제 | 409 ORDER_CREATION_RECOVERY_REQUIRED | 결과 확인 전 재실행 없음 |
 | 요청업체 관리자 권한 | 403 FORBIDDEN | 배송 생성 전 종료, 생성 기록 없음 |
 | 업체·상품 조회의 명확한 4xx | 하위 오류 코드 유지 | 배송 생성 전 종료 |
 | 업체·상품 조회 통신 실패 | 503 SERVICE_UNAVAILABLE | GET 통신 재시도 종료 후 반환 |
-| 생성 기록 시작의 DB 예외 | 500 INTERNAL_SERVER_ERROR | I-09 호출 없음. 시작 기록이 커밋됐을 수도 있어 로그의 orderId·attemptId로 확인 |
+| 동시 생성 기록 INSERT의 유니크 충돌 | 기존 결과에 따라 201·409 | 실패한 트랜잭션 종료 후 기존 키 재조회. 충돌한 요청의 I-09 호출 없음 |
+| 다른 생성 기록 시작의 DB 예외 | 500 INTERNAL_SERVER_ERROR | I-09 호출 없음. 시작 기록이 커밋됐을 수도 있어 로그의 orderId·attemptId로 확인 |
 | I-09의 명확한 4xx | 하위 오류 코드 유지 | ABORTED 기록, 삭제 보상 없음 |
 | I-09 타임아웃·5xx·잘못된 성공 응답 | 503 SERVICE_UNAVAILABLE | 기존 I-13 보상 시도, 성공해도 DELIVERY_RESULT_UNKNOWN으로 복구 대기 |
 | 배송 생성 뒤 엔티티 검증·저장 예외, 미저장 확인 | 원래 업무 오류 또는 500 | I-13 성공이면 ABORTED, 실패이면 DELIVERY_DELETE_FAILED |
@@ -69,15 +75,13 @@ Controller마다 try/catch를 반복하지 않는다. application에서는 **보
 OrderWriter.save와 resolveCreation이 같은 생성 기록을 먼저 잠근다. 원래 트랜잭션의 커밋·롤백이 끝난 뒤 주문과 COMPLETED 기록, 주문자·배송 ID가 일치하는지 확인한다.
 PROCESSING이고 주문이 없을 때만 미저장으로 판정한다. 그 외의 조합을 추측해서 보상하지 않는다.
 
-생성 기록은 주문보다 먼저 저장하므로 p_orders에 FK를 두지 않는다. 실패한 요청도 주문 행 없이 추적할 수 있지만 전체 본문·가격 스냅샷은 보관하지 않는다.
-기록은 결과 확인과 배송 정리를 위한 것이며, 실패한 요청을 자동으로 다시 주문하는 기능은 아니다. 기존 주문에는 기록을 역으로 채우지 않는다.
+생성 기록은 주문보다 먼저 저장하므로 p_orders에 FK를 두지 않는다. 실패한 요청도 주문 행 없이 추적한다. 요청 지문은 저장하지만 실패 요청의 원본 전체 본문은 보관하지 않으며, 성공 시 가격을 포함한 최초 응답을 JSONB로 저장한다.
+기록은 결과 확인과 배송 정리를 위한 것이며, 실패한 요청을 자동으로 다시 주문하는 기능은 아니다. 기존 키 없는 기록과 이전 주문에는 멱등키를 역으로 채우지 않는다.
 
-다음 두 상황은 여전히 별도 보강이 필요하다.
+사용자가 응답을 못 받으면 같은 키·본문으로 재요청한다. `(orderer_id, idempotency_key)` UNIQUE가 동시 요청을 막으며, 키는 자동 만료하지 않는다. JSON 표현이 달라도 파싱한 필드가 같으면 같은 요청이다([ADR 0008](decisions/0008-order-idempotency-key.md)).
+ABORTED는 원인을 해결한 뒤 별도 새 주문에 새 키를 사용할 수 있다. PROCESSING·RECOVERY_REQUIRED는 새 키로 우회하지 않는다. 상세 규칙은 [호출자 계약](integration-contract.md)에 있다.
 
-1. I-09 타임아웃 뒤 I-13이 먼저 no-op으로 끝나고 지연 생성이 나중에 커밋되는 경우. 현재는 삭제 성공으로 복구 완료를 단정하지 않고 RECOVERY_REQUIRED를 남긴다.
-2. 사용자가 O-01 응답을 못 받아 다시 POST한 경우. 외부 요청마다 새 orderId를 발급하므로 다른 주문이 생길 수 있다. 생성 기록의 orderId UNIQUE는 외부 요청의 멱등키가 아니다.
-
-**후속 설계:** Idempotency-Key·사용자·요청 해시를 묶고 같은 요청에는 같은 결과를 반환한다. 키 수명·저장할 요청 및 결과·진행 상태 조회 API는 별도 계약으로 정한다.
+**후속 설계:** 진행 상태 조회·복구 API는 아직 없다. I-13이 먼저 no-op으로 끝난 뒤 I-09가 늦게 생성하는 문제도 남는다.
 지연 생성의 자동 정리는 delivery 측 종료 표시·시도 토큰·결과 확인 수단과 함께 결정한다. [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)는 OPEN이며 아직 합의된 보장이 아니다.
 
 ## 4. 주문 취소 O-05: 구현한 실패 흐름
@@ -111,7 +115,7 @@ PROCESSING이고 주문이 없을 때만 미저장으로 판정한다. 그 외�
 
 | 호출 | 담당 위치 | 횟수·조건 |
 |---|---|---|
-| 외부 O-01 생성 | 현재 클라이언트 자동 재시도 금지 권고 | 외부 멱등키가 없으므로 재요청이 새 주문이 될 수 있음 |
+| 외부 O-01 생성 | 같은 사용자·Idempotency-Key·본문으로 재확인 | 완료는 최초 201, 처리 중·실패·복구 대기는 409. 새 키를 만들며 재시도하지 않음 |
 | 외부 O-05 취소 | 진행 기록으로 중복 실행 차단 | 처리 중·미확정·이미 취소는 409. 무조건 반복하지 않음 |
 | I-07·I-08 GET | IdempotentRetryConfig | 응답 없는 통신 실패에 최대 3회 |
 | I-09 배송 생성 | IdempotentRetryConfig | 같은 orderId, 응답 없는 통신 실패에 최대 3회 |
@@ -134,7 +138,7 @@ PROCESSING이고 주문이 없을 때만 미저장으로 판정한다. 그 외�
 
 ```sql
 SELECT c.order_creation_id AS attempt_id, c.order_id, c.orderer_id,
-       c.status AS creation_status, c.failure_reason,
+       c.idempotency_key, c.status AS creation_status, c.failure_reason,
        c.delivery_id AS recorded_delivery_id, o.delivery_id AS saved_delivery_id,
        o.status AS order_status, c.created_at, c.updated_at
 FROM order_schema.p_order_creations c
@@ -197,7 +201,7 @@ ORDER BY c.created_at;
 
 ## 8. 검증 근거와 남은 시험
 
-O-05 신규 61개, 이번 O-01 보강 신규 40개 테스트를 추가했다. 현재 주문 전체 292개 테스트와 전체 build가 통과했다. 실제 PostgreSQL·HTTP 테스트와 별도 Gateway·JWT 검증을 사용했다.
+O-05 신규 61개, O-01 진행 기록 40개에 이어 멱등키 테스트 55개를 추가했다. 현재 주문 전체 347개·전체 XML 445개, 실패·오류·skip 0이며 전체 build가 통과했다. 실제 PostgreSQL·HTTP 테스트와 별도 Gateway·JWT 검증을 사용했다.
 
 | 항목 | 현재 근거 |
 |---|---|
@@ -209,15 +213,18 @@ O-05 신규 61개, 이번 O-01 보강 신규 40개 테스트를 추가했다. �
 | O-01 커밋 뒤 반환 예외·조회 실패 | 실제 DB 커밋 후 transaction advice 바깥에서 예외 주입. 주문·배송 보존·알림 1회 확인. 네트워크 패킷 유실 주입은 미실행 |
 | O-01 미완료 저장 중 재확인 | 실제 PostgreSQL 잠금 대기 후 커밋·롤백 결과 구분 |
 | O-01 I-13 선행 후 지연 I-09 완료 | 실제 Feign·HTTP 대역에서 RECOVERY_REQUIRED 유지 확인 |
+| O-01 같은 키 동시 실행·본문 충돌 | PostgreSQL의 실제 UNIQUE 경쟁 후 한 주문·배송·이벤트만 생성, 패자는 201 또는 전용 409 |
+| O-01 완료·실패·복구 상태 재요청 | HTTP에서 최초 스냅샷 201·상태별 409, 회사·배송 재호출 없음 |
+| O-01 V3 기존 행·삭제된 생성 기록 | V3 데이터에 V4 적용 후 보존, 삭제된 키 재사용 차단 |
 | O-05 커밋 예외 뒤 COMMITTED·UNKNOWN 분기 | application 단위 테스트. 실제 커밋 응답 패킷 유실 주입은 미실행 |
 | 다중 JVM·프로세스 강제 종료·DB 전체 장애 | 미실행, 후속 장애 시험 |
 | 팀 delivery의 실제 취소·구간 변경·원복 | 미확인. 이번 외부 응답은 HTTP 대역 |
 
 ## 9. 다음 구현 순서 제안
 
-첫 보강인 O-01 커밋 결과 재확인·생성 진행 기록은 ADR 0007로 구현했다. 남은 순서는 다음과 같다.
+O-01 커밋 결과 재확인·생성 진행 기록은 ADR 0007, 외부 멱등키는 ADR 0008로 구현했다. 남은 순서는 다음과 같다.
 
-1. **외부 주문 생성 멱등키와 진행 상태 조회.** 사용자 재시도로 중복 주문이 생기는 문제와 타임아웃 이후 확인 경로를 해결한다.
+1. **생성 진행 상태 조회.** 타임아웃·409 이후 클라이언트가 기존 시도를 확인할 읽기 경로와 권한·응답 계약을 정한다.
 2. **복구 유스케이스와 delivery 지연 처리 계약.** 수동 확인 결과를 안전하게 반영하고, 시도 토큰·종료 표시로 오래된 요청의 영향을 제어한다.
 3. **시간 예산·관측·알림 신뢰성.** Gateway 제한과 Saga 재시도를 맞추고, Slack 전달 보장이 필요해지면 Outbox·재전송을 검토한다.
 

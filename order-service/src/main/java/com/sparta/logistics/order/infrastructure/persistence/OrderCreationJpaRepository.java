@@ -17,4 +17,9 @@ public interface OrderCreationJpaRepository extends JpaRepository<OrderCreation,
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from OrderCreation c where c.orderId = :orderId")
     Optional<OrderCreation> findByOrderIdForUpdate(@Param("orderId") UUID orderId);
+
+    // Note: 논리 삭제로 사용한 키가 다시 실행되지 않게 기록을 포함해서 읽는다. SQLRestriction을 적용하지 않는 조회다.
+    @Override
+    @Query(value = "SELECT * FROM {h-schema}p_order_creations WHERE orderer_id = :ordererId AND idempotency_key = :key", nativeQuery = true)
+    Optional<OrderCreation> findByKeyIncludingDeleted(@Param("ordererId") UUID ordererId, @Param("key") String key);
 }

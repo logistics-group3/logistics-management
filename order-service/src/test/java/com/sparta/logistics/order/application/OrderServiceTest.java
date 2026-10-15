@@ -79,7 +79,7 @@ class OrderServiceTest {
     void createsOrder() {
         stubSuccess();
 
-        OrderResult result = service.create(user, command);
+        OrderResult result = service.create(user, "test-key", command);
 
         ArgumentCaptor<CreateDeliveryCommand> delivery = ArgumentCaptor.forClass(CreateDeliveryCommand.class);
         ArgumentCaptor<Order> order = ArgumentCaptor.forClass(Order.class);
@@ -87,7 +87,7 @@ class OrderServiceTest {
         sequence.verify(companyReader).getCompany(supplier.companyId());
         sequence.verify(companyReader).getCompany(receiver.companyId());
         sequence.verify(companyReader).getProduct(product.productId());
-        sequence.verify(orderWriter).start(any());
+        sequence.verify(orderWriter).start(any(), any());
         sequence.verify(deliveryGateway).create(delivery.capture());
         sequence.verify(orderWriter).save(order.capture(), eq(supplier.name()), eq(receiver.name()));
 
@@ -112,7 +112,7 @@ class OrderServiceTest {
         stubSuccess();
         UserContext master = new UserContext(UUID.randomUUID(), "master01", Role.MASTER, false);
 
-        OrderResult result = service.create(master, command);
+        OrderResult result = service.create(master, "test-key", command);
 
         assertThat(result.ordererId()).isEqualTo(master.userId());
         verify(orderWriter).save(any(), eq(supplier.name()), eq(receiver.name()));
@@ -124,9 +124,11 @@ class OrderServiceTest {
         stubCompanies();
         UserContext stranger = new UserContext(UUID.randomUUID(), "stranger", Role.USER, false);
 
-        assertThatThrownBy(() -> service.create(stranger, command))
+        assertThatThrownBy(() -> service.create(stranger, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.FORBIDDEN);
-        verifyNoInteractions(deliveryGateway, orderWriter);
+        verifyNoInteractions(deliveryGateway);
+        verify(orderWriter, never()).start(any(), any());
+        verify(orderWriter, never()).save(any(), any(), any());
         verify(companyReader, never()).getProduct(any());
     }
 
@@ -137,9 +139,11 @@ class OrderServiceTest {
         given(companyReader.getProduct(product.productId())).willReturn(
                 new ProductResult(product.productId(), UUID.randomUUID(), product.name(), product.price()));
 
-        assertThatThrownBy(() -> service.create(user, command))
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_REQUEST);
-        verifyNoInteractions(deliveryGateway, orderWriter);
+        verifyNoInteractions(deliveryGateway);
+        verify(orderWriter, never()).start(any(), any());
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -148,8 +152,10 @@ class OrderServiceTest {
         BusinessException failure = notFound("COMPANY_NOT_FOUND");
         given(companyReader.getCompany(supplier.companyId())).willThrow(failure);
 
-        assertThatThrownBy(() -> service.create(user, command)).isSameAs(failure);
-        verifyNoInteractions(deliveryGateway, orderWriter);
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).isSameAs(failure);
+        verifyNoInteractions(deliveryGateway);
+        verify(orderWriter, never()).start(any(), any());
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -159,8 +165,10 @@ class OrderServiceTest {
         BusinessException failure = notFound("PRODUCT_NOT_FOUND");
         given(companyReader.getProduct(product.productId())).willThrow(failure);
 
-        assertThatThrownBy(() -> service.create(user, command)).isSameAs(failure);
-        verifyNoInteractions(deliveryGateway, orderWriter);
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).isSameAs(failure);
+        verifyNoInteractions(deliveryGateway);
+        verify(orderWriter, never()).start(any(), any());
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @ParameterizedTest
@@ -174,9 +182,11 @@ class OrderServiceTest {
             given(companyReader.getProduct(product.productId())).willThrow(timeout());
         }
 
-        assertThatThrownBy(() -> service.create(user, command))
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
-        verifyNoInteractions(deliveryGateway, orderWriter);
+        verifyNoInteractions(deliveryGateway);
+        verify(orderWriter, never()).start(any(), any());
+        verify(orderWriter, never()).save(any(), any(), any());
     }
 
     @Test
@@ -186,7 +196,7 @@ class OrderServiceTest {
         BusinessException failure = notFound("DELIVERY_MANAGER_NOT_FOUND");
         given(deliveryGateway.create(any())).willThrow(failure);
 
-        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
         verify(deliveryGateway, never()).deleteByOrderId(any());
         verify(orderWriter, never()).save(any(), any(), any());
     }
@@ -198,7 +208,7 @@ class OrderServiceTest {
         BusinessException failure = new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE);
         given(deliveryGateway.create(any())).willThrow(failure);
 
-        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
         verify(orderWriter, never()).save(any(), any(), any());
@@ -210,7 +220,7 @@ class OrderServiceTest {
         stubLookup();
         given(deliveryGateway.create(any())).willThrow(timeout());
 
-        assertThatThrownBy(() -> service.create(user, command))
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
@@ -223,7 +233,7 @@ class OrderServiceTest {
         stubLookup();
         given(deliveryGateway.create(any())).willReturn(null);
 
-        assertThatThrownBy(() -> service.create(user, command))
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
@@ -237,7 +247,7 @@ class OrderServiceTest {
         given(orderWriter.save(any(), any(), any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
         given(orderWriter.resolveCreation(any())).willReturn(OrderCreationCommitResult.notCommitted());
 
-        assertThatThrownBy(() -> service.create(user, command))
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
@@ -252,7 +262,7 @@ class OrderServiceTest {
         given(deliveryGateway.create(any())).willReturn(deliveryId);
         given(orderWriter.resolveCreation(any())).willReturn(OrderCreationCommitResult.notCommitted());
 
-        assertThatThrownBy(() -> service.create(user, command))
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_REQUEST);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
@@ -267,7 +277,7 @@ class OrderServiceTest {
         given(orderWriter.resolveCreation(any())).willReturn(OrderCreationCommitResult.notCommitted());
         willThrow(timeout()).willThrow(timeout()).willDoNothing().given(deliveryGateway).deleteByOrderId(any());
 
-        assertThatThrownBy(() -> service.create(user, command))
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway, times(3)).deleteByOrderId(orderId);
@@ -281,7 +291,7 @@ class OrderServiceTest {
         given(deliveryGateway.create(any())).willThrow(failure);
         willThrow(timeout()).given(deliveryGateway).deleteByOrderId(any());
 
-        assertThatThrownBy(() -> service.create(user, command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
+        assertThatThrownBy(() -> service.create(user, "test-key", command)).extracting("errorCode").isEqualTo(failure.getErrorCode());
 
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway, times(3)).deleteByOrderId(orderId);
@@ -305,7 +315,7 @@ class OrderServiceTest {
 
     private void stubSuccess() {
         stubDeliveryCreated();
-        given(orderWriter.save(any(), any(), any())).willAnswer(invocation -> OrderResult.from(invocation.getArgument(0)));
+        given(orderWriter.save(any(), any(), any())).willAnswer(invocation -> OrderResult.from(invocation.getArgument(0, Order.class)));
     }
 
     private UUID captureCreatedOrderId() {
