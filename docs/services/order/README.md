@@ -17,7 +17,9 @@
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
 | O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | 생성·보상·Feign·Controller·커밋 후 Slack 구현. company·delivery는 HTTP 대역으로 검증, 실제 Slack Webhook 테스트는 200·ok 확인 |
-| O-02~O-06 | `/api/v1/orders/**` | 주문자, MASTER | 예정 | O-05는 취소 흐름(SA 7.2) |
+| O-02 | `GET /api/v1/orders` | 로그인, USER는 본인 주문만 | 구현 | 선택 필터·QueryDSL·페이지·정렬, 내용과 count에 같은 권한 조건 |
+| O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
+| O-04~O-06 | `/api/v1/orders/**` | 주문자, MASTER | 예정 | O-05는 취소 흐름(SA 7.2) |
 
 금액은 정수 원 단위의 `long`·`BIGINT`이며 SA 5.5·6.7과 일치한다. BigDecimal 전환은 사용자 요청으로 되돌렸고 현재 기준은 [order ADR 0005](decisions/0005-order-money-integer-krw.md)다.
 
@@ -44,9 +46,13 @@
 - [x] Controller 11개·실제 HTTP/Feign 13개 추가 검증. 주문 모듈 전체 93개 통과
 - [x] 격리 Gateway·JWT·주문 서버·PostgreSQL 검증: 401·201·400·503, 위조 헤더 제거, 실패 보상 (user·company·delivery 응답은 HTTP 테스트 대역)
 - [ ] 팀 company·delivery 구현·실제 데이터와 정상 주문 연동
-- [ ] O-02~O-06
+- [x] O-02 검색·O-03 단건 조회, 논리 삭제 제외·주문자 범위·날짜·페이지·정렬 검증
+- [ ] O-04~O-06
 - [x] 커밋 후 비동기 Slack 알림, 타임아웃·HTTP 오류·큐 포화 시 주문 201 유지
-- [x] 현재 주문 테스트 108개 통과. 커밋 전·실패 시 알림 미실행, 비동기·헤더 격리·비밀값 로그 제외 확인
+- [x] Slack 구현 단계의 주문 테스트 108개 통과. 커밋 전·실패 시 알림 미실행, 비동기·헤더 격리·비밀값 로그 제외 확인
+- [x] 조회 API 테스트 44개 추가. 현재 주문 152개·전체 테스트 XML 250개, 실패·오류·skip 0
+- [x] 격리 Gateway·JWT·Order·PostgreSQL 조회 검증: 200·400·401·403·404, 위조 사용자 헤더 차단, 본인 범위와 count 확인
+- [x] 현재 Compose에 주문 서비스만 반영. health UP, Gateway의 O-02·O-03 문서·size=10·미인증 401 확인
 - [x] config-server·order-service 새 이미지·환경 변수 반영, health UP·Gateway OpenAPI 200·미인증 401 확인
 - [x] 주문 컨테이너에서 실제 Slack Webhook 테스트 1건 발송, HTTP 200·ok 확인 (주문 생성 없는 연결 테스트)
 
@@ -56,6 +62,8 @@
 Slack 설정은 `config-repo/order-service.yml`의 `slack.webhook-url`이며 기존 `SLACK_WEBHOOK_URL` 환경 변수를 사용한다. 빈 값은 발송 생략이다. 풀은 2개 스레드·100개 대기열, 연결·읽기 제한은 1초·2초이며 재시도하지 않는다. 메모리 이벤트이므로 프로세스 종료·전송 실패·포화 시 알림 유실이 가능하다. 적용 절차는 [스텝 39](../../learning/junhyun/steps/step-39-order-slack-after-commit.md)에 있다.
 
 실제 환경 반영과 발송 결과는 [스텝 40](../../learning/junhyun/steps/step-40-slack-live-connection.md)에 있다. 실제 URL은 저장소에 기록하지 않는다.
+
+검색은 `status`, `supplierCompanyId`, `receiverCompanyId`, `productId`, `startDate`, `endDate`를 지원한다. 날짜는 시작·종료일을 포함하며 역전된 기간은 400 INVALID_REQUEST다. page는 0부터, size는 10·30·50(그 외 10 보정), 정렬은 createdAt·quantity만 허용하고 기본은 createdAt,DESC다. 조회는 주문에 저장된 스냅샷을 읽으며 회사·배송·Slack을 호출하지 않는다. 상세 설명은 [스텝 41](../../learning/junhyun/steps/step-41-order-query-api.md)에 있다.
 
 ## 5. 협업 로그
 

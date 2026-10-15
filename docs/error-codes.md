@@ -44,7 +44,7 @@
 ## order-service
 | 코드 | HTTP | 의미 | 상태 |
 |---|---|---|---|
-| `ORDER_NOT_FOUND` | 404 | 주문이 없거나 삭제됨 | 예정 |
+| `ORDER_NOT_FOUND` | 404 | 주문이 없거나 삭제됨 | 구현 |
 | `ORDER_NOT_DELETABLE` | 409 | 취소 또는 배송 완료 전 주문 삭제 | 예정 |
 
 ## delivery-service

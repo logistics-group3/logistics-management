@@ -4,7 +4,8 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
-| 40 | [Slack 실제 연결과 컨테이너 설정 반영](step-40-slack-live-connection.md) | 실행 검증·기록 미커밋 (코드 7a3f93f) |
+| 41 | [주문 검색과 단건 조회 API](step-41-order-query-api.md) | 미커밋 |
+| 40 | [Slack 실제 연결과 컨테이너 설정 반영](step-40-slack-live-connection.md) | af0ba34 docs(order): Slack 실제 연동과 설정 검증 기록 |
 | 39 | [주문 커밋 후 비동기 Slack 알림](step-39-order-slack-after-commit.md) | 7a3f93f feat(order): 커밋 후 비동기 Slack 알림 구현 |
 | 38 | [주문 Feign 어댑터와 Controller 연결](step-38-order-feign-controller.md) | 9b48adc feat(order): 주문 생성 Feign과 Controller 연결 |
 | 37 | [주문 생성 application 흐름과 실패 보상](step-37-order-creation-application.md) | 3b5a39c feat(order): 주문 생성 흐름과 실패 보상 구현 |

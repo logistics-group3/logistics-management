@@ -260,3 +260,33 @@ PostgreSQL은 2026-10-14 생성된 기존 `logistics-management_pgdata`를 재�
 
 - `.env`를 바꾼 뒤 단순 restart로는 값이 반영되지 않는 이유는 무엇인가?
 - Webhook 테스트가 성공해도 실제 주문 생성 전체 흐름의 검증이 남는 이유는 무엇인가?
+
+## O-02 주문 검색·O-03 단건 조회 (2026-10-15)
+
+### 처리 과정
+
+1. Slack 실제 연동 기록을 사용자 요청에 따라 `af0ba34`로 커밋했다.
+2. OrderQueryService와 검색 조건·저장소 계약, QueryDSL 구현, ORDER_NOT_FOUND를 추가했다.
+3. 기존 Controller·OrderResponse에 검색·단건 조회를 연결하고 권한·페이지·기간·삭제 제외를 검증했다.
+
+### 핵심
+
+- 검색은 인증 사용자의 ordererId를 내용·count 쿼리에 함께 넣는다. MASTER만 주문자 제한을 생략한다.
+- 조회는 readOnly 트랜잭션에서 저장된 상품·가격 스냅샷을 읽으며 회사·배송·Slack을 호출하지 않는다.
+- 종료일 다음 날 0시 미만으로 비교해 마지막 소수 초까지 포함한다. 정렬은 createdAt·quantity만 허용하며 ID로 동률 순서를 고정한다.
+- 요청 SearchCondition과 서버가 권한·시간 경계를 정한 SearchCriteria를 나눠 domain이 application DTO에 의존하지 않게 한다.
+
+### 검증
+
+신규 application 10개·MVC 12개·HTTP/PostgreSQL 22개를 추가했고 전체 주문 152개가 통과했다. 전체 build 성공, XML 합계 250개이며 실패·오류·skip은 0이다.
+격리 Gateway·JWT·Order·PostgreSQL에서 200·400·401·403·404, 위조 헤더 차단, 본인 범위·count를 확인했다. 임시 프로세스와 DB는 정리했다. 자세한 실행 근거는 [스텝 41](../../learning/junhyun/steps/step-41-order-query-api.md)에 있다.
+Swagger size 기본값 불일치는 TS-010, 공유 테스트 DB의 fixture 간섭은 TS-011로 해결했다.
+
+### 확인 질문
+
+- 본인 주문 제한을 조회 후 필터링하면 페이지와 전체 건수에 어떤 문제가 생기는가?
+- 종료일 23:59:59와 다음 날 00:00 미만 조건은 어떻게 다른가?
+
+### 메모
+
+테이블·마이그레이션·공통 모듈과 원화 long 계약은 바꾸지 않았다. 조회 코드와 이번 기록은 미커밋이며 추가 Slack 메시지는 보내지 않았다.

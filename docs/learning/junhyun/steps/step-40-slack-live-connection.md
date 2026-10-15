@@ -54,4 +54,4 @@ docker compose up -d --no-deps --no-build --wait --wait-timeout 90 order-service
 ## 남은 검증
 
 company I-07·I-08, delivery I-09·I-13의 실제 구현과 테스트 데이터가 준비되면 Gateway를 통한 정상 주문 생성과 실패 보상, 생성 이벤트의 실제 Slack 알림을 함께 확인한다.
-이번 실행 기록은 후속 문서 변경이며 추가 커밋·푸시는 하지 않았다.
+이번 실행 기록은 후속 요청에서 `af0ba34 docs(order): Slack 실제 연동과 설정 검증 기록`으로 커밋했다. 푸시는 수행하지 않았다.

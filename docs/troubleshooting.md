@@ -102,3 +102,20 @@
 - 원인: 새 테스트가 공통 클래스에 없는 상수 이름을 참조했다. 정본 이름은 `UserHeaders.DELIVERY_MANAGER`다.
 - 해결: 공통 계약을 확인하고 테스트의 참조를 수정했다. 주문 108개 테스트와 전체 빌드가 통과했다.
 - 배운 점: 공통 헤더 이름은 추측하지 않고 `common-core`의 `UserHeaders`를 확인한다. 문자열을 새로 만들거나 공통 계약을 바꾸어 우회하지 않는다.
+
+### TS-010 실제 검색 size 기본값은 10인데 Swagger에는 20이 표시됨
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: OpenAPI 계약 테스트가 `expected: 10 but was: 20`으로 실패했다. 실제 검색 API는 공통 리졸버를 거쳐 size=10을 사용했다.
+- 원인: Springdoc의 Pageable 문서 기본값이 커스텀 SearchPageableArgumentResolver의 기본값을 자동으로 반영하지 않았다.
+- 해결: 조회 Controller에 `@PageableDefault(size=10, sort="createdAt", direction=DESC)`를 명시하고 OpenAPI의 파라미터 목록·size 기본값을 회귀 테스트로 확인했다. 공통 리졸버는 바꾸지 않았다.
+- 배운 점: 실행 결과뿐 아니라 Swagger가 안내하는 입력 계약도 실제 API와 맞는지 검증한다.
+
+### TS-011 검색 테스트 데이터가 기존 커밋 실패 테스트의 임시 유니크 제약과 충돌함
+
+- 서비스·작성: order / Junhyun An 작업 / 2026-10-15
+- 문제: 전체 빌드에서 OrderCreationIntegrationTest의 `ALTER TABLE ... UNIQUE (orderer_id, request_note)`가 DuplicateKeyException으로 실패했다. API 호출 전 임시 제약 생성 단계의 실패였다.
+- 원인: 새 HTTP 검색 테스트가 동일 주문자·요청사항의 정상 주문을 여러 건 만들고 공유 Testcontainers DB에 남겼다. 실행 순서에 따라 이 데이터가 기존 테스트의 임시 제약과 충돌했다.
+- 해결: 새 테스트가 생성한 주문 UUID만 기록하고 `@AfterEach`의 finally에서 해당 fixture 행을 정리한다. 전체 테이블이나 다른 테스트의 데이터는 삭제하지 않는다.
+- 확인: 전체 build 성공, 주문 152개·전체 XML 250개, 실패·오류·skip 0. Swagger 계약 테스트도 함께 통과했다.
+- 배운 점: HTTP 테스트는 서버 스레드에서 별도 트랜잭션을 쓰므로 테스트 메서드의 롤백만으로 격리되지 않는다. 공유 DB를 쓰면 자신이 만든 데이터의 수명도 관리한다.
