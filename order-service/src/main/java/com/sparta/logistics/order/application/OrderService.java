@@ -8,7 +8,10 @@ import com.sparta.logistics.order.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.order.application.dto.CreateOrderCommand;
 import com.sparta.logistics.order.application.dto.OrderResult;
 import com.sparta.logistics.order.application.dto.ProductResult;
+import com.sparta.logistics.order.application.dto.UpdateOrderCommand;
 import com.sparta.logistics.order.domain.Order;
+import com.sparta.logistics.order.domain.OrderErrorCode;
+import com.sparta.logistics.order.domain.OrderRepository;
 import feign.FeignException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** O-01 주문 생성 흐름. 외부 호출과 로컬 주문 저장을 구분한다. */
+/** 주문 쓰기 흐름. 생성의 외부 호출과 수정의 로컬 트랜잭션을 구분한다. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,7 @@ public class OrderService {
     private final CompanyReader companyReader;
     private final DeliveryGateway deliveryGateway;
     private final OrderWriter orderWriter;
+    private final OrderRepository orderRepository;
 
     /** O-01. 요청업체 관리자 또는 MASTER만 주문하며 배송 생성·주문 저장 실패를 단계별로 보상한다. */
     @Transactional(propagation = Propagation.NEVER)
@@ -65,6 +69,18 @@ public class OrderService {
             compensateDelivery(orderId);
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /** O-04. 주문자 본인 또는 MASTER만 요청사항을 수정하며 취소된 주문은 거부한다. */
+    @Transactional
+    public OrderResult updateRequestNote(UserContext user, UUID orderId, UpdateOrderCommand command) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+        user.validateSelfOrMaster(order.getOrdererId());
+        order.updateRequestNote(command.requestNote());
+        // Note: 변경 감지와 Audit 갱신을 먼저 실행해 응답에도 이번 수정의 updatedAt을 담는다. 커밋은 메서드 종료 후다.
+        orderRepository.flush();
+        return OrderResult.from(order);
     }
 
     private UUID createDelivery(CreateDeliveryCommand command) {

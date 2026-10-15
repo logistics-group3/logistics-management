@@ -4,7 +4,8 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
-| 41 | [주문 검색과 단건 조회 API](step-41-order-query-api.md) | 미커밋 |
+| 42 | [주문 요청사항 수정 API](step-42-order-request-note-update.md) | 미커밋 |
+| 41 | [주문 검색과 단건 조회 API](step-41-order-query-api.md) | 9a41925 feat(order): 주문 검색과 단건 조회 구현 |
 | 40 | [Slack 실제 연결과 컨테이너 설정 반영](step-40-slack-live-connection.md) | af0ba34 docs(order): Slack 실제 연동과 설정 검증 기록 |
 | 39 | [주문 커밋 후 비동기 Slack 알림](step-39-order-slack-after-commit.md) | 7a3f93f feat(order): 커밋 후 비동기 Slack 알림 구현 |
 | 38 | [주문 Feign 어댑터와 Controller 연결](step-38-order-feign-controller.md) | 9b48adc feat(order): 주문 생성 Feign과 Controller 연결 |

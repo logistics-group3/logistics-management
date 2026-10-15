@@ -17,7 +17,7 @@
 | `NOT_FOUND` | 404 | 경로 없음, 외부에서 `/internal/**` 호출 | 구현 |
 | `METHOD_NOT_ALLOWED` | 405 | 지원하지 않는 HTTP 메서드 | 구현 |
 | `NOT_ACCEPTABLE` | 406 | 지원하지 않는 응답 형식 | 구현 |
-| `INVALID_STATUS_TRANSITION` | 409 | 허용되지 않는 상태 변경(order 주문 취소, delivery 구간 상태) | 구현 |
+| `INVALID_STATUS_TRANSITION` | 409 | 허용되지 않는 상태 변경(order 취소된 주문 수정·주문 취소, delivery 구간 상태) | 구현 |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | 지원하지 않는 Content-Type | 구현 |
 | `INTERNAL_SERVER_ERROR` | 500 | 처리하지 못한 예외 | 구현 |
 | `SERVICE_UNAVAILABLE` | 503 | 하위 서비스 호출 실패·타임아웃 | 구현 |

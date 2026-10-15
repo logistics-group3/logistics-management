@@ -23,6 +23,7 @@ import com.sparta.logistics.order.application.dto.CreateOrderCommand;
 import com.sparta.logistics.order.application.dto.OrderResult;
 import com.sparta.logistics.order.application.dto.ProductResult;
 import com.sparta.logistics.order.domain.Order;
+import com.sparta.logistics.order.domain.OrderRepository;
 import com.sparta.logistics.order.domain.OrderStatus;
 import feign.Request;
 import feign.RetryableException;
@@ -53,6 +54,8 @@ class OrderServiceTest {
     private DeliveryGateway deliveryGateway;
     @Mock
     private OrderWriter orderWriter;
+    @Mock
+    private OrderRepository orderRepository;
 
     private final UserContext user = new UserContext(UUID.randomUUID(), "junhyun", Role.USER, false);
     private final CompanyResult supplier = new CompanyResult(UUID.randomUUID(), "공급업체", UUID.randomUUID(),
@@ -67,7 +70,7 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(companyReader, deliveryGateway, orderWriter);
+        service = new OrderService(companyReader, deliveryGateway, orderWriter, orderRepository);
     }
 
     @Test

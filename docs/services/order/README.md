@@ -9,7 +9,7 @@
 | 담당자 | Junhyun An (2026-10-15 본인 확인) |
 | 포트 | 8084 |
 | 스키마·DB 계정 | `order_schema` / `order_app` |
-| 책임 | 주문 생성(Saga 오케스트레이션)·취소·삭제, Slack 알림 |
+| 책임 | 주문 생성(Saga 오케스트레이션)·조회·요청사항 수정·취소·삭제, Slack 알림 |
 | 소유 테이블 | `p_orders` (SA 5.5) |
 
 ## 2. 제공 API (계약)
@@ -19,7 +19,8 @@
 | O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | 생성·보상·Feign·Controller·커밋 후 Slack 구현. company·delivery는 HTTP 대역으로 검증, 실제 Slack Webhook 테스트는 200·ok 확인 |
 | O-02 | `GET /api/v1/orders` | 로그인, USER는 본인 주문만 | 구현 | 선택 필터·QueryDSL·페이지·정렬, 내용과 count에 같은 권한 조건 |
 | O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
-| O-04~O-06 | `/api/v1/orders/**` | 주문자, MASTER | 예정 | O-05는 취소 흐름(SA 7.2) |
+| O-04 | `PATCH /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | requestNote 필수·공백 불가·최대 500자. 취소된 주문은 409 INVALID_STATUS_TRANSITION |
+| O-05~O-06 | `/api/v1/orders/**` | 주문자, MASTER | 예정 | O-05는 취소 흐름(SA 7.2) |
 
 금액은 정수 원 단위의 `long`·`BIGINT`이며 SA 5.5·6.7과 일치한다. BigDecimal 전환은 사용자 요청으로 되돌렸고 현재 기준은 [order ADR 0005](decisions/0005-order-money-integer-krw.md)다.
 
@@ -47,10 +48,15 @@
 - [x] 격리 Gateway·JWT·주문 서버·PostgreSQL 검증: 401·201·400·503, 위조 헤더 제거, 실패 보상 (user·company·delivery 응답은 HTTP 테스트 대역)
 - [ ] 팀 company·delivery 구현·실제 데이터와 정상 주문 연동
 - [x] O-02 검색·O-03 단건 조회, 논리 삭제 제외·주문자 범위·날짜·페이지·정렬 검증
-- [ ] O-04~O-06
+- [x] O-04 요청사항 수정: 본인·MASTER 권한, 취소 상태 거부, 잠금 조회·변경 감지·Audit 응답
+- [ ] O-05~O-06
 - [x] 커밋 후 비동기 Slack 알림, 타임아웃·HTTP 오류·큐 포화 시 주문 201 유지
 - [x] Slack 구현 단계의 주문 테스트 108개 통과. 커밋 전·실패 시 알림 미실행, 비동기·헤더 격리·비밀값 로그 제외 확인
-- [x] 조회 API 테스트 44개 추가. 현재 주문 152개·전체 테스트 XML 250개, 실패·오류·skip 0
+- [x] 조회 API 테스트 44개 추가. 조회 단계 주문 152개·전체 테스트 XML 250개, 실패·오류·skip 0
+- [x] 수정 API 테스트 39개 추가. 현재 주문 191개·전체 테스트 XML 289개, 실패·오류·skip 0
+- [x] PostgreSQL 동시 취소·삭제 대기 후 409·404, 실패·롤백 시 기존 데이터 유지, 응답·DB Audit 일치 확인
+- [x] 격리 Gateway·JWT·Order·PostgreSQL 수정 검증: 200·400·401·403·404·409, 위조 헤더 차단, 회사·배송·알림 호출 없음
+- [x] 로컬 주문 이미지 반영 후 health UP, Gateway O-04 OpenAPI 200·필수 requestNote/최대 500·미인증 PATCH 401 확인. 다른 8개 컨테이너와 .env·Webhook 값 유지
 - [x] 격리 Gateway·JWT·Order·PostgreSQL 조회 검증: 200·400·401·403·404, 위조 사용자 헤더 차단, 본인 범위와 count 확인
 - [x] 현재 Compose에 주문 서비스만 반영. health UP, Gateway의 O-02·O-03 문서·size=10·미인증 401 확인
 - [x] config-server·order-service 새 이미지·환경 변수 반영, health UP·Gateway OpenAPI 200·미인증 401 확인
@@ -59,11 +65,15 @@
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
 구현 과정과 검증 근거는 [구현 노트](notes.md)에 있다. 팀 서비스의 실제 구현·데이터로 주문 생성부터 Slack 알림까지 연결하는 전체 검증은 남아 있다.
 
+이전 구현 기록: [주문 기반·금액 결정](notes/foundation-and-money.md), [생성·Feign·실패 보상](notes/create-and-compensation.md), [Slack 알림·실제 연결](notes/slack-notification.md).
+
 Slack 설정은 `config-repo/order-service.yml`의 `slack.webhook-url`이며 기존 `SLACK_WEBHOOK_URL` 환경 변수를 사용한다. 빈 값은 발송 생략이다. 풀은 2개 스레드·100개 대기열, 연결·읽기 제한은 1초·2초이며 재시도하지 않는다. 메모리 이벤트이므로 프로세스 종료·전송 실패·포화 시 알림 유실이 가능하다. 적용 절차는 [스텝 39](../../learning/junhyun/steps/step-39-order-slack-after-commit.md)에 있다.
 
 실제 환경 반영과 발송 결과는 [스텝 40](../../learning/junhyun/steps/step-40-slack-live-connection.md)에 있다. 실제 URL은 저장소에 기록하지 않는다.
 
 검색은 `status`, `supplierCompanyId`, `receiverCompanyId`, `productId`, `startDate`, `endDate`를 지원한다. 날짜는 시작·종료일을 포함하며 역전된 기간은 400 INVALID_REQUEST다. page는 0부터, size는 10·30·50(그 외 10 보정), 정렬은 createdAt·quantity만 허용하고 기본은 createdAt,DESC다. 조회는 주문에 저장된 스냅샷을 읽으며 회사·배송·Slack을 호출하지 않는다. 상세 설명은 [스텝 41](../../learning/junhyun/steps/step-41-order-query-api.md)에 있다.
+
+O-04 본문은 `{"requestNote":"오후 도착 희망"}`이다. 누락·null·빈 문자열·공백·500자 초과는 400 VALIDATION_ERROR, 타인 주문은 403 FORBIDDEN, 없음·삭제는 404 ORDER_NOT_FOUND, 취소 상태는 409 INVALID_STATUS_TRANSITION이다. 성공은 수정된 OrderResponse를 담은 200이다. 상품·수량·가격·배송 정보는 수정하지 않으며 회사·배송 API와 Slack을 호출하지 않는다. 잠금·트랜잭션·Audit 근거는 [스텝 42](../../learning/junhyun/steps/step-42-order-request-note-update.md)에 있다.
 
 ## 5. 협업 로그
 

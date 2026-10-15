@@ -10,4 +10,8 @@ public interface OrderRepository {
     Order saveAndFlush(Order order);
 
     Optional<Order> findById(UUID id);
+
+    Optional<Order> findByIdForUpdate(UUID id);
+
+    void flush();
 }

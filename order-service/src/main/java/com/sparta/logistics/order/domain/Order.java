@@ -101,6 +101,17 @@ public class Order extends BaseEntity {
         return order;
     }
 
+    /** O-04. 취소되지 않은 주문의 요청사항만 바꾼다. 상품·수량 변경은 취소 후 재주문한다. */
+    public void updateRequestNote(String requestNote) {
+        if (status != OrderStatus.ORDERED) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (requestNote == null || requestNote.isBlank() || requestNote.length() > 500) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "요청사항은 공백이 아닌 500자 이내의 값이어야 합니다.");
+        }
+        this.requestNote = requestNote;
+    }
+
     private static long calculateTotalPrice(long unitPrice, int quantity) {
         try {
             // Note: 원 단위 BIGINT 계약(SA 5.5)을 지킨다. 일반 곱셈은 오버플로 때 예외 없이 잘린 금액을 만들 수 있다.
