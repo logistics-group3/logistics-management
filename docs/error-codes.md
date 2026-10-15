@@ -35,11 +35,11 @@
 | `HUB_NOT_FOUND` | 404 | 허브가 없음 | 예정 |
 | `HUB_ROUTE_NOT_FOUND` | 404 | 허브 간 경로가 없음 | 예정 |
 
-## company-service
+## company-service (`CompanyErrorCode`)
 | 코드 | HTTP | 의미 | 상태 |
 |---|---|---|---|
-| `COMPANY_NOT_FOUND` | 404 | 업체가 없거나 삭제됨 | 예정 |
-| `PRODUCT_NOT_FOUND` | 404 | 상품이 없거나 삭제됨 | 예정 |
+| `COMPANY_NOT_FOUND` | 404 | 업체가 없거나 삭제됨 | 구현 |
+| `PRODUCT_NOT_FOUND` | 404 | 상품이 없거나 삭제됨 | 구현 |
 
 ## order-service
 | 코드 | HTTP | 의미 | 상태 |
