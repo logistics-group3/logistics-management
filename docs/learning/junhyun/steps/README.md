@@ -1,9 +1,11 @@
 # 구현 스텝 기록
 
-공통 인프라를 스텝 단위로 구현하면서 남긴 설명이다. 스텝마다 만든 것, 리뷰 포인트, 검증 결과를 적는다. 전체 리뷰와 블로그 정리의 재료로 쓴다. 질문과 답은 `../qna/`에 따로 둔다. 스텝 13부터는 팀 의견을 공통 인프라 통합 브랜치에 반영한 기록이다. 커밋은 제목으로 찾는다(`git log --grep`).
+공통 인프라와 주문 도메인을 스텝 단위로 구현하면서 남긴 설명이다. 스텝마다 만든 것, 리뷰 포인트, 검증 결과를 적는다. 전체 리뷰와 블로그 정리의 재료로 쓴다. 질문과 답은 `../qna/`에 따로 둔다. 스텝 13~34는 공통 인프라 통합 기록이고, 35부터 주문 도메인 구현을 기록한다. 커밋은 제목으로 찾는다(`git log --grep`).
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 36 | [주문 금액 BigDecimal 검토와 원복](step-36-order-money-bigdecimal.md) | 원복 완료·미커밋 |
+| 35 | [주문 Entity·마이그레이션·Repository 기반](step-35-order-foundation.md) | 미커밋 |
 | 34 | [전수검사와 병합 전 수정](step-34-audit-fixes.md) | fix(agents)·fix(config)·docs(agents)·docs(decisions)·fix(script) 6개 |
 | 33 | [문서·AI 지침 범위 최종 확인](step-33-final-check.md) | docs(infra): 문서·AI 지침 범위 최종 확인과 PR 본문 갱신 |
 | 32 | [문서 동기화 검사](step-32-docs-check.md) | chore(ci): 문서 동기화 검사와 PR 검사 워크플로 추가 |

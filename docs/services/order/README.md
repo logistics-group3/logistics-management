@@ -6,7 +6,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 담당자 | 미정 |
+| 담당자 | Junhyun An (2026-10-15 본인 확인) |
 | 포트 | 8084 |
 | 스키마·DB 계정 | `order_schema` / `order_app` |
 | 책임 | 주문 생성(Saga 오케스트레이션)·취소·삭제, Slack 알림 |
@@ -17,6 +17,8 @@
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
 | O-01~O-06 | `/api/v1/orders/**` | 요청업체 관리자, 주문자, MASTER | 예정 | O-01은 Saga(SA 7.1), O-05는 취소 흐름(SA 7.2) |
+
+금액은 정수 원 단위의 `long`·`BIGINT`이며 SA 5.5·6.7과 일치한다. BigDecimal 전환은 사용자 요청으로 되돌렸고 현재 기준은 [order ADR 0005](decisions/0005-order-money-integer-krw.md)다.
 
 ## 3. 호출하는 다른 서비스 API
 
@@ -29,12 +31,15 @@
 
 ## 4. 구현 현황
 
-- [ ] 주문 Entity와 Flyway 마이그레이션
+- [x] 주문 Entity와 Flyway 마이그레이션 (`Order`, `OrderStatus`, `V1__create_p_orders.sql`)
+- [x] 저장·단건 조회 Repository와 기반 테스트 (원복 후 단위 24개, PostgreSQL 통합 18개 통과)
+- [x] 정수 원화 금액 long·BIGINT 복원, 곱셈 오버플로 방어 유지 (ADR 0005)
 - [ ] O-01 주문 생성 Saga와 보상
 - [ ] O-02~O-06
 - [ ] Slack 알림
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
+구현 과정과 검증 근거는 [구현 노트](notes.md)에 있다. 외부 API와 Saga는 아직 구현하지 않았다.
 
 ## 5. 협업 로그
 
