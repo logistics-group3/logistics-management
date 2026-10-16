@@ -4,7 +4,7 @@ import com.sparta.logistics.hub.domain.Hub;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/** H-01, H-02 응답. */
+/** H-01, H-02 조회 결과. 응답 형식은 presentation의 HubResponse가 정한다. */
 public record HubResult(
         UUID hubId,
         String name,
