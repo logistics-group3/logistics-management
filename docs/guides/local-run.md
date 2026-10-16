@@ -13,6 +13,8 @@ script/run.sh --check    # 기동 후 완료 기준 확인(script/e2e-check.sh)�
 | Swagger(Gateway 통합) | http://localhost:8080/swagger-ui.html |
 | Eureka 대시보드 | http://localhost:8761 |
 | Config Server가 내려주는 설정 | http://localhost:8888/user-service/default |
+| Grafana 대시보드(로그인 없이 보기) | http://localhost:3000 |
+| Prometheus 수집 대상 | http://localhost:9090/targets |
 
 - 빌드는 Dockerfile 안에서 한다. 로컬에서 jar를 먼저 만들 필요가 없다.
 - MASTER 계정은 `.env`의 `MASTER_USERNAME`/`MASTER_PASSWORD`(기본 `master` / `Master!2026`)로 user-service가 기동할 때 만든다.
@@ -20,17 +22,19 @@ script/run.sh --check    # 기동 후 완료 기준 확인(script/e2e-check.sh)�
 - 공통 인프라 통합 전에 쓰던 DB 볼륨은 이어 쓰지 않는다. 처음 한 번은 `script/run.sh --reset`으로 시작한다(팀 결정, 루트 `README.md`).
 
 ## 2. 무엇이 뜨나
-`docker compose up`은 컨테이너 10개를 모두 띄운다. compose `profiles`로 나누지 않았다.
+`docker compose up`은 컨테이너 12개를 모두 띄운다. compose `profiles`로 나누지 않았다.
 
 | 구분 | 컨테이너 | 호스트 포트 |
 |---|---|---|
 | DB | `postgres` (스키마 5개, 서비스 계정 5개) | `127.0.0.1:5432` |
 | 인프라 | `config-server`, `eureka-server` | `127.0.0.1:8888`, `127.0.0.1:8761` |
 | 분산 추적 | `zipkin` (Micrometer Tracing이 보낸 구간 수집·조회, 메모리 저장) | `127.0.0.1:9411` |
+| 메트릭 | `prometheus` (Eureka에서 찾은 서비스의 `/actuator/prometheus`를 15초마다 수집), `grafana` (대시보드) | `127.0.0.1:9090`, `127.0.0.1:3000` |
 | 진입점 | `gateway-service` | `8080` |
 | 비즈니스 | `user`, `hub`, `company`, `order`, `delivery` 서비스 | 공개하지 않음 |
 
 비즈니스 서비스 포트를 공개하지 않으므로 외부 요청은 Gateway(8080)로만 들어온다. 같은 이유로 `--scale`로 인스턴스를 늘려도 포트가 충돌하지 않는다.
+Gateway의 actuator(헬스 체크·메트릭)는 공개하지 않는 관리 포트 8090에 있다. 늘린 인스턴스도 Prometheus가 Eureka에서 찾아 수집한다([메트릭 모니터링](monitoring.md)).
 
 ## 3. 서버 올리는 방법
 
@@ -82,7 +86,9 @@ docker compose stop hub-service          # 도커로 떠 있었다면 내린다
 | `config-repo/*.yml` | `docker compose up -d --build config-server` 후 `docker compose restart {서비스}`. 설정이 config-server jar 안에 들어가고, 서비스는 기동할 때만 설정을 읽는다([설정 보안 가이드](config-security.md) 4장) |
 | `.env` | `docker compose up -d {서비스}`. 환경 변수는 컨테이너를 만들 때 정해지므로 `restart`로는 바뀌지 않는다 |
 | 새 마이그레이션(`V{n}__*.sql`) 추가 | `script/run.sh {서비스}`. 기동할 때 Flyway가 적용한다 |
-| 루트 `build.gradle` 공통 의존성(예: 분산 추적) | `script/run.sh`. 모든 서비스 이미지를 다시 빌드한다 |
+| 루트 `build.gradle` 공통 의존성(예: 분산 추적, 메트릭) | `script/run.sh`. 모든 서비스 이미지를 다시 빌드한다 |
+| `infra/prometheus/prometheus.yml` | `docker compose restart prometheus` |
+| `infra/grafana/**`(데이터소스, 대시보드 JSON) | `docker compose restart grafana`. 화면에서 고친 대시보드는 저장되지 않는다 |
 | 이미 적용된 마이그레이션 수정, `infra/postgres/init.sh`, DB 비밀번호 | `script/run.sh --reset` (DB 데이터 삭제) |
 
 - 교체 직후 몇 초 동안 Gateway가 503을 줄 수 있다. 새 인스턴스가 Eureka에 등록되고 Gateway가 목록을 다시 받을 때까지다(조회 주기 5초).
@@ -123,6 +129,6 @@ script/db-check.sh                              # 서비스 계정 권한 확인
 
 전체 메뉴와 주문·배송 기능을 브라우저에서 테스트하려면 [frontend 실행 안내](../../frontend/README.md)를 따른다.
 `script/ui-test.sh up`은 별도 `logistics-ui-test` 프로젝트·전용 환경 파일·DB 볼륨을 사용한다. 기본 개발 환경은 유지하고 Slack Webhook은 항상 비활성화한다. DM은 기본 비활성화이며 명시한 토큰·워크스페이스·수신 허용 목록으로만 켠다.
-`seed`는 공개 API로 테스트 계정·업체·상품·주문을 준비한다. `frontend`는 http://127.0.0.1:5174 에서 실행하고 Gateway는 18080번, Zipkin은 19411번이다.
+`seed`는 공개 API로 테스트 계정·업체·상품·주문을 준비한다. `frontend`는 http://127.0.0.1:5174 에서 실행하고 Gateway는 18080번, Zipkin은 19411번, Grafana는 13000번, Prometheus는 19090번이다.
 실제 DM이 켜져 있으면 `seed`와 브라우저 E2E는 주문 생성 전에 중단한다. 최초 DM 배포는 config-server·user·delivery·order를 빌드하고 user Flyway V2·V3를 적용한다. [Slack DM 설정·실패 처리](slack-dm.md)를 따른다.
 종료는 프런트 실행 터미널의 Ctrl+C와 `script/ui-test.sh down`이다. 테스트 DB 볼륨은 유지한다.

@@ -24,6 +24,8 @@ script/ui-test.sh frontend
 | PostgreSQL | 127.0.0.1:15432 |
 | Config Server | http://127.0.0.1:18888 |
 | Zipkin(분산 추적) | http://127.0.0.1:19411 |
+| Grafana(메트릭 대시보드, 로그인 없이 보기) | http://127.0.0.1:13000 |
+| Prometheus(수집 대상) | http://127.0.0.1:19090/targets |
 
 실제 Gateway 매핑은 `docker compose -p logistics-ui-test --env-file .env.ui-test port gateway-service 8080`으로 확인한다. 프런트의 기본 프록시는 이 테스트 Gateway다. 다른 환경을 사용하려면 `frontend/.env.local`의 `GATEWAY_URL`을 바꾸고 Vite를 다시 실행한다.
 

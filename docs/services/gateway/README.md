@@ -7,9 +7,10 @@
 | 항목 | 값 |
 |---|---|
 | 담당자 | 공통 인프라 |
-| 포트 | 8080 (외부 공개는 이 포트 하나) |
+| 포트 | 8080 (외부 공개는 이 포트 하나), 관리 포트 8090(actuator 헬스·메트릭, 공개하지 않음) |
 | 스키마·DB 계정 | 없음 |
 | 책임 | 외부 요청 단일 진입점, JWT 검증, 권한 재확인(60초 캐시), `X-User-*` 정리·주입, 라우팅, `/internal/**` 차단 |
+| 메트릭 | Prometheus가 Eureka 메타데이터 `management.port`로 8090의 `/actuator/prometheus`를 수집한다. 관리 포트의 `/actuator/**`만 토큰 검증에서 빠지고, 8080의 같은 경로와 관리 포트의 `/api/**`는 401이다(ADR 0018, `GatewayManagementPortTest`) |
 | 분산 추적 | 외부 요청마다 trace를 시작하고 하위 서비스·권한 재확인(I-01) 호출에 `traceparent`를 싣는다. `spring.reactor.context-propagation: auto`로 WebFlux 로그에도 traceId를 남긴다([ADR 0017](../../decisions/0017-distributed-tracing-micrometer-zipkin.md)) |
 
 ## 2. 제공 API (계약)
@@ -31,6 +32,7 @@
 
 - [x] 완료 기준 6개(E2E PASS 18/0)
 - [x] 권한 재확인 60초 캐시와 만료 후 재조회
+- [x] actuator를 관리 포트 8090으로 분리하고 Prometheus 수집 허용, 화이트리스트에서 `/actuator/health` 제거(2026-10-16)
 
 ## 5. 협업 로그
 

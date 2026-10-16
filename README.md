@@ -16,6 +16,7 @@ script/db-check.sh            # 서비스 계정 5개의 실제 인증·스키�
 자세한 실행 방법(IDE 병행, 바꾼 것만 다시 올리기)은 [로컬 실행 가이드](docs/guides/local-run.md)에 있다.
 - Eureka 대시보드: http://localhost:8761 (관리용 포트는 이 PC에서만 열린다)
 - 분산 추적(Zipkin): http://localhost:9411 (로그 줄의 traceId로 요청 하나의 서비스별 구간을 본다)
+- 메트릭 대시보드(Grafana): http://localhost:3000 (로그인 없이 보기. 요청 수·오류·응답 시간, [메트릭 모니터링](docs/guides/monitoring.md))
 - API 진입점(Gateway): http://localhost:8080
 - 종료: `docker compose down` (DB까지 지우려면 `docker compose down -v` 또는 다음 기동 때 `script/run.sh --reset`)
 - 서비스 스키마·계정은 `infra/postgres/init.sh`가 빈 DB에서 처음 한 번 만들고, 테이블 변경은 Flyway가 관리한다(`*/src/main/resources/db/migration`).
