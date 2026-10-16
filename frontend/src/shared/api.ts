@@ -98,6 +98,8 @@ export function errorHelp(error: unknown) {
     return '이전 주문이 처리 중입니다. 잠시 후 같은 요청의 결과를 확인해 주세요.'
   if (error.code === 'ORDER_CREATION_ABORTED')
     return '이 주문 생성은 종료되었습니다. 원인을 해결한 뒤 새 요청으로 다시 작성할 수 있습니다.'
+  if (error.code === 'DELIVERY_MANAGER_NOT_FOUND')
+    return '배송 구간을 맡을 담당자가 해당 허브에 없어 배송을 만들지 못했고, 주문도 남기지 않았습니다. 관리자가 사용자 관리에서 그 허브의 배송담당자를 지정한 뒤 다시 주문해 주세요.'
   if (error.status === 401) return '세션이 만료되었습니다. 다시 로그인해 주세요.'
   if (error.status === 403) return '현재 계정에 이 작업의 권한이 없습니다.'
   if (error.status === 404)

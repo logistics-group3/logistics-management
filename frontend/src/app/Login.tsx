@@ -5,6 +5,7 @@ import { AuthLayout } from './AuthLayout'
 import { useAuth } from './auth'
 import { Button } from '../components/ui/button'
 import { ErrorNotice, Field } from '../shared/ui'
+import { TEST_PASSWORD, testAccounts } from '../shared/test-guide'
 export function Login() {
   const auth = useAuth()
   const location = useLocation()
@@ -80,6 +81,25 @@ export function Login() {
           )}
         </Button>
       </form>
+      <details className="login-accounts">
+        <summary>테스트 계정 입력 (공통 비밀번호 {TEST_PASSWORD})</summary>
+        <div>
+          {testAccounts.map((account) => (
+            <button
+              key={account.username}
+              type="button"
+              aria-label={`${account.username} 계정 입력`}
+              onClick={() => {
+                setUsername(account.username)
+                setPassword(TEST_PASSWORD)
+              }}
+            >
+              <code>{account.username}</code>
+              <span>{account.role}</span>
+            </button>
+          ))}
+        </div>
+      </details>
       <div className="auth-switch">
         <span>아직 계정이 없으신가요?</span>
         <Link to="/signup">
@@ -92,7 +112,7 @@ export function Login() {
         로컬 테스트 환경 · 실제 서비스 API 연결
       </div>
       <p className="login-help">
-        테스트 계정은 프로젝트의 UI 실행 안내를 확인하세요.
+        <Link to="/guide">멘토 테스트 가이드 보기</Link> · 계정별 시나리오와 기대 결과
         <br />
         새로고침 후에는 다시 로그인이 필요합니다.
       </p>

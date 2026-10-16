@@ -1,10 +1,18 @@
 import { useState } from 'react'
-import { BrowserRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Link,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom'
 import {
   Boxes,
   Building2,
   ChevronRight,
-  CircleHelp,
+  ClipboardCheck,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -22,8 +30,7 @@ import { Dashboard } from '../features/Dashboard'
 import { Orders } from '../features/Orders'
 import { Deliveries } from '../features/Deliveries'
 import { Catalog } from '../features/Catalog'
-import { Dialog } from '../components/ui/dialog'
-import { Button } from '../components/ui/button'
+import { TestGuide } from '../features/TestGuide'
 const navigation = [
   { path: '/', label: '대시보드', icon: LayoutDashboard },
   { path: '/orders', label: '주문 관리', icon: Package },
@@ -33,15 +40,41 @@ const navigation = [
   { path: '/hubs', label: '허브 관리', icon: Network },
   { path: '/users', label: '사용자 관리', icon: Users },
 ]
+// 로그인 전에도 멘토가 가이드를 먼저 읽을 수 있게 사이드바 없는 화면으로 연다.
+function PublicGuide() {
+  return (
+    <div className="public-guide">
+      <header className="public-guide-bar">
+        <Link className="brand" to="/">
+          <span className="brand-symbol">S</span>
+          <span>
+            SPARTA<span>LOGISTICS</span>
+          </span>
+        </Link>
+        <Link className="text-link" to="/">
+          로그인 화면으로
+        </Link>
+      </header>
+      <main id="main-content" className="main-content">
+        <TestGuide />
+      </main>
+    </div>
+  )
+}
 function Shell() {
   const { user, logout } = useAuth()
   const [menu, setMenu] = useState(false)
-  const [help, setHelp] = useState(false)
   const location = useLocation()
-  if (!user) return location.pathname === '/signup' ? <Signup /> : <Login />
+  if (!user) {
+    if (location.pathname === '/signup') return <Signup />
+    return location.pathname === '/guide' ? <PublicGuide /> : <Login />
+  }
   const current = navigation.find((item) =>
     item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path),
   )
+  const currentLabel = location.pathname.startsWith('/guide')
+    ? '멘토 테스트 가이드'
+    : current?.label
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">
@@ -94,11 +127,11 @@ function Shell() {
             <strong>테스트 워크스페이스</strong>
             <p>주문부터 배송까지 직접 확인하세요.</p>
           </div>
-          <button className="sidebar-help" onClick={() => setHelp(true)}>
-            <CircleHelp size={18} />
-            테스트 이용 안내
+          <NavLink className="sidebar-help" to="/guide" onClick={() => setMenu(false)}>
+            <ClipboardCheck size={18} />
+            멘토 테스트 가이드
             <ChevronRight size={15} />
-          </button>
+          </NavLink>
           <span className="sidebar-version">SPARTA LOGISTICS / CONSOLE 1.0</span>
         </div>
       </aside>
@@ -114,7 +147,7 @@ function Shell() {
             </button>
             <span>워크스페이스</span>
             <ChevronRight size={14} />
-            <strong>{current?.label ?? '화면'}</strong>
+            <strong>{currentLabel ?? '화면'}</strong>
           </div>
           <div className="topbar-account">
             <span className="environment-pill">LOCAL</span>
@@ -139,6 +172,7 @@ function Shell() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/orders/*" element={<Orders />} />
             <Route path="/deliveries/*" element={<Deliveries />} />
+            <Route path="/guide" element={<TestGuide />} />
             {(['companies', 'products', 'hubs', 'users'] as const).map((kind) => (
               <Route key={kind} path={`/${kind}`} element={<Catalog key={kind} kind={kind} />} />
             ))}
@@ -150,34 +184,6 @@ function Shell() {
           <span>물류 운영 콘솔 · 테스트 데이터</span>
         </footer>
       </div>
-      <Dialog
-        open={help}
-        onClose={() => setHelp(false)}
-        title="테스트 이용 안내"
-        description="실제 API를 사용하는 독립된 테스트 환경입니다."
-      >
-        <ol className="help-steps">
-          <li>
-            회원가입 후 업체 관리에서 내 업체를 등록하면 본인이 담당자로 연결됩니다. 새로운
-            공급업체를 만들었다면 상품 관리에서 상품을 등록합니다.
-          </li>
-          <li>
-            관리자는 업체 상세에서 담당자를 변경하고, 사용자 상세에서 배송 담당자와 담당 허브를
-            지정할 수 있습니다.
-          </li>
-          <li>
-            주문 관리에서 새 주문을 등록합니다. 준비된 업체들은 같은 허브에 소속되어 있습니다.
-          </li>
-          <li>주문 상세에서 요청사항 수정, 집하 전 취소를 테스트할 수 있습니다.</li>
-          <li>배송 상세에서 집하 출발 → 도착 → 업체 배송 출발 → 도착 순으로 진행합니다.</li>
-          <li>관리자는 취소된 주문 또는 배송이 완료된 주문을 삭제할 수 있습니다.</li>
-        </ol>
-        <div className="notice">
-          다른 허브 간 배송은 허브 경로 API가 준비된 뒤 테스트할 수 있습니다. Slack 알림은 이 테스트
-          서버에서 꺼져 있습니다.
-        </div>
-        <Button onClick={() => setHelp(false)}>확인</Button>
-      </Dialog>
     </div>
   )
 }

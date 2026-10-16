@@ -4,6 +4,9 @@
 
 `frontend/`의 React·TypeScript·Vite 운영 콘솔은 Node.js 24·npm으로 별도 빌드한다. **Gradle 빌드에는 프런트가 포함되지 않는다.** 전체 검증 명령은 [백엔드·프런트 빌드 기준](docs/guides/full-build.md), 화면 실행은 [frontend README](frontend/README.md)를 따른다. AI 에이전트는 루트 `AGENTS.md`와 `CLAUDE.md`에서 같은 기준을 읽는다.
 
+## 멘토·튜터 테스트
+전용 테스트 환경을 띄우고 http://127.0.0.1:5174/guide 에서 발제 필수 기능 시나리오를 계정 버튼으로 차례로 확인한다. 실행 명령 4줄과 데이터는 [멘토·튜터 테스트 안내](docs/guides/mentor-test.md)에 있다.
+
 ## 빠른 실행
 ```bash
 script/run.sh                 # .env가 없으면 .env.example을 복사하고, 빌드 후 전체 기동(빌드는 Dockerfile 안에서 한다)
