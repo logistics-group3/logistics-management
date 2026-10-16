@@ -4,6 +4,8 @@
 feat/order-create를 푸시하고 dev 대상 PR #6을 생성했다. 최신 dev df419a4까지 격리 worktree에서 통합·검증하고 주문 구현·테스트·팀 연동 확인 사항을 PR에 기록했다.
 
 ## 진행 상태
+- [x] 후속 요청의 자동 승인 조건을 중대 결함 없음·빌드/테스트 성공·PR 리뷰 포인트 전부 PASS로 정리했다. 수동 머지·방법 안내 범위로 [학습 노트](../learning/junhyun/qna/2026-10-15-github-ai-review-auto-approval.md)를 보강했다. 기존 PR 템플릿·Java 17·PostgreSQL Testcontainers 기반과 공식 API를 확인했으며 자동화 구현은 시작하지 않았다.
+- [x] GitHub PR 자동 리뷰·점수 기준 승인 방법을 공식 문서와 현재 CI 구성으로 확인하고 [학습 노트](../learning/junhyun/qna/2026-10-15-github-ai-review-auto-approval.md)에 기록했다. 설치형 승인과 직접 구현을 구분했으며 GitHub 설정·워크플로·실제 리뷰 승인은 변경하지 않았다.
 - [x] `git fetch origin`으로 원격 `dev`를 확인했다.
 - [x] `git switch --no-track -c feat/order-create origin/dev`로 브랜치를 만들고 전환했다. 생성 시 HEAD와 origin/dev는 모두 `f700c0ca8359fdd34708de8e51285d9269c6a662`다.
 - [x] 사용자 발언과 Git 작성자 정보를 근거로 주문 담당자를 Junhyun An으로 기록했다.
