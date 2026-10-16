@@ -6,6 +6,8 @@
 - 이번 커밋 제목: `chore(infra): Swagger 테스트 보조 도구와 로컬 분산 추적 추가`, `docs(docs): Swagger 테스트·로컬 분산 추적 가이드와 결정 기록`
 - 범위: 로컬 테스트 도구(`script/api-test.sh`, `script/api-test/`)와 문서. 서비스 코드·공통 설정은 바꾸지 않았다.
 
+> 이 스텝의 추적 부분(OpenTelemetry 에이전트·Jaeger)은 [스텝 48](step-48-micrometer-tracing-zipkin.md)에서 SA대로 Micrometer Tracing + Zipkin으로 바꿨다. 아래는 그 전 기록이다.
+
 ## 바뀐 동작
 
 `script/api-test.sh up`을 하면 기본 개발 스택이 테스트 모드로 바뀐다.
@@ -28,7 +30,7 @@
 ## 왜 이렇게 만들었는가
 
 - 공통 예외 처리기가 4xx를 남기지 않아 접근 로그가 필요했다. 웹 서버 설정만으로 켜서 코드를 바꾸지 않는다.
-- 요청 흐름을 묶으려면 trace ID가 필요하다. SA 방식(Micrometer Tracing + Zipkin)은 모든 서비스의 의존성·공통 설정 변경이라, 사용자 결정에 따라 테스트 도구는 에이전트 방식으로 만들었다([ADR 0017](../../../decisions/0017-local-api-test-tracing.md)).
+- 요청 흐름을 묶으려면 trace ID가 필요하다. SA 방식(Micrometer Tracing + Zipkin)은 모든 서비스의 의존성·공통 설정 변경이라, 사용자 결정에 따라 테스트 도구는 에이전트 방식으로 만들었다([ADR 0017](../../../decisions/0017-distributed-tracing-micrometer-zipkin.md)).
 - 오버라이드 파일을 `docker-compose.override.yml`로 두지 않았다. 이 이름은 모든 compose 명령에 자동 적용돼 `script/run.sh`에도 끼어든다.
 - 준비 확인을 Eureka UP 개수에서 Gateway 경유 API 호출로 바꿨다. Eureka 응답 캐시(최대 30초) 때문에 재생성 직후 옛 인스턴스를 세어 2.5초 만에 "준비"로 판단한 일이 있었다.
 - 로그 레벨을 `LOGGING_LEVEL_*`로 넣으면 로거 이름이 소문자가 돼 `org.hibernate.SQL`에 걸리지 않았다. `SPRING_APPLICATION_JSON`으로 바꿨다.

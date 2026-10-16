@@ -7,7 +7,7 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
-| 2026-10-16 | [여러 서비스를 거치는 요청 흐름을 한 번에 보려면](qna/2026-10-16-distributed-tracing-local.md) | 중급 | distributed-tracing, opentelemetry, jaeger, traceparent, mdc, msa | Junhyun An |
+| 2026-10-16 | [여러 서비스를 거치는 요청 흐름을 한 번에 보려면](qna/2026-10-16-distributed-tracing-local.md) | 중급 | distributed-tracing, micrometer-tracing, zipkin, traceparent, mdc, msa | Junhyun An |
 | 2026-10-16 | [Swagger로 전체 시나리오를 테스트할 때 서버 로그와 테스트 데이터를 어떻게 준비하나](qna/2026-10-16-swagger-test-server-logs.md) | 중급 | swagger, logging, access-log, docker-compose, test-data, gateway | Junhyun An |
 | 2026-10-15 | [Slack Webhook을 배송담당자 이메일에 연결할 수 있는가](qna/2026-10-15-slack-webhook-email-and-dm.md) | 중급 | slack, webhook, oauth, notification, delivery | Junhyun An |
 | 2026-10-15 | [GitHub PR의 중대 결함과 리뷰 포인트를 검사해 자동 승인하려면](qna/2026-10-15-github-ai-review-auto-approval.md) | 중급 | github-actions, code-review, codex, coderabbit, ci | Junhyun An |

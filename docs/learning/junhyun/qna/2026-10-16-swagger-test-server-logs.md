@@ -72,7 +72,7 @@ SPRING_APPLICATION_JSON: '{"logging.level.org.hibernate.SQL":"DEBUG"}'
 5. 테스트가 끝나면 `script/api-test.sh restore`로 되돌리고 `status`에서 Slack Webhook이 다시 켜졌는지 확인한다.
 
 ## 관련 기록
-- [Swagger 수동 테스트와 요청 흐름 보기](../../../guides/api-test.md), [ADR 0017](../../../decisions/0017-local-api-test-tracing.md)
+- [Swagger 수동 테스트와 요청 흐름 보기](../../../guides/api-test.md), [ADR 0017](../../../decisions/0017-distributed-tracing-micrometer-zipkin.md)
 - [여러 서비스를 거치는 요청 흐름을 한 번에 보려면](2026-10-16-distributed-tracing-local.md)
 - 시나리오: Notion 「기능 테스트」, 실행 기록: Notion 「junhyun 테스트 일지」
 - [Slack Webhook을 배송담당자 이메일에 연결할 수 있는가](2026-10-15-slack-webhook-email-and-dm.md)
