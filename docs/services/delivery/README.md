@@ -57,6 +57,7 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
 - 조회(D-01, D-02, I-10, 담당 건수)는 QueryDSL `@QueryProjection`으로 DTO를 바로 읽고, 명령은 JPA(`findById`, `save`)로 Entity를 다룬다(2026-10-15, 계약 변경 없음). 이유는 `delivery-service/docs/domain/delivery-decision-log.md` 17
 - 응답은 Result 하나면 그대로, 여러 Result를 합칠 때만 `Response`(D-02~D-05 `DeliveryResponse`)로 응답한다. 외부·내부 API JSON 구조는 바뀌지 않았다(2026-10-15 MockMvc 비교). 이유는 결정 로그 18
+- E2E: `script/delivery-e2e-check.sh`(시드 `infra/postgres/seed/delivery-e2e.sql`)가 Gateway로 주문 → 배송 완료 → 삭제를 확인한다. 방법은 [`e2e.md`](../../../delivery-service/docs/e2e.md)
 
 ## 5. 협업 로그
 

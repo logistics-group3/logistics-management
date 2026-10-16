@@ -14,6 +14,7 @@ script/run.sh --check         # 기동 후 공통 인프라 완료 기준 6개 �
 script/run.sh --reset         # DB 볼륨까지 지우고 새로 시작
 script/run.sh hub-service     # 지정한 서비스만 다시 빌드·기동 (--scale hub-service=2도 된다)
 script/db-check.sh            # 서비스 계정 5개의 실제 인증·스키마 접근 권한 확인
+script/delivery-e2e-check.sh  # 배송 시드 데이터를 넣고 주문 → 배송 완료 전체 연결과 배송 API 규칙 확인(delivery-service/docs/e2e.md)
 # 권한 재확인 60초 캐시와 만료 후 재조회까지 보려면 script/e2e-check.sh --with-cache-ttl (약 65초)
 ```
 자세한 실행 방법(IDE 병행, 바꾼 것만 다시 올리기)은 [로컬 실행 가이드](docs/guides/local-run.md)에 있다.
