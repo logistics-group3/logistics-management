@@ -4,6 +4,9 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
+import com.sparta.logistics.delivery.application.dto.DeliveryNotificationRecipientsResult;
+import com.sparta.logistics.delivery.domain.RouteStatus;
+import com.sparta.logistics.delivery.domain.DeliveryStatus;
 import com.sparta.logistics.delivery.application.dto.DeliveryRouteResult;
 import com.sparta.logistics.delivery.application.dto.DeliverySearchCondition;
 import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
@@ -48,6 +51,17 @@ public class DeliveryQueryService {
     public DeliveryStatusResult getDeliveryStatus(UUID deliveryId) {
         return deliveryQueryRepository.findStatus(deliveryId)
                 .orElseThrow(() -> new BusinessException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+    }
+
+    /** I-15 미완료 구간의 현재 담당자. 같은 사람이 여러 구간을 맡아도 ID는 한 번 반환한다. */
+    public DeliveryNotificationRecipientsResult getNotificationRecipients(UUID deliveryId) {
+        DeliveryStatusResult status = getDeliveryStatus(deliveryId);
+        List<UUID> managers = status.status() == DeliveryStatus.CANCELED || status.status() == DeliveryStatus.DELIVERED
+                ? List.of()
+                : deliveryQueryRepository.findRoutes(deliveryId).stream()
+                    .filter(route -> route.status() == RouteStatus.WAITING || route.status() == RouteStatus.MOVING)
+                    .map(DeliveryRouteResult::managerId).distinct().toList();
+        return new DeliveryNotificationRecipientsResult(status.deliveryId(), status.orderId(), status.status(), managers);
     }
 
     private boolean isScopedToOwnRoutes(UserContext user) {

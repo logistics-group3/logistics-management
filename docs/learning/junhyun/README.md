@@ -7,6 +7,7 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-15 | [Slack Webhook을 배송담당자 이메일에 연결할 수 있는가](qna/2026-10-15-slack-webhook-email-and-dm.md) | 중급 | slack, webhook, oauth, notification, delivery | Junhyun An |
 | 2026-10-15 | [주문 알림용 Slack 채널과 Webhook 설정](qna/2026-10-15-slack-incoming-webhook-setup.md) | 기초 | slack, webhook, configuration, docker | Junhyun An |
 | 2026-10-15 | [주문 Slack 알림은 왜 트랜잭션 커밋 후 비동기로 보내는가](qna/2026-10-15-order-notification-after-commit-async.md) | 중급 | spring, transaction, event, async, slack | Junhyun An |
 | 2026-10-15 | [주문 도메인은 어떤 기능부터 구현하는 것이 좋은가](qna/2026-10-15-order-implementation-order.md) | 중급 | order, domain, jpa, saga, testing | Junhyun An |

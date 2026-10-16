@@ -36,10 +36,14 @@
 | I-11 `POST /internal/deliveries/{deliveryId}/cancel` | delivery | 집하 시작 여부를 판단하고 배송·구간 취소 | 1회 (`order-delivery-cancel`), 응답 status=CANCELED 확인 |
 | I-12 `POST /internal/deliveries/{deliveryId}/cancel-revert` | delivery | 확인된 로컬 롤백의 배송 원복 | 응답 없는 통신 실패에 최대 3회 (`order-delivery-cancel-revert`), 5xx 응답은 재시도 없음 |
 | I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 생성 실패 보상·O-06 배송 삭제 | 생성 보상은 OrderService가 총 3회. O-06은 요청당 1회, 실패 후 같은 DELETE로 재개. Feign 자체 재시도 없음 |
+| I-15 `GET /internal/deliveries/{deliveryId}/notification-recipients` | delivery | 커밋 후 DM의 현재 담당자 조회 | 통신 실패 시 총 3회 (`order-dm-delivery`), 5xx는 1회 |
+| I-16 `GET /internal/users/{userId}/notification-contact` | user | 배송담당 여부·Slack 이메일 조회 | 통신 실패 시 총 3회 (`order-dm-user`), 5xx는 1회 |
 
 `CompanyClientAdapter`와 `DeliveryClientAdapter`가 application 인터페이스를 실제 Feign에 연결한다. 주소는 Eureka 서비스 이름으로 찾고 URL을 하드코딩하지 않는다. 5xx 응답은 재시도하지 않고 공통 디코더가 `SERVICE_UNAVAILABLE`로 바꾼다.
 
 ## 4. 구현 현황
+
+- [x] 이메일 기반 배송담당자 Slack DM: 별도 AFTER_COMMIT 리스너·비동기 전송, 워크스페이스·허용 목록 검증, 같은 이벤트의 수신자 중복 제거, 외부 실패 격리. 주문 451개·전체 727개 테스트와 실제 Slack 접수 1건 확인(2026-10-16). [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md), [설정·실패 처리](../../guides/slack-dm.md)
 
 - [x] 주문 Entity와 Flyway 마이그레이션 (`Order`, `OrderStatus`, `V1__create_p_orders.sql`)
 - [x] 저장·단건 조회 Repository와 기반 테스트 (원복 후 단위 24개, PostgreSQL 통합 18개 통과)

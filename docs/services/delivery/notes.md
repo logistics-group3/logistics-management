@@ -1,5 +1,23 @@
 # delivery 구현 노트
 
+## T06 I-15 배송 알림 수신자 조회 (2026-10-16)
+
+### 처리 과정
+- InternalDeliveryController → DeliveryQueryService → 기존 QueryDSL 상태·구간 조회로 배송과 담당자를 읽는다. 상태를 바꾸거나 배정하지 않는다.
+- WAITING·MOVING 구간의 managerId를 중복 제거한다. 완료·취소 배송은 빈 목록이고 없음·삭제 배송은 404다.
+
+### 핵심
+- 구간마다 같은 담당자가 배정될 수 있어 수신자 조회부터 중복을 줄인다. order도 이메일 단위로 한 번 더 중복을 막는다.
+- 기존 I-10 응답을 유지하고 I-15에 필요한 필드만 둔다. 이메일은 user에서 읽으므로 delivery에 복제하지 않는다.
+- 조회 결과 뒤의 재배정·취소까지 잠그지는 않는다. 이 조회는 발송 시점 전체의 원자성을 보장하지 않는다.
+
+### 확인 질문
+- 동일 사용자가 집하·업체 배송을 모두 맡으면 알림을 몇 번 보내야 하는가?
+- 완료 배송의 빈 목록과 삭제 배송의 404는 왜 구분하는가?
+
+### 메모
+- delivery 39개 테스트와 실제 같은 허브 주문의 I-15·DM 1건을 확인했다. [T06 기록](../../../delivery-service/docs/tasks/T06.md), [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md)
+
 기능마다 핵심만 남긴다. 상태·배정 규칙의 설명은 [`delivery.md`](../../../delivery-service/docs/domain/delivery.md), 요청·응답은 [`delivery-api.md`](../../../delivery-service/docs/domain/delivery-api.md), 작업 범위와 커밋 기록은 [`tasks/`](../../../delivery-service/docs/tasks/README.md)에 있다.
 
 ## T01 상태 전이와 저장소 (2026-10-15)

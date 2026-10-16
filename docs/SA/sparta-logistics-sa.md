@@ -5,7 +5,7 @@
 # 스파르타 물류 SA 문서
 
 > MSA 기반 국내 B2B 물류 관리 및 배송 시스템 — System Architecture
-작성일: 2026-10-12 · 최종 수정: 2026-10-15 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
+작성일: 2026-10-12 · 최종 수정: 2026-10-16 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
 >
 
 **변경 이력**
@@ -20,6 +20,7 @@
 | v2.0 생성 보강 | 2026-10-15 | 주문 담당자의 O-01 보강 요청으로 생성 진행 기록·커밋 재확인·미확정 결과 보존을 추가했다([order ADR 0007](../services/order/decisions/0007-order-creation-progress.md)). |
 | v2.0 생성 멱등성 | 2026-10-15 | 주문 담당자의 요청으로 O-01 필수 Idempotency-Key·사용자별 키 UNIQUE·요청 지문·최초 응답 재사용을 추가했다([order ADR 0008](../services/order/decisions/0008-order-idempotency-key.md)). |
 | v2.0 삭제 보강 | 2026-10-15 | 주문 담당자 승인으로 O-06 삭제 조건·진행 기록을 보존한다. 배송 삭제 후 로컬 롤백에도 같은 DELETE로 진행한다([order ADR 0009](../services/order/decisions/0009-order-deletion-progress.md)). |
+| v2.0 DM 로컬 확장 | 2026-10-16 | 사용자 요청으로 slackEmail·I-15·I-16·커밋 후 DM을 구현했다. 아래 해당 항목은 [ADR 0016](../decisions/0016-delivery-manager-slack-dm.md)의 로컬 확장 표시이며 팀 합의 완료를 뜻하지 않는다. USER-002·DELIVERY-003 리뷰 대기다. |
 
 ---
 
@@ -478,6 +479,7 @@ erDiagram
         varchar password "(255) BCrypt 해시"
         varchar name "(50) 이름"
         varchar slack_id "(50) Slack 사용자 ID"
+        varchar slack_email "(254) 선택 알림 이메일, ADR 0016 로컬 확장"
         varchar affiliation_type "(20) COMPANY 또는 HUB"
         varchar affiliation_name "(100) 소속 업체명 또는 허브명"
         varchar role "(20) MASTER 또는 USER"
@@ -651,7 +653,8 @@ erDiagram
 | `username` | VARCHAR(10) | NOT NULL, UNIQUE | 로그인 ID. 소문자·숫자 4~10자. 탈퇴 후에도 재사용 불가 |
 | `password` | VARCHAR(255) | NOT NULL | BCrypt 해시 |
 | `name` | VARCHAR(50) | NOT NULL | 이름 |
-| `slack_id` | VARCHAR(50) | NOT NULL | Slack 사용자 ID |
+| `slack_id` | VARCHAR(50) | NULL 허용 | 기존 Slack 사용자 ID 보존. 이메일로 가입한 신규 사용자는 null(V3·ADR 0016 로컬 확장) |
+| `slack_email` | VARCHAR(254) | NULL 허용, 비어 있지 않고 양끝 공백 없음 CHECK | 선택 Slack 알림 이메일. V2·ADR 0016 로컬 확장, 팀 리뷰 대기 |
 | `affiliation_type` | VARCHAR(20) | NOT NULL | 소속 구분: `COMPANY`, `HUB` |
 | `affiliation_name` | VARCHAR(100) | NOT NULL | 소속 업체명 또는 허브명 |
 | `role` | VARCHAR(20) | NOT NULL, DEFAULT `'USER'` | 권한: `MASTER`, `USER` |
@@ -998,7 +1001,7 @@ erDiagram
 
 | ID | 제공 | Method | URL | Request | Response | 호출자 |
 | --- | --- | --- | --- | --- | --- | --- |
-| I-01 | user | GET | `/internal/users/{userId}` | - | userId, username, role, isDeliveryManager, hubId, slackId (탈퇴 시 404) | gateway, company, delivery |
+| I-01 | user | GET | `/internal/users/{userId}` | - | userId, username, role, isDeliveryManager, hubId, slackId(nullable, 탈퇴 시 404) | gateway, company, delivery |
 | I-02 | hub | GET | `/internal/hubs/{hubId}` | - | hubId, name, address | company, user |
 | I-03 | hub | GET | `/internal/hub-routes?departureHubId=&arrivalHubId=` | - | hubRouteId, distanceKm, durationMinutes (공급업체 허브 → 요청업체 허브 1건) | delivery |
 | I-04 (고도화) | hub | POST | `/internal/stocks` | hubId, productId | hubStockId, quantity(0). 이미 있으면 기존 값 반환 | company |
@@ -1011,7 +1014,11 @@ erDiagram
 | I-11 | delivery | POST | `/internal/deliveries/{deliveryId}/cancel` | - | status=`CANCELED`. 집하가 시작됐으면(`PICKUP_WAITING`이 아니면) 409 | order |
 | I-12 | delivery | POST | `/internal/deliveries/{deliveryId}/cancel-revert` | - | 취소 전 상태로 원복 (취소 보상) | order |
 | I-13 | delivery | DELETE | `/internal/deliveries/orders/{orderId}` | - | 204. 배송·구간 논리 삭제, 대상이 없어도 204 | order |
-| I-14 | user | GET | `/internal/users/delivery-managers?hubId=` | - | 해당 허브 소속 배송담당자 목록(userId, slackId). 탈퇴자 제외, 없으면 빈 목록 | delivery |
+| I-14 | user | GET | `/internal/users/delivery-managers?hubId=` | - | 해당 허브 소속 배송담당자 목록(userId, slackId nullable). 탈퇴자 제외, 없으면 빈 목록 | delivery |
+| I-15 (로컬 확장) | delivery | GET | `/internal/deliveries/{deliveryId}/notification-recipients` | - | deliveryId, orderId, status, managerIds. WAITING·MOVING 담당자 중복 제거, 완료·취소는 빈 배열, 없음·삭제 404 | order |
+| I-16 (로컬 확장) | user | GET | `/internal/users/{userId}/notification-contact` | - | userId, isDeliveryManager, slackEmail(nullable). 없음·탈퇴 404 | order |
+
+> I-15·I-16과 slackEmail은 [ADR 0016](../decisions/0016-delivery-manager-slack-dm.md)의 로컬 확장이다. 기존 내부 응답은 유지하며 Gateway로 공개하지 않는다. 팀 리뷰가 남아 있다.
 
 > I-04~I-06(재고)은 고도화 단계 API라 번호만 남겨 두었다. 배송담당자 자동 배정은 delivery-service가 I-14로 후보를 받아 자기 DB에서 담당 중인 구간(`WAITING`, `MOVING`) 수가 가장 적은 사람을 고른다. 동점이면 userId 순.
 >
@@ -1025,7 +1032,8 @@ erDiagram
 | `userId` | UUID | 사용자 ID |
 | `username` | String | 로그인 ID |
 | `name` | String | 이름 |
-| `slackId` | String | Slack 사용자 ID |
+| `slackId` | String | 기존 Slack 사용자 ID. 이메일로 가입한 신규 사용자는 null |
+| `slackEmail` | String | 선택 Slack 알림 이메일. 없으면 필드 생략. ADR 0016 로컬 확장 |
 | `affiliationType` | String | `COMPANY`, `HUB` |
 | `affiliationName` | String | 소속 업체명 또는 허브명 |
 | `role` | String | `MASTER`, `USER` |
@@ -1047,7 +1055,7 @@ erDiagram
 | `username` | String | O | 4~10자, 알파벳 소문자·숫자 |
 | `password` | String | O | 8~15자, 대문자·소문자·숫자·특수문자 각 1자 이상 |
 | `name` | String | O | 이름 (최대 50자) |
-| `slackId` | String | O | Slack 사용자 ID (최대 50자) |
+| `slackEmail` | String | O | Slack 가입 이메일, 이메일 형식·최대 254자. 멤버 ID 대신 받는다(ADR 0016 로컬 확장) |
 | `affiliationType` | String | O | `COMPANY`, `HUB` |
 | `affiliationName` | String | O | 소속 업체명 또는 허브명 (최대 100자) |
 
@@ -1059,7 +1067,7 @@ Content-Type: application/json
   "username": "hong01",
   "password": "Sparta!2026",
   "name": "홍길동",
-  "slackId": "U01ABCDE2FG",
+  "slackEmail": "hong@example.com",
   "affiliationType": "COMPANY",
   "affiliationName": "부산수산도매"
 }
@@ -1211,6 +1219,7 @@ Authorization: Bearer {accessToken}
 | --- | --- | --- | --- |
 | `name` | String | X | 이름 |
 | `slackId` | String | X | Slack 사용자 ID |
+| `slackEmail` | String | X | 이메일 형식·최대 254자. 생략·null은 유지, 빈 문자열은 해제. ADR 0016 로컬 확장 |
 | `affiliationType` | String | X | `COMPANY`, `HUB` |
 | `affiliationName` | String | X | 소속 업체명 또는 허브명 |
 
@@ -1842,6 +1851,8 @@ Content-Type: application/json
 4. 배송 생성(I-09): 출발·목적지 허브와 집하지·배송지는 각각 공급·요청업체 정보다. delivery-service가 구간과 담당자를 배정하며 담당 허브에 배송담당자가 없으면 404로 실패한다.
 5. 주문·COMPLETED·최초 응답 스냅샷을 같은 로컬 트랜잭션으로 저장한다(`total_price` = 단가 × 수량).
 6. 커밋 후 Slack Incoming Webhook을 비동기로 발송한다. 실패해도 주문을 유지하며 완료 요청의 재응답에서는 발송하지 않는다.
+
+ADR 0016 로컬 확장: 설정이 활성화돼 있으면 별도 커밋 후 비동기 리스너가 I-15·I-16으로 담당자·이메일을 조회하고 Slack DM을 보낸다. 같은 이벤트의 수신자는 중복 제거하고 알림 실패는 주문 결과를 바꾸지 않는다. [실행·실패 계약](../guides/slack-dm.md).
 
 주문 1건에는 한 품목만 담는다. 여러 품목은 품목별로 따로 주문한다. 재고는 무한하다고 가정하므로 공급업체는 주문 수량을 항상 출고한다.
 
@@ -2588,7 +2599,8 @@ Table user_schema.p_users {
   username varchar(10) [not null, unique, note: '소문자/숫자 4~10자']
   password varchar(255) [not null, note: 'BCrypt']
   name varchar(50) [not null]
-  slack_id varchar(50) [not null]
+  slack_id varchar(50) [note: '기존 멤버 ID 보존, 신규 이메일 가입은 NULL, ADR 0016']
+  slack_email varchar(254) [note: '선택 Slack 알림 이메일, ADR 0016 로컬 확장·팀 리뷰 대기']
   affiliation_type varchar(20) [not null, note: 'COMPANY, HUB']
   affiliation_name varchar(100) [not null]
   role varchar(20) [not null, default: 'USER', note: 'MASTER, USER']

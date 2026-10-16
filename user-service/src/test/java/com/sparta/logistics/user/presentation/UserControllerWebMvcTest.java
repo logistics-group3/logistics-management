@@ -247,6 +247,6 @@ class UserControllerWebMvcTest {
     private UserResult result() {
         LocalDateTime at = LocalDateTime.of(2026, 10, 13, 9, 0);
         return new UserResult(userId, "hong01", "홍길동", "U01ABCDE2FG", AffiliationType.COMPANY, "부산수산도매",
-                Role.USER, false, null, at, at);
+                Role.USER, false, null, at, at, null);
     }
 }

@@ -26,7 +26,7 @@ status() { "${CURL[@]}" -o /dev/null -w '%{http_code}' "$@"; }
 code() { "${CURL[@]}" "$@" | json "d.get('code')"; }
 signup() {
   "${CURL[@]}" -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/v1/auth/signup" -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\",\"name\":\"검증\",\"slackId\":\"U0E2E\",\"affiliationType\":\"HUB\",\"affiliationName\":\"서울특별시 센터\"}"
+    -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\",\"name\":\"검증\",\"slackEmail\":\"e2e@example.com\",\"affiliationType\":\"HUB\",\"affiliationName\":\"서울특별시 센터\"}"
 }
 login() {
   "${CURL[@]}" -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' \

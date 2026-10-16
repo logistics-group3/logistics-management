@@ -26,6 +26,9 @@
 | U-08 | `DELETE /api/v1/users/{userId}` | MASTER | 구현 | 자기 자신 삭제 400 `INVALID_REQUEST`(SA와 같음) |
 | I-01 | `GET /internal/users/{userId}` | gateway, company, delivery | 구현 | DTO 그대로 반환(ADR 0010). 탈퇴 시 404 `USER_NOT_FOUND` |
 | I-14 | `GET /internal/users/delivery-managers?hubId=` | delivery | 구현 | `[{userId, slackId}]`를 감싸지 않고 반환. 없으면 `[]`, hubId 누락 400. 정렬하지 않는다(동점 처리는 delivery) |
+| I-16 | `GET /internal/users/{userId}/notification-contact` | order | 로컬 구현·팀 리뷰 대기 | `{userId, isDeliveryManager, slackEmail}` 그대로 반환. 없음·탈퇴 404 USER_NOT_FOUND, 이메일 미등록은 null. [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md) |
+
+ADR 0016의 로컬 확장: U-01은 필수 `slackEmail`(이메일 형식, 최대 254자)을 받고 slackId 입력을 제거한다. 이메일 없는 이전 가입 요청은 400이므로 소비자가 함께 변경해야 한다. U-06(MASTER)은 생략·null이면 유지, 빈 문자열이면 해제한다. UserResponse(U-03~U-07)는 등록된 이메일만 추가하며 null이면 필드를 생략한다. V3가 slack_id의 NOT NULL을 해제한다. I-01·I-14의 필드 구성은 유지하지만 신규 사용자의 slackId는 null이다.
 
 ## 3. 호출하는 다른 서비스 API
 
@@ -40,6 +43,7 @@
 - [x] U-03 내 정보 조회, U-04 단건 조회 (단위·WebMvc·통합 테스트, Gateway 경유 호출)
 - [x] U-05 검색, U-06 수정, U-07 권한·배송담당자 지정, U-08 논리 삭제 (단위·WebMvc·통합 테스트, Gateway 경유 호출. U-07 허브 지정의 hub 실제 연동은 hub I-02 구현 후 확인)
 - [x] I-14 허브별 배송담당자 목록 (통합 테스트, 내부 호출)
+- [x] slackEmail·Flyway V2/V3·I-16·U-01/U-06 연동. user 테스트 88개, 실제 Gateway 가입·MASTER 설정·해제·USER 거절, 실제 I-16과 DM 확인(2026-10-16)
 - [x] 공통 인프라 샘플 API 삭제, `script/e2e-check.sh`를 U-03·U-05로 교체
 
 ## 5. 협업 로그
@@ -52,3 +56,11 @@
 - 관련: I-14, I-01, SA 6.3, delivery I-09 자동 배정, D-04 재배정
 - 내용: delivery는 배송 생성(I-09) 때 구간 담당 허브마다 I-14를 호출해 자동 배정 후보를 받는다. delivery 쪽 Feign은 `GET /internal/users/delivery-managers?hubId=` → `[{ userId, slackId }]`(탈퇴자·배송담당자 아닌 사용자 제외)로 구현했다. 후보가 없으면 빈 배열을 기대한다(404가 아니라 빈 배열이어야 delivery가 `DELIVERY_MANAGER_NOT_FOUND`로 판단한다). I-14가 아직 없어 I-09가 실제 연동에서는 실패한다. 구현 일정과 빈 배열 응답 여부를 알려 달라. I-01(`userId, isDeliveryManager, hubId, slackId`)은 이미 있어 그대로 쓴다.
 - 결정:
+
+### USER-002 배송담당자 Slack 이메일과 내부 연락처 조회
+
+- 상태: OPEN (기능 구현 요청에 따른 로컬 변경, 제공 담당자 리뷰 대기)
+- 작성: order / Junhyun An 작업 / 2026-10-15
+- 내용: 사용자의 이메일 DM 구현 요청에 따라 slackEmail·U-01/U-06·I-16을 추가한다. 신규 가입은 이메일만 필수로 받고 ID를 받지 않도록 10/16 후속 요청을 반영했다. 기존 I-01·I-14의 필드 구성은 유지하며 이메일은 새 연락처 조회로만 내부 제공한다.
+- 관련: [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md). 팀 전체 승인·제공 담당자의 검토 완료를 뜻하지 않는다.
+- 구현·검증: 2026-10-16 로컬 구현과 user 테스트 88개 통과. `.env`에 이메일을 넣는 대신 사용자 데이터의 선택 연락처로 저장한다. V2/V3 적용·U-01 필수 이메일·I-01/I-14의 nullable slackId·연락처 노출 범위를 제공 담당자가 리뷰한다. [실행 안내](../../guides/slack-dm.md)

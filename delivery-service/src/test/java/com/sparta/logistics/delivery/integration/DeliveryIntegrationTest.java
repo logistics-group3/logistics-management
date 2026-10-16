@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -201,6 +202,46 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
                 Integer.class, deliveryId)).isEqualTo(3);
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT deleted_by FROM p_deliveries WHERE delivery_id = ?", String.class, deliveryId)).isEqualTo("SYSTEM");
+    }
+
+    @Test
+    @DisplayName("I-15는 중복 없는 미완료 구간 담당자만 반환하고 도착한 구간은 제외한다")
+    void notificationRecipients() throws Exception {
+        UUID first = UUID.randomUUID();
+        UUID last = UUID.randomUUID();
+        givenManagers(Map.of(supplierHub, List.of(first), receiverHub, List.of(last)));
+        UUID orderId = UUID.randomUUID();
+        UUID id = create(orderId);
+        assertThat(deliveryQueryService.getNotificationRecipients(id).managerIds()).containsExactly(first, last);
+        mockMvc.perform(get("/internal/deliveries/{id}/notification-recipients", id))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.orderId").value(orderId.toString()))
+                .andExpect(jsonPath("$.managerIds.length()").value(2)).andExpect(jsonPath("$.data").doesNotExist());
+        DeliveryResponse delivery = deliveryQueryService.getDelivery(master(), id);
+        for (int i = 0; i < 2; i++) {
+            UUID routeId = delivery.routes().get(i).deliveryRouteId();
+            deliveryService.changeRouteStatus(master(), id, routeId, new ChangeRouteStatusCommand(RouteStatus.MOVING, null, null));
+            deliveryService.changeRouteStatus(master(), id, routeId, new ChangeRouteStatusCommand(RouteStatus.ARRIVED,
+                    i == 1 ? new BigDecimal("10.50") : null, i == 1 ? 20 : null));
+        }
+        assertThat(deliveryQueryService.getNotificationRecipients(id).managerIds()).containsExactly(last);
+        UUID lastRoute = delivery.routes().get(2).deliveryRouteId();
+        deliveryService.changeRouteStatus(master(), id, lastRoute, new ChangeRouteStatusCommand(RouteStatus.MOVING, null, null));
+        deliveryService.changeRouteStatus(master(), id, lastRoute, new ChangeRouteStatusCommand(RouteStatus.ARRIVED, null, null));
+        assertThat(deliveryQueryService.getNotificationRecipients(id).managerIds()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("취소된 배송은 알림 수신자가 없고 삭제된 배송은 I-15에서도 404다")
+    void excludesCanceledAndDeletedNotification() throws Exception {
+        UUID one = UUID.randomUUID();
+        givenManagers(Map.of(supplierHub, List.of(one), receiverHub, List.of(one)));
+        UUID orderId = UUID.randomUUID();
+        UUID id = create(orderId);
+        assertThat(deliveryQueryService.getNotificationRecipients(id).managerIds()).containsExactly(one);
+        deliveryService.cancel(id);
+        assertThat(deliveryQueryService.getNotificationRecipients(id).managerIds()).isEmpty();
+        deliveryService.deleteByOrderId(orderId);
+        mockMvc.perform(get("/internal/deliveries/{id}/notification-recipients", id)).andExpect(status().isNotFound());
     }
 
     private UUID create(UUID orderId) {

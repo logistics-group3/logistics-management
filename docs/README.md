@@ -6,6 +6,7 @@
 
 | 상황 | 읽을 문서 |
 |---|---|
+| 브라우저로 주문·배송을 테스트한다 | [운영 UI 실행 안내](../frontend/README.md), [검증 기록](reviews/logistics-test-ui.md) |
 | 처음 합류했다, 로컬에서 띄워 보고 싶다 | 루트 `README.md` → [로컬 실행 가이드](guides/local-run.md) |
 | 내 서비스 구현을 시작한다 | [서비스 협업 창구](services/README.md)의 내 서비스 → SA 해당 절 → [구현 가이드](guides/dev-guide.md) → 모듈 폴더의 `AGENTS.md` |
 | 다른 서비스 API를 호출해야 한다 | 그 서비스의 `docs/services/{service}/README.md` 제공 API 표 |
@@ -16,6 +17,7 @@
 | 막혔다 | [문제 해결 기록](troubleshooting.md) |
 | 왜 이렇게 만들었는지 궁금하다 | [결정 기록](decisions/README.md) |
 | AI 에이전트로 작업한다 | 루트 `AGENTS.md`(공통 진입점) |
+| 프런트까지 전체 빌드하거나 API 연동을 검증한다 | [전체 빌드·검증](guides/full-build.md): Gradle과 npm을 각각 실행 |
 
 ## 정보별 기준 위치
 

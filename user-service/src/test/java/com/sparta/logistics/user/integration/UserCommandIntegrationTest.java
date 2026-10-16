@@ -131,7 +131,7 @@ class UserCommandIntegrationTest extends PostgresIntegrationTest {
     }
 
     private UUID signup(String username) {
-        return authService.signup(new SignupCommand(username, "Sparta!2026", "홍길동", "U01", AffiliationType.COMPANY, "부산수산도매"))
+        return authService.signup(new SignupCommand(username, "Sparta!2026", "홍길동", AffiliationType.COMPANY, "부산수산도매", "company@example.com"))
                 .userId();
     }
 

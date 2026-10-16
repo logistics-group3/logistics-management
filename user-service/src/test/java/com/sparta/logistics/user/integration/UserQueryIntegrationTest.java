@@ -127,7 +127,7 @@ class UserQueryIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].userId").value(manager.toString()))
-                .andExpect(jsonPath("$[0].slackId").value("U01"));
+                .andExpect(jsonPath("$[0].slackId").isEmpty());
     }
 
     private MockHttpServletRequestBuilder asMaster(MockHttpServletRequestBuilder request) {
@@ -141,7 +141,7 @@ class UserQueryIntegrationTest extends PostgresIntegrationTest {
     }
 
     private UUID signup(String username, String name) {
-        return authService.signup(new SignupCommand(username, "Sparta!2026", name, "U01", AffiliationType.HUB, "서울특별시 센터"))
+        return authService.signup(new SignupCommand(username, "Sparta!2026", name, AffiliationType.HUB, "서울특별시 센터", "query@example.com"))
                 .userId();
     }
 

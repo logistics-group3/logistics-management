@@ -63,6 +63,6 @@ class SlackOrderNotificationSenderTest {
     }
 
     private OrderCreatedEvent event(String requestNote) {
-        return new OrderCreatedEvent(UUID.randomUUID(), "공급업체", "수령업체", "상품", 50, requestNote);
+        return new OrderCreatedEvent(UUID.randomUUID(), "공급업체", "수령업체", "상품", 50, requestNote, UUID.randomUUID());
     }
 }

@@ -1,5 +1,6 @@
 package com.sparta.logistics.user.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.sparta.logistics.common.auth.Role;
 import com.sparta.logistics.user.application.dto.UserResult;
 import com.sparta.logistics.user.domain.AffiliationType;
@@ -18,12 +19,13 @@ public record UserResponse(
         boolean isDeliveryManager,
         UUID hubId,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String slackEmail
 ) {
 
     public static UserResponse from(UserResult result) {
         return new UserResponse(result.userId(), result.username(), result.name(), result.slackId(),
                 result.affiliationType(), result.affiliationName(), result.role(), result.isDeliveryManager(),
-                result.hubId(), result.createdAt(), result.updatedAt());
+                result.hubId(), result.createdAt(), result.updatedAt(), result.slackEmail());
     }
 }

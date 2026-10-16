@@ -103,3 +103,23 @@
 - `presentation/sample/AuthSampleController`를 지웠다. `script/e2e-check.sh`의 `/sample/me`는 U-03 `/api/v1/users/me`로, `/sample/admin`은 MASTER 전용인 U-05 `/api/v1/users`로 바꿨다. `docs/guides/local-run.md` 예시도 바꿨다.
 - `script/e2e-check.sh`, `docs/guides/local-run.md`는 공용 파일이라 PR에서 팀 전체 리뷰를 받는다.
 - 이 PC에는 Python이 없어 `script/run.sh --check`를 끝까지 돌리지 못했다(TS-006). 같은 항목을 curl로 직접 확인했다.
+
+## U-01·U-06·I-16 Slack 알림 연락처 (2026-10-16)
+
+### 처리 과정
+- V2가 nullable slack_email을 추가한다. User.changeSlackEmail은 공백을 정리하고 빈 값은 null로 저장한다. V1은 수정하지 않는다. V3가 기존 slackId 값을 보존하면서 NOT NULL만 해제한다.
+- 사용자의 이메일만 받기 요청에 따라 U-01은 이메일을 필수 검증해 Command로 전달하고 U-06은 MASTER만 변경한다. null·생략은 유지, 빈 문자열은 해제다. UserResponse는 이메일이 없으면 필드를 생략한다.
+- I-16은 UserQueryService로 활성 사용자를 찾아 전용 Response를 반환한다. I-01·I-14에 이메일을 섞지 않는다.
+
+### 핵심
+- 기존 멤버 ID와 사람이 입력하는 이메일은 의미가 다르다. 선택 컬럼으로 두어 기존 사용자에게 마이그레이션 입력을 강요하지 않는다.
+- 계정·연락처는 user가 소유한다. order는 DB를 직접 읽지 않고 내부 읽기 계약만 사용한다.
+- 연락처 저장과 Slack 계정 확인·발송 성공은 다르다. 화면도 저장 결과만 안내한다.
+
+### 확인 질문
+- PATCH의 null과 빈 문자열을 같은 뜻으로 처리하면 어떤 기존 값이 사라질 수 있는가?
+- I-01 대신 I-16에 이메일을 제공하면 어떤 소비자 계약을 보호할 수 있는가?
+
+### 메모
+- 사용자 요청에 따라 관련 서비스 변경을 함께 구현했다. USER-002는 제공 담당자의 리뷰를 기다리는 OPEN 상태다.
+- user 88개 테스트와 실제 I-16·Slack DM 경로를 확인했다. [실행·검증](../../guides/slack-dm.md)

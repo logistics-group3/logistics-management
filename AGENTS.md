@@ -4,6 +4,7 @@
 
 ## 프로젝트
 - Java 17, Spring Boot 3.5.16, Spring Cloud 2025.0.x, Gradle 8.14 멀티 모듈, PostgreSQL 16
+- `frontend/`: React·TypeScript·Vite, Node.js 24·npm. 별도 npm 프로젝트이며 Gradle 빌드에 포함되지 않는다.
 - 모듈과 포트: `config-server`(8888), `eureka-server`(8761), `gateway-service`(8080), `{user,hub,company,order,delivery}-service`(8081~8085), `common-core`(웹 무관 공통 계약: 에러 코드·응답, 사용자 헤더), `common`(MVC 서비스 공통, common-core 포함)
 - 설정: 서비스 설정은 `config-repo/`(config-server가 제공)에 둔다. 각 모듈의 `application.yml`에는 이름과 `spring.config.import`만 둔다.
 - 패키지: `com.sparta.logistics.{서비스}`, 내부는 `presentation / application / domain / infrastructure`
@@ -35,6 +36,7 @@
 | 에러 코드를 추가·변경할 때 | `docs/error-codes.md` |
 | 사용자 질문에 답할 때, 개념 설명·"직접 해보기" 작성 시 | `docs/agents/learning-guide.md` |
 | 작업 완료 보고·리뷰·테스트 전 | `docs/agents/quality-gates.md`, `docs/guides/review-checklist.md` |
+| 프런트 작업·프런트가 쓰는 API 계약 변경·전체 빌드 요청 | `frontend/AGENTS.md`, `docs/guides/full-build.md` |
 | 문서·노트·커밋·PR 본문을 쓸 때 | `docs/guides/writing.md` |
 | 브랜치·커밋·PR 작업 시 | `docs/guides/git-workflow.md` |
 | 결정 기록 시 | `docs/decisions/README.md` |
@@ -61,7 +63,11 @@
 - 그 밖에 저장소에 올리지 않을 개인 파일은 `.git/info/exclude`에 경로를 적는다(나에게만 적용되는 `.gitignore`).
 
 ## 검증 명령
-- 전체 빌드: `./gradlew build`
+- 백엔드 빌드·테스트: `./gradlew build`. 프런트 검증은 포함하지 않는다.
+- 프런트 최초 준비 또는 lockfile 변경: `npm --prefix frontend ci`
+- 프런트 검증: `npm --prefix frontend run build`, `npm --prefix frontend run lint`, `npm --prefix frontend run format:check`, `npm --prefix frontend run test`
+- 전체 빌드 요청이면 백엔드와 프런트 명령을 모두 실행하고 결과를 각각 보고한다. 프런트 코드·의존성 또는 프런트가 쓰는 API의 요청/응답·권한을 바꾸면 프런트 검증도 한다. 명령·실행 조건의 정본은 [전체 빌드·검증](docs/guides/full-build.md)이다.
+- 브라우저 E2E는 `npm --prefix frontend run test:e2e`. 실행 중인 전용 테스트 서버·UI·시드와 Slack 비활성화가 필요하며, 빌드·단위 테스트와 별도 결과로 보고한다.
 - 단일 모듈 실행: `./gradlew :eureka-server:bootRun` (서비스는 config-server를 먼저 띄운다)
 - 전체 실행: `script/run.sh` (`.env`가 없으면 만든다), 완료 기준 확인까지: `script/run.sh --check`
 - 에러 코드 중복·문서 누락: `script/error-codes-check.sh`, 문서 동기화: `script/docs-check.sh`

@@ -2,6 +2,8 @@
 
 물류 관리 MSA 프로젝트. Java 17, Spring Boot 3.5.16, Spring Cloud 2025.0.3, PostgreSQL 16.
 
+`frontend/`의 React·TypeScript·Vite 운영 콘솔은 Node.js 24·npm으로 별도 빌드한다. **Gradle 빌드에는 프런트가 포함되지 않는다.** 전체 검증 명령은 [백엔드·프런트 빌드 기준](docs/guides/full-build.md), 화면 실행은 [frontend README](frontend/README.md)를 따른다. AI 에이전트는 루트 `AGENTS.md`와 `CLAUDE.md`에서 같은 기준을 읽는다.
+
 ## 빠른 실행
 ```bash
 script/run.sh                 # .env가 없으면 .env.example을 복사하고, 빌드 후 전체 기동(빌드는 Dockerfile 안에서 한다)
@@ -34,18 +36,18 @@ open http://localhost:8080/swagger-ui.html
 
 # 회원가입 → 로그인 → 토큰을 변수에 저장
 curl -s -X POST localhost:8080/api/v1/auth/signup -H 'Content-Type: application/json' \
-  -d '{"username":"hong01","password":"Sparta!2026","name":"홍길동","slackId":"U01","affiliationType":"COMPANY","affiliationName":"부산수산도매"}'
+  -d '{"username":"hong01","password":"Sparta!2026","name":"홍길동","slackEmail":"hong@example.com","affiliationType":"COMPANY","affiliationName":"부산수산도매"}'
 TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"hong01","password":"Sparta!2026"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
 
-curl -s localhost:8080/api/v1/users/sample/me    -H "Authorization: Bearer $TOKEN"   # 200, 내 정보
-curl -s localhost:8080/api/v1/users/sample/admin -H "Authorization: Bearer $TOKEN"   # 403 FORBIDDEN (USER)
-curl -s localhost:8080/api/v1/users/sample/me                                        # 401 UNAUTHORIZED (토큰 없음)
+curl -s localhost:8080/api/v1/users/me    -H "Authorization: Bearer $TOKEN"   # 200, 내 정보
+curl -s localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"   # 403 FORBIDDEN (USER)
+curl -s localhost:8080/api/v1/users/me                                        # 401 UNAUTHORIZED (토큰 없음)
 curl -s localhost:8080/internal/users/x          -H "Authorization: Bearer $TOKEN"   # 404 (외부 차단)
 
 MASTER=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"master","password":"Master!2026"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
-curl -s localhost:8080/api/v1/users/sample/admin -H "Authorization: Bearer $MASTER"  # 200 (기동 시 만든 MASTER)
+curl -s localhost:8080/api/v1/users -H "Authorization: Bearer $MASTER"  # 200 (기동 시 만든 MASTER)
 
 docker compose logs -f user-service                                                  # 로그 보기
 docker compose exec gateway-service curl -s http://user-service:8081/actuator/health # 내부 헬스 체크

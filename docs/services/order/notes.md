@@ -1,5 +1,25 @@
 # order 구현 노트
 
+## O-01 커밋 후 배송담당자 Slack DM (2026-10-16)
+
+### 처리 과정
+- OrderCreatedEvent에 deliveryId를 추가했다. 기존 커밋과 멱등성 경계는 유지하고 별도 AFTER_COMMIT 리스너가 AsyncDeliveryManagerDmSender에 맡긴다.
+- DeliveryManagerDmService는 I-15 담당자 → I-16 이메일 → SlackDirectMessageGateway 순서로 처리한다. NotificationDirectoryAdapter가 Feign을 연결하고 SlackDmClient가 Slack Web API를 호출한다.
+- SlackDmClient는 이메일 조회 → DM 열기 → 메시지 발송을 하고 HTTP와 JSON ok·채널·ts를 확인한다. Bot Token·워크스페이스·허용 목록은 서버 설정으로 받는다.
+
+### 핵심
+- 커밋 전에 보내면 롤백된 주문을 알릴 수 있다. 비동기로 넘기면 Slack 지연이 주문 응답·DB 트랜잭션을 붙잡지 않는다.
+- 원격 호출을 application 포트 뒤에 둬 업무 규칙과 인증·HTTP 응답 형식을 분리한다.
+- 같은 이벤트의 담당자·이메일은 한 번만 시도한다. HTTP 200의 ok=false도 실패이며, 응답 유실 후 재전송은 중복 메시지를 만들 수 있어 Slack POST는 자동 반복하지 않는다.
+- 실패는 이미 생성된 주문과 분리한다. 큐는 메모리이므로 재시작 후 발송 보장은 없으며 Outbox는 후속 범위다.
+
+### 확인 질문
+- 주문 응답 201과 SLACK_DM_SENT는 각각 무엇을 확인한 결과인가?
+- 주문 멱등키가 있어도 프로세스 재시작까지 알림을 보장하지 못하는 이유는 무엇인가?
+
+### 메모
+- 주문 451개·전체 727개 테스트, 실제 Gateway→delivery→user→Slack 접수 1건을 확인했다. 검증·팀 계약은 [실행 안내](../../guides/slack-dm.md)에 연결했다.
+
 완료한 단계의 처리 과정과 검증 기록이다. 이전 내용은 주제별 파일로 옮겼으며 당시 결과를 유지한다.
 
 - [주문 기반과 금액 결정 이력](notes/foundation-and-money.md)

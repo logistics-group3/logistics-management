@@ -114,3 +114,11 @@ script/db-check.sh                              # 서비스 계정 권한 확인
 
 ## 8. 기존 환경과 병행하기
 `.env`의 `COMPOSE_PROJECT_NAME`과 호스트 포트(`POSTGRES_PORT`, `CONFIG_SERVER_PORT`, `EUREKA_PORT`, `GATEWAY_PORT`)를 다르게 정한다. 자세한 내용은 루트 `README.md`에 있다.
+
+## 9. 물류 운영 테스트 UI
+
+전체 메뉴와 주문·배송 기능을 브라우저에서 테스트하려면 [frontend 실행 안내](../../frontend/README.md)를 따른다.
+`script/ui-test.sh up`은 별도 `logistics-ui-test` 프로젝트·전용 환경 파일·DB 볼륨을 사용한다. 기본 개발 환경은 유지하고 Slack Webhook은 항상 비활성화한다. DM은 기본 비활성화이며 명시한 토큰·워크스페이스·수신 허용 목록으로만 켠다.
+`seed`는 공개 API로 테스트 계정·업체·상품·주문을 준비한다. `frontend`는 http://127.0.0.1:5174 에서 실행하고 Gateway는 18080번이다.
+실제 DM이 켜져 있으면 `seed`와 브라우저 E2E는 주문 생성 전에 중단한다. 최초 DM 배포는 config-server·user·delivery·order를 빌드하고 user Flyway V2·V3를 적용한다. [Slack DM 설정·실패 처리](slack-dm.md)를 따른다.
+종료는 프런트 실행 터미널의 Ctrl+C와 `script/ui-test.sh down`이다. 테스트 DB 볼륨은 유지한다.
