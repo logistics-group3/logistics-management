@@ -6,6 +6,7 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0018 | [메트릭 수집: Prometheus + Grafana 도입](0018-metrics-prometheus-grafana.md) | 제안 | 2026-10-16 |
 | 0017 | [분산 추적: Micrometer Tracing + Zipkin 도입](0017-distributed-tracing-micrometer-zipkin.md) | 제안 | 2026-10-16 |
 | 0016 | [주문 커밋 후 배송담당자 이메일로 Slack DM 발송](0016-delivery-manager-slack-dm.md) | 제안 | 2026-10-15 |
 | 0015 | [실제 Gateway와 연결하는 물류 운영 테스트 UI](0015-logistics-test-ui.md) | 제안 | 2026-10-15 |

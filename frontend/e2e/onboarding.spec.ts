@@ -259,7 +259,17 @@ test('MASTER 배송담당자·허브 연결 → 실제 자동 배정과 구간 �
     const headers = await adminHeaders(request)
     const hubs = (await (await request.get('/api/v1/hubs?size=50', { headers })).json()).data
       .content
-    const hub = hubs.find((h: { hubId: string }) => h.hubId !== fixture.hubId)
+    // Note: 자동 배정은 허브의 담당 건수가 가장 적은 담당자를 고른다. 새 담당자가 유일한 후보인 허브여야 배정 대상을 단정할 수 있다.
+    // 시드가 담당자를 둔 허브와, 멘토 롤백 시나리오용으로 담당자를 비워 둔 허브(scenario.rollbackHubId)는 고르지 않는다.
+    const users = (await (await request.get('/api/v1/users?size=50', { headers })).json()).data
+      .content as { isDeliveryManager: boolean; hubId: string | null }[]
+    const staffed = new Set(users.filter((u) => u.isDeliveryManager).map((u) => u.hubId))
+    const hub = hubs.find(
+      (h: { hubId: string }) =>
+        h.hubId !== fixture.hubId &&
+        h.hubId !== fixture.scenario?.rollbackHubId &&
+        !staffed.has(h.hubId),
+    )
     await page.goto('/users')
     await login(page, 'uimaster')
     await page.getByRole('searchbox').fill('새 배송 담당자')

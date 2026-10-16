@@ -21,10 +21,11 @@ config-repo/ ──(config-server 빌드 때 jar에 포함)──▶ config-serv
 | 서비스 DB 비밀번호 | `config-repo/{service}.yml`의 `${USER_DB_PASSWORD:user_local_pw}` 등 | `.env` → compose `environment` | 로컬 더미 값으로 접속한다. compose는 `:?`로 값이 없으면 실행을 거부한다 |
 | JWT 서명 키 | `${JWT_SECRET}` (gateway, user) | `.env`의 `JWT_SECRET`(32바이트 이상) | 기본값을 두지 않는다. IDE로 띄울 때는 실행 설정에 환경 변수로 넣는다 |
 | 최초 MASTER 계정 | `${MASTER_USERNAME:}`, `${MASTER_PASSWORD:}` (user) | `.env` | 비어 있으면 MASTER를 만들지 않는다 |
+| Grafana admin 비밀번호 | compose `${GRAFANA_ADMIN_PASSWORD:-GrafanaLocal!2026}` | `.env`, UI 테스트는 `.env.ui-test`를 처음 만들 때 무작위 값 | `.env.example`과 같은 로컬 값으로 뜬다. 127.0.0.1에만 열리고 보기는 로그인 없이 된다(ADR 0018) |
 | Slack Webhook URL | `config-repo/order-service.yml`의 `${SLACK_WEBHOOK_URL:}` → `slack.webhook-url`, compose가 order에 전달 | `.env` | 알림을 생략한다. 주문 생성은 유지한다. URL과 HTTP 예외 메시지·응답 본문을 로그에 남기지 않는다 |
 | Slack Bot Token | `${SLACK_BOT_TOKEN:}` → `slack.dm.bot-token`, compose가 order에만 전달 | `.env` 또는 격리 환경의 `.env.ui-test` | DM을 생략한다. 프런트·Git·로그에 넣지 않는다 |
 
-`.env.example`의 포트 값(`POSTGRES_PORT`, `CONFIG_SERVER_PORT`, `EUREKA_PORT`, `GATEWAY_PORT`, `ZIPKIN_PORT`)과 분산 추적 설정(`TRACING_SAMPLING_PROBABILITY`)은 비밀값이 아니다. 기존 환경과 병행하거나 추적 비율을 바꿀 때 쓴다.
+`.env.example`의 포트 값(`POSTGRES_PORT`, `CONFIG_SERVER_PORT`, `EUREKA_PORT`, `GATEWAY_PORT`, `ZIPKIN_PORT`, `PROMETHEUS_PORT`, `GRAFANA_PORT`)과 분산 추적 설정(`TRACING_SAMPLING_PROBABILITY`)은 비밀값이 아니다. 기존 환경과 병행하거나 추적 비율을 바꿀 때 쓴다.
 
 DM은 `SLACK_DM_ENABLED=false`가 기본이며 토큰과 `SLACK_DM_WORKSPACE_ID`를 함께 확인한다. `SLACK_DM_ALLOWED_EMAILS`는 선택 수신자 제한이고, UI 테스트에서는 활성화 시 필수다. 설정·회수 범위와 실행 절차는 [Slack DM 안내](slack-dm.md)에 있다.
 
@@ -34,8 +35,8 @@ DM은 `SLACK_DM_ENABLED=false`가 기본이며 토큰과 `SLACK_DM_WORKSPACE_ID`
 | S1 | `config-repo`, `application*.yml`, compose에 비밀값을 평문으로 쓰지 않는다. `${ENV}` 자리표시자만 쓴다 | Git 이력은 지워지지 않는다 |
 | S2 | 자리표시자 기본값은 `.env.example`과 같은 로컬 더미 값만 둔다. 서명 키처럼 기본값이 있으면 위험한 값은 기본값 없이 둔다 | 기본값이 다른 환경에 섞여 들어가는 것을 막는다 |
 | S3 | `.env`는 커밋하지 않는다(`.gitignore`). 새 변수는 `.env.example`에 더미 값으로, `docker-compose.yml`의 해당 서비스 `environment`에 함께 추가한다 | 팀원이 필요한 변수를 알 수 있다 |
-| S4 | actuator는 `health`, `info`만 노출한다(`config-repo/application.yml`). `env`, `configprops`, `heapdump`는 열지 않는다 | `/actuator/env`는 풀린 비밀값을 보여 줄 수 있다 |
-| S5 | Gateway 라우트·화이트리스트에 다른 서비스의 `/actuator/**`를 넣지 않는다. 비즈니스 서비스 포트는 호스트에 공개하지 않고, 관리 포트(postgres, config-server, eureka)는 `127.0.0.1`에만 연다 | 외부 진입점은 Gateway 하나다 |
+| S4 | actuator는 `health`, `info`, `prometheus`만 노출한다(`config-repo/application.yml`). `env`, `configprops`, `heapdump`는 열지 않는다. Gateway는 actuator를 공개하지 않는 관리 포트(8090)에 둔다(ADR 0018) | `/actuator/env`는 풀린 비밀값을 보여 줄 수 있다. 메트릭에는 비밀값이 없지만 경로·상태 분포가 드러나므로 공개 포트에 두지 않는다 |
+| S5 | Gateway 라우트·화이트리스트에 `/actuator/**`를 넣지 않는다. 비즈니스 서비스 포트와 Gateway 관리 포트는 호스트에 공개하지 않고, 관리 포트(postgres, config-server, eureka, zipkin, prometheus, grafana)는 `127.0.0.1`에만 연다 | 외부 진입점은 Gateway API 하나다 |
 | S6 | `config-repo` 변경은 PR 리뷰를 거친다. PR 템플릿의 "설정 변경 시 다시 시작할 서비스" 항목에 적는다 | 누가 언제 무엇을 바꿨는지 PR로 추적한다. 별도 CHANGELOG는 두지 않는다(팀 결정) |
 | S7 | 로그·예외 메시지·응답에 비밀값을 출력하지 않는다 | 로그는 공유되고 오래 남는다 |
 
@@ -65,6 +66,6 @@ refresh로도 바뀌지 않는 값이 많다는 점은 알아 둔다. 서명 키
 ## 6. 설정 변경 PR 체크리스트
 - [ ] 비밀값 평문이 없고, 자리표시자 기본값은 로컬 더미 값뿐이다(S1, S2).
 - [ ] 새 환경 변수를 `.env.example`과 `docker-compose.yml`에 함께 추가했다(S3).
-- [ ] actuator 노출 범위와 Gateway 라우트에 `/actuator/**`를 추가하지 않았다(S4, S5).
+- [ ] actuator 노출 범위를 S4 밖으로 넓히지 않았고 Gateway 라우트·화이트리스트에 `/actuator/**`를 추가하지 않았다(S4, S5).
 - [ ] PR 본문에 다시 시작할 서비스를 적었다(S6).
 - [ ] 서비스 고유 설정은 `@ConfigurationProperties` record로 받는다([설정 규칙](../agents/rules/config.md)).

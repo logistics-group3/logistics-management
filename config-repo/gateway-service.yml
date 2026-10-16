@@ -1,6 +1,12 @@
 server:
   port: 8080
 
+management:
+  server:
+    # Note: 8080은 호스트에 공개된 유일한 포트다. actuator를 같은 포트에 두면 메트릭이 외부에서도 보이므로, Compose 네트워크 안에서만 닿는
+    # 별도 관리 포트로 분리한다(ADR 0018). Prometheus는 Eureka 메타데이터(management.port)로 이 포트를 찾는다.
+    port: ${GATEWAY_MANAGEMENT_PORT:8090}
+
 spring:
   # Note: WebFlux는 한 요청이 여러 스레드를 옮겨 다녀 ThreadLocal인 MDC가 비기 쉽다. auto로 두면 Reactor가 traceId를 스레드 사이로 옮겨
   # Gateway 로그 줄에도 traceId가 찍힌다(Micrometer context-propagation).
@@ -76,7 +82,6 @@ auth:
   whitelist:
     - /api/v1/auth/signup
     - /api/v1/auth/login
-    - /actuator/health
     - /swagger-ui.html
     - /swagger-ui/**
     - /webjars/**

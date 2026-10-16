@@ -64,12 +64,7 @@ export function CreateOrder() {
     if (inFlight.current || saved.error) return
     if (
       !pending &&
-      (!product ||
-        !supplier ||
-        !receiver ||
-        supplier.companyId === receiver.companyId ||
-        overflow ||
-        crossHub)
+      (!product || !supplier || !receiver || supplier.companyId === receiver.companyId || overflow)
     )
       return
     inFlight.current = true
@@ -215,9 +210,10 @@ export function CreateOrder() {
             </div>
           )}
           {crossHub && (
-            <div className="notice warning">
-              다른 허브 간 주문은 허브 경로 API 연동 준비 중입니다. 현재 테스트는 같은 허브의 업체를
-              선택해 주세요.
+            <div className="notice" role="status">
+              다른 허브 간 주문입니다. 배송은 공급업체 집하 → 허브 간 이동(
+              {directory.hubName(supplier.hubId)} → {directory.hubName(receiver.hubId)}) → 수령업체
+              배송 3구간으로 만들어집니다. 각 구간의 출발 허브에 배송담당자가 있어야 합니다.
             </div>
           )}
         </section>
@@ -301,7 +297,7 @@ export function CreateOrder() {
             Boolean(saved.error) ||
             failure === 'blocked' ||
             failure === 'aborted' ||
-            (!pending && (!product || !receiver || !supplier || overflow || Boolean(crossHub)))
+            (!pending && (!product || !receiver || !supplier || overflow))
           }
         >
           {busy ? '주문 결과 확인 중…' : pending ? '같은 요청 결과 확인' : '주문 등록'}
