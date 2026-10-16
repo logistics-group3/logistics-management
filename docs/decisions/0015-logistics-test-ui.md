@@ -35,6 +35,7 @@
 회원가입은 기존 U-01의 USER 생성 계약을 사용하고 비밀번호를 화면 밖에 저장하지 않는다. 소속명 입력으로 업무 권한을 자동 부여하지 않는다. 업체 등록 C-01은 기존 서버 정책에 따라 USER 본인을 담당자로 연결한다.
 후속 요청으로 업체 등록·수정·담당자 변경, 상품 등록, 배송담당자·허브 지정을 기존 C-01·C-04·P-01·U-07에 연결했다. API·DB 스키마는 변경하지 않았다.
 상품 등록 요청의 큰 원화 가격도 Number를 거치지 않고 정확한 JSON 정수로 직렬화한다. 업체·상품 생성 결과가 불확실하면 자동 재전송하지 않고 목록 확인을 안내한다.
-업체·상품 삭제, 상품 수정, 계정 역할 변경·비활성화, 배송지 수정·구간 재배정, cross-hub 주문, 생성 진행 조회·자동 복구는 후속 범위다.
+업체·상품 삭제, 상품 수정, 계정 역할 변경·비활성화, 배송지 수정·구간 재배정, 생성 진행 조회·자동 복구는 후속 범위다.
+2026-10-16 hub I-03(PR #9)이 dev에 병합돼 cross-hub 주문 제한을 풀었다. 실제 연동(3구간 생성, 경로 예상 거리·시간, 출발 허브 담당자별 구간 처리)을 E2E로 확인한 뒤 해제했다. 결정 6의 "미구현 I-03을 성공한 것으로 꾸미지 않는다"는 원칙에 따라, 서버 기능이 생긴 뒤에야 화면 제한을 바꿨다.
 
 공식 근거: [Vite](https://vite.dev/guide/), [TanStack Query](https://tanstack.com/query/latest/docs/framework/react/overview), [Radix Dialog](https://www.radix-ui.com/primitives/docs/components/dialog), [lossless-json](https://github.com/josdejong/lossless-json).

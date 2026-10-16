@@ -43,7 +43,7 @@ Eureka ──(인스턴스 목록)──▶ Prometheus ────────�
 | Gateway 라우트별 요청·4xx·5xx | 외부 요청이 어느 서비스로 갔고 몇 건이 거절됐는지 | 403이 많으면 권한 검사, 404면 없는 자원 요청이다 |
 | 서비스별 p95 응답 시간 | 요청 95%가 끝난 시간 | 점(exemplar)을 누르면 그 요청의 trace가 Zipkin에서 열린다 |
 | Feign 호출 수·p95 | 어느 서비스가 어느 클라이언트로 몇 번, 얼마나 걸려 불렀는지 | 주문 생성이 느리면 order → CompanyClient·DeliveryCreateClient 쪽을 본다 |
-| 내부 API가 받은 호출 | `/internal/**`을 받은 쪽의 누적 호출 수와 상태 | 다른 허브 간 주문이 404면 delivery `POST /internal/deliveries` 404가 남는다 |
+| 내부 API가 받은 호출 | `/internal/**`을 받은 쪽의 누적 호출 수와 상태 | 배송담당자가 없어 주문이 실패하면 delivery `POST /internal/deliveries` 404가 남는다. 허브 간 주문은 hub `GET /internal/hub-routes`가 함께 늘어난다 |
 | 엔드포인트별 요청·상태 | 외부 API별 누적 호출 수와 상태 코드 | 테스트 시나리오의 기대 상태 코드와 맞춰 본다 |
 | JVM 힙, CPU, DB 커넥션 풀 | 자원 사용량 | 커넥션 대기가 계속 0보다 크면 풀이 모자라다 |
 
