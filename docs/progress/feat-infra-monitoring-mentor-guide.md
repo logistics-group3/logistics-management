@@ -1,7 +1,7 @@
 # feat/infra-monitoring-mentor-guide
 
 ## 지금 하는 일
-메트릭 수집·멘토 가이드 구현 완료, 푸시·PR 대기
+dev(hub 경로 API) 병합 완료, 멘토 가이드의 허브 간 시나리오 갱신 대기
 
 ## 진행 상태
 - [x] dev `8e9ebe6`(PR #8 병합 후)에서 브랜치 생성. 사용자 요청: Grafana·Prometheus 연동, 프런트에 멘토 테스트 가이드·절차·테스트 데이터, 로컬의 미커밋 작업도 함께 올린다
@@ -19,12 +19,21 @@
   - `.env.ui-test`의 `SLACK_DM_ENABLED`를 원래 값(true)으로 되돌렸다(백업과 동일 확인). UI 테스트 스택은 작업 전처럼 내렸다
   - 개발 스택을 원래 테스트 모드(`API_TEST_SQL=DEBUG script/api-test.sh up`)로 다시 올리고 prometheus·grafana를 띄웠다. 수집 대상 6개 up
   - UI 테스트 스택을 다시 띄우면 실제 DM이 켜진 상태라 `seed`·E2E가 거부된다. 멘토용 시연 전에는 DM을 끄고 `up`을 다시 실행한다
+- [x] `36c6219` origin/dev 병합(사용자 요청): hub PR #9의 경로 272건 시드(V3)와 H-03·H-04·I-03을 가져왔다. 충돌 없음
+  - 검증: `./gradlew build` 766개 통과(hub 62개 포함), `script/docs-check.sh origin/dev` OK
+  - 개발 스택(Slack 꺼짐)에서 hub-service를 다시 빌드했고 Flyway V3가 적용됐다
+  - `GET /api/v1/hub-routes` 200
+  - HUB_A → HUB_B 주문 201. 배송은 집하·허브 간 이동(예상 52.13km·45분)·업체 배송 3구간이고 모두 자동 배정됐다. 확인용 주문은 취소·삭제했다
+- [ ] 멘토 가이드·프런트 갱신: 다른 허브 간 주문이 이제 동작한다. 아래가 실제와 다르다
+  - 가이드의 "허브 간 이동정보", "발제 예시: 경기 → 부산" 시나리오(구현 대기, 404)
+  - `knownGaps` 첫 줄, `docs/guides/mentor-test.md` 5절, `docs/guides/monitoring.md`의 404 예시
+  - `CreateOrder.tsx`의 다른 허브 주문 제한
 - [ ] 푸시·PR(사용자 요청 시). 공통 영역 변경이라 팀원 전체 리뷰
 - 면접 포인트: 메트릭·로그·추적의 차이, Pull 방식 수집과 서비스 디스커버리, RED 지표, 같은 이름 메트릭의 라벨 키 충돌, 관리 포트 분리와 인증 우회 방지
 
 ## 다음 단계
 1. 사용자가 원하면 푸시하고 dev 대상 PR을 만든다. 본문에 ADR 0018과 보안 규칙 S4 변경, Gateway 헬스 체크 주소 변경(8090)을 적는다
-2. hub 경로 API(I-03)가 들어오면 가이드의 "발제 예시: 경기 → 부산" 시나리오 기대 결과를 바꾸고, `CreateOrder.tsx`의 다른 허브 주문 제한을 푼다
+2. hub 경로 API(I-03)가 dev에 들어왔다(병합 완료). 가이드의 경로·허브 간 배송 시나리오 기대 결과를 실제 동작으로 바꾼다. `CreateOrder.tsx`의 다른 허브 주문 제한을 풀고(ADR 0015 결과 절 갱신) UI 테스트 스택에서 E2E로 확인한다
 3. 필요하면 Grafana Alerting → Slack(질문 노트 2026-10-16-slack-monitoring-alerts)을 별도 ADR로 검토한다
 
 ## 직접 해보기
