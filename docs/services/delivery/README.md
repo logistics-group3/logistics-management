@@ -21,6 +21,7 @@
 | D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 현재 배송담당자인 업체 배송 구간 담당자, MASTER | 구현 | 지정 해제 후 배정 ID만 같아도 403. 두 필드 모두 없으면 400 `VALIDATION_ERROR`(SA에 없는 규칙) |
 | D-04 | `POST /api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | MASTER | 구현 |  |
 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 현재 배송담당자인 그 구간 담당자, MASTER | 구현 | 지정 해제 후 배정 ID만 같아도 403. `status`에 `WAITING`·`CANCELED`를 보내면 409 `INVALID_STATUS_TRANSITION` |
+| (테스트) | `POST /api/v1/deliveries/load-test` | MASTER, 부하 테스트 전용 | 구현 | SA에 없음. 기본 꺼짐(`delivery.load-test.enabled`), 켜면 I-09와 같은 처리. 다른 서비스는 쓰지 않는다([load-test.md](../../../delivery-service/docs/load-test.md), 결정 로그 24) |
 | I-09 | `POST /internal/deliveries` | order | 구현 | 새로 만들면 201, 같은 orderId면 200 + 기존 값. 응답에 `orderId`도 담는다(SA는 deliveryId, status) |
 | I-10 | `GET /internal/deliveries/{deliveryId}` | order | 구현 |  |
 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order | 구현 | 응답 `deliveryId, orderId, status`. 이미 취소면 200 |

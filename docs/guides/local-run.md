@@ -90,6 +90,7 @@ docker compose stop hub-service          # 도커로 떠 있었다면 내린다
 | `infra/prometheus/prometheus.yml` | `docker compose restart prometheus` |
 | `infra/grafana/**`(데이터소스, 대시보드 JSON) | `docker compose restart grafana`. 화면에서 고친 대시보드는 저장되지 않는다 |
 | 이미 적용된 마이그레이션 수정, `infra/postgres/init.sh`, DB 비밀번호 | `script/run.sh --reset` (DB 데이터 삭제) |
+| 덧붙임 compose 파일로 설정 켜기(예: 배송 부하 테스트 API) | `COMPOSE_FILE=docker-compose.yml:docker-compose.loadtest.yml script/run.sh delivery-service`. 끌 때는 `COMPOSE_FILE` 없이 같은 명령. 절차는 `delivery-service/docs/load-test.md` |
 
 - 교체 직후 몇 초 동안 Gateway가 503을 줄 수 있다. 새 인스턴스가 Eureka에 등록되고 Gateway가 목록을 다시 받을 때까지다(조회 주기 5초).
 - 옛 이미지 정리: 가끔 `docker image prune -f`

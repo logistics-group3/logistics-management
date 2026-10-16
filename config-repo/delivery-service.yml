@@ -13,3 +13,9 @@ spring:
   flyway:
     # 마이그레이션 이력 테이블(flyway_schema_history)과 테이블을 이 서비스 스키마에 만든다
     schemas: delivery_schema
+
+delivery:
+  load-test:
+    # 부하 테스트 전용 배송 생성 API(POST /api/v1/deliveries/load-test). 운영에서는 켜지 않는다.
+    # 켜기: docker-compose.loadtest.yml을 함께 써서 기동한다(delivery-service/docs/load-test.md).
+    enabled: ${DELIVERY_LOAD_TEST_ENABLED:false}

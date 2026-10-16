@@ -29,6 +29,7 @@
 | 18 | 1:1 복사 Response 없애기 | Result 하나면 그대로 응답, 여러 Result를 합칠 때만 `Response`(`DeliveryResponse`). delivery만의 코드 규칙으로 `delivery-service/AGENTS.md`에 둠 |
 | 19 | 주문 DM용 수신자 조회 | I-15로 활성 구간 담당자만 제공. 로컬 구현·담당자 리뷰 대기(ADR 0016) |
 | 20 | 배송담당자 지정 해제 후 변경 권한 | D-03·D-05는 현재 자격과 구간 배정을 함께 검사한다. #13 사용자 확인 범위의 로컬 수정이다. |
+| 24 | 부하 테스트 방법과 테스트 전용 API | k6로 기준선 → 하나씩 변경 → 재측정. 배송 생성만 재려고 `POST /api/v1/deliveries/load-test`(기본 꺼짐, MASTER, 문서 제외)를 두고 덧붙임 compose 파일로만 켠다 |
 
 ---
 
@@ -278,6 +279,24 @@ SA에 같은 용도의 내부 API가 이미 있으면 그 이름을 따른다.
 **어떻게** — 시도 토큰과 종료 표시를 비교했다. order는 시도마다 `orderId`를 새로 만들어 I-09·I-13에 쓰므로 `orderId`가 이미 시도 식별자라 토큰 필드가 필요 없다. 그래서 종료 표시(`p_delivery_creation_closures`, order_id 기본키)를 택했다. 표만으로는 "I-09가 표를 확인한 뒤 저장하기 전에 I-13이 표와 삭제를 끝내는" 순서가 남는다. 이를 막으려고 I-09의 저장과 I-13이 같은 orderId의 PostgreSQL advisory lock(`pg_advisory_xact_lock`)을 잡는다. 행 잠금은 쓸 수 없다. 잠글 행이 아직 없기 때문이다. I-09는 원격 호출을 잠금 밖에서 하고, 저장 직전 짧은 트랜잭션에서만 잠금·기존 배송 재확인·표 확인·저장을 한다. 원격 호출 전에도 한 번 확인해 불필요한 호출을 줄인다.
 
 **결론** — I-13은 대상 유무와 상관없이 표를 남기고(멱등), I-09는 표가 있으면 409 `DELIVERY_CREATION_CLOSED`로 거절한다. 표는 만료하지 않는다. 이 변경 이전에 논리 삭제된 배송은 V2가 표를 채운다(안 채우면 같은 orderId의 I-09가 order_id 유니크 위반 500이 된다). 결과 확인은 I-17(`ACTIVE`·`CLOSED`·`NONE`)로 제공한다. 번호는 user의 I-16과 겹치지 않게 I-17로 했다. order의 RECOVERY_REQUIRED 자동 종료·운영 복구 API는 범위 밖이다. 테스트 4개(`DeliveryCreationClosureIntegrationTest`)로 지연 생성 거절, 저장 직전 삭제의 직렬화, 삭제 뒤 재생성 거절과 멱등, I-17 상태와 HTTP 409를 확인했다. DELIVERY-002의 결정이다.
+
+## 24. 부하 테스트 방법과 테스트 전용 배송 생성 API (2026-10-15)
+
+**왜** — 동시성을 잡은 뒤 트래픽이 많을 때의 병목을 코드로 분석했다(학습 노트 `2026-10-15-delivery-high-traffic-bottlenecks.md`). 가장 큰 후보는 배송 생성(I-09) 안의 원격 호출과 담당 건수 쿼리였다. 고치기 전에 k6로 지금 상태를 재고, 하나씩 바꾸며 다시 재는 흐름으로 가기로 했다. 그런데 배송 생성은 내부 API라 Gateway가 막고, 주문(O-01)을 거치면 order·company 시간이 섞여 배송만 바꾼 효과가 묻힌다. 그래서 주문을 거치지 않고 배송에 직접 부하를 줄 테스트용 컨트롤러를 두기로 했다.
+
+**어떻게** — 세 방법을 비교했다.
+- delivery-service 포트를 열고 `/internal/deliveries`를 직접 부르기: 코드 변경이 없다. 하지만 Gateway를 거치지 않아 실제 경로(인증 필터, 라우팅)와 다르고, 사용자 헤더를 손으로 넣어야 한다.
+- 주문 API로만 재기: 실제 경로지만 배송 쪽 변화를 따로 볼 수 없다. 전체 경로 측정용(`TARGET=order`)으로는 남긴다.
+- 외부 경로에 테스트 전용 컨트롤러: Gateway·인증까지 실제와 같고 배송 생성만 잰다. 대신 내부 전용 처리를 외부로 여는 것이라 운영에서 켜지면 안 된다.
+
+세 번째를 고르고 세 겹으로 막았다. `@ConditionalOnProperty(delivery.load-test.enabled=true)`가 아니면 빈이 없다. `@RequireRole(MASTER)`이고 `@Hidden`으로 Swagger에 싣지 않는다. 처리는 `DeliveryCreationService.create`를 그대로 불러 I-09와 같다.
+
+켜는 방법은 팀 설정 규칙("새 환경 변수는 `.env.example`과 `docker-compose.yml`에 함께 추가")과 다르게 갔다. `docker-compose.yml`에 넣으면 모든 팀원의 기본 실행에 변수가 생기고 팀 리뷰 대상이 된다. 대신 덧붙임 파일 `docker-compose.loadtest.yml`을 두고 `COMPOSE_FILE`로 합칠 때만 켠다. `config-repo/delivery-service.yml`의 기본값은 `false`다.
+
+**결론**
+- 측정: `load-test/k6/delivery-create.js`(`TARGET=delivery|order`), `delivery-read.js`. 데이터는 시드(`delivery-e2e.sql`)와 과거 배송 대량 데이터(`delivery-load.sql`, 기본 30만 건). 매 측정은 `--reset`한 같은 DB 상태에서 시작한다.
+- 테스트 API: `LoadTestDeliveryController`(`POST /api/v1/deliveries/load-test`), 꺼짐·켜짐 조건 테스트 3개.
+- 절차·실험 계획·결과 표: [`../load-test.md`](../load-test.md). 실험 순서는 담당 건수 부분 인덱스 → user 호출 캐시 → user 장애 재현과 타임아웃 → 목록 인덱스다. 한 번에 하나만 바꾼다.
 
 ## 남은 일
 
