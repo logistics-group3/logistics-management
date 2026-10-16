@@ -4,6 +4,8 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 50 | [멘토 테스트 가이드 화면과 시나리오 데이터](step-50-mentor-test-guide.md) | feat(ui): 멘토 테스트 가이드 화면과 시나리오 데이터 추가 |
+| 49 | [Prometheus + Grafana 메트릭 수집](step-49-prometheus-grafana.md) | feat(infra): Prometheus·Grafana 메트릭 수집 도입 |
 | 48 | [Micrometer Tracing + Zipkin 분산 추적 도입](step-48-micrometer-tracing-zipkin.md) | feat(infra): Micrometer Tracing과 Zipkin 분산 추적 도입 |
 | 47 | [Swagger 테스트 보조 도구와 로컬 분산 추적](step-47-api-test-tracing.md) | cf595a8 chore(infra): Swagger 테스트 보조 도구와 로컬 분산 추적 추가 |
 | 46 | [주문 삭제와 기본 API 마무리](step-46-order-deletion.md) | feat(order): 주문 삭제와 재요청 복구 구현 |
