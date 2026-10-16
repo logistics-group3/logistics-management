@@ -1,7 +1,7 @@
 # feat/infra-monitoring-mentor-guide
 
 ## 지금 하는 일
-메트릭·멘토 가이드·허브 간 주문 연동 완료, 푸시·PR 대기
+PR #10 리뷰 대기(메트릭·멘토 가이드·허브 간 주문 연동)
 
 ## 진행 상태
 - [x] dev `8e9ebe6`(PR #8 병합 후)에서 브랜치 생성. 사용자 요청: Grafana·Prometheus 연동, 프런트에 멘토 테스트 가이드·절차·테스트 데이터, 로컬의 미커밋 작업도 함께 올린다
@@ -29,11 +29,13 @@
   - 가이드의 경로·발제 예시 시나리오를 실제 동작으로 바꾸고 "구현 대기"를 없앴다. 관련 문서와 ADR 0015 결과 절을 갱신했다
   - 검증: 프런트 build·lint·format·단위 46개 통과. E2E 18개 통과(경기 → 부산 주문·3구간·담당자별 처리·삭제 포함)
   - 실패한 시도에서 남은 테스트 주문 3건은 정리했다. 검증 뒤 `.env.ui-test` DM 원복, UI 테스트 스택 내림, 개발 스택 테스트 모드 복구
-- [ ] 푸시·PR(사용자 요청 시). 공통 영역 변경이라 팀원 전체 리뷰
+- [x] 배송 로직 검토 요청 DELIVERY-004~008을 delivery 협업 로그에 추가(`ae2f039`). 근거는 질문 노트 2026-10-16-delivery-actual-distance-review
+- [x] 2026-10-16 사용자 요청으로 푸시하고 dev 대상 PR #10을 만들었다(https://github.com/logistics-group3/logistics-management/pull/10). 리뷰 요청: y0y00700, kej-2356, ChoiSeungKeun, jihaneol
+- [ ] 리뷰 반영과 병합(squash). 리뷰 포인트: actuator 노출(S4), Gateway 관리 포트 8090, ADR 0018·0015 채택, 시드가 E2E에 주는 영향, DELIVERY-004~008
 - 면접 포인트: 메트릭·로그·추적의 차이, Pull 방식 수집과 서비스 디스커버리, RED 지표, 같은 이름 메트릭의 라벨 키 충돌, 관리 포트 분리와 인증 우회 방지
 
 ## 다음 단계
-1. 사용자가 원하면 푸시하고 dev 대상 PR을 만든다. 본문에 ADR 0018과 보안 규칙 S4 변경, Gateway 헬스 체크 주소 변경(8090)을 적는다
+1. PR #10 리뷰 의견을 반영한다. ADR 0018·0015 상태는 팀 결정에 따라 바꾼다
 2. 허브 관리 화면에서 경로를 조회하는 UI는 아직 없다(가이드는 Swagger로 안내). 필요하면 허브 상세에 경로 목록을 붙인다
 3. 필요하면 Grafana Alerting → Slack(질문 노트 2026-10-16-slack-monitoring-alerts)을 별도 ADR로 검토한다
 
