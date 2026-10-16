@@ -13,7 +13,7 @@ hub-service 허브·경로 조회 구현(SA 5.3·6.5·10.1, I-02·I-03): 경로 
 - [x] `HubErrorCode`(`HUB_NOT_FOUND`, `HUB_ROUTE_NOT_FOUND`)를 작성하고 `docs/error-codes.md` 상태를 구현으로 갱신했다(2026-10-15).
 - [x] H-01·H-02·I-02를 구현했다(2026-10-15). `HubRepository`(`findById`, `search`), QueryDSL `HubQueryRepositoryImpl`(keyword 이름·주소 부분 일치, 정렬 허용 `createdAt`·`name`, PK를 마지막 정렬 기준으로 추가, count 분리), `HubQueryService`, `HubController`, `InternalHubController`, DTO 2개. 서비스 단위 5, MVC 6, PostgreSQL 통합 9개로 검색·정렬·페이징·논리 삭제 제외·404·잘못된 정렬 400·내부 응답 비래핑을 확인했다. 설명은 `../learning/seungkeun/steps`.
 - [x] 경로 조회 저장소를 구현했다(2026-10-15). `HubRouteRepository`(`findById`, `search`)와 QueryDSL `HubRouteQueryRepositoryImpl`(출발·도착 허브 ID 선택 필터, 정렬 허용 `createdAt`·`distanceKm`·`durationMinutes`에 PK tie-breaker, 두 허브 fetch join, count 분리, 단건은 `@EntityGraph`). `HubRouteRepositoryIntegrationTest` 7개를 포함해 `:hub-service:test` 30개 통과.
-- [ ] 경로 272개 생성(SA 10.1): `ApplicationRunner`가 경로 테이블이 비어 있을 때만 17 × 16 순서쌍을 만든다. 이동거리 = Haversine 직선거리 × 1.3, 소요시간 = 이동거리 ÷ 70km/h(분, 올림)다.
+- [x] 경로 272개 생성(SA 10.1, 2026-10-16): 시스템은 저장된 경로를 읽기만 하므로 계산 코드를 두지 않고 값을 고정한 `V3__seed_hub_routes.sql`로 적재했다(사용자 결정). 허브 좌표(V2)로 Haversine × 1.3(소수 둘째 자리 HALF_UP), 소요시간 = 반올림한 거리 ÷ 70km/h의 분 올림 값을 한 번 계산해 272행과 `hub_route_id`를 고정했다. 처음에는 SA 10.1대로 `ApplicationRunner`가 기동 시 생성하게 구현했으나(동시 기동 시 경합, 매 기동 조회) 마이그레이션 방식으로 바꿨고 계산기·러너·도메인 저장소 추가 메서드는 모두 제거했다. SA 10.1의 "기동 시 ApplicationRunner" 문구와 다르지만 같은 절이 "실제 값을 산출해 고정해도 된다"고 허용한다. 사용자 지시로 `docs/decisions/`에는 기록하지 않았다. `HubRouteSeedIntegrationTest` 3개(272건과 허브별 출발·도착 16건, 같은 공식을 SQL로 재계산한 거리 대조와 시간 올림 대조, 역방향 대칭. 자기 경로·양수·중복 방향은 V1 CHECK·유니크 인덱스가 막으므로 검사하지 않는다)를 추가했고 `:hub-service:test` 33개가 통과했다. 경로가 생기면서 `HubQueryIntegrationTest`가 `DELETE FROM p_hubs`에서 FK로 실패해 setUp에서 경로부터 비우도록 고쳤다. 보정계수·시속·좌표를 바꾸려면 새 마이그레이션으로 UPDATE한다. 거리 반올림 HALF_UP은 팀 결정이 아니다(아래 메모의 미결정 항목).
 - [ ] H-03 `GET /api/v1/hub-routes`, H-04 `GET /api/v1/hub-routes/{hubRouteId}` 구현(SA 6.5). 경로 없음은 404 `HUB_ROUTE_NOT_FOUND`다.
 - [ ] I-03 `GET /internal/hub-routes?departureHubId=&arrivalHubId=` 구현(SA 6.3, 응답 `hubRouteId`, `distanceKm`, `durationMinutes`, DTO 그대로).
 - [ ] 협업 로그 OPEN 요청 두 건에 답한다(메모 참고).
@@ -23,8 +23,8 @@ hub-service 허브·경로 조회 구현(SA 5.3·6.5·10.1, I-02·I-03): 경로 
 - 면접 포인트: 같은 서비스의 FK와 서비스 간 UUID 참조는 왜 구분하는가? 조회 전용 서비스에서 Flyway와 초기 데이터 적재를 어떻게 나누는가?
 
 ## 다음 단계
-1. 거리·시간 계산 단위 테스트를 먼저 쓴다. 거리의 소수 둘째 자리 반올림 방식과 올림 경계를 명시한다(SA는 "분 단위 올림"만 정했다).
-2. `ApplicationRunner`로 경로 272건을 생성한다. 빈 테이블일 때만 생성하고 재기동 중복이 없는지, Audit 작성자가 `SYSTEM`인지 통합 테스트로 확인한다.
+1. (완료) 경로 272건 시드(V3). SA 10.1 문구(기동 시 러너)와 다르므로 팀에 공유가 필요하다. 결정 기록은 하지 않기로 했다.
+2. 실제 기동 후 `p_hub_routes` 272행 확인은 Docker 기동 단계에서 한다.
 3. H-03·H-04를 조회 서비스와 컨트롤러로 구현한다. 응답은 `hubRouteId`, `departureHub{hubId,name}`, `arrivalHub{hubId,name}`, `distanceKm`, `durationMinutes`다. 저장소는 이미 있다.
 4. I-03을 구현한다. 출발·도착 허브 ID 필수·UUID 검증, 없는 경로의 오류 코드는 delivery 요청에 답하며 정한다.
 5. 검증을 실행하고 결과를 이 파일에 누적한다. 규칙은 `hub-service/AGENTS.md`, 공통 기준은 `docs/agents/quality-gates.md`다.

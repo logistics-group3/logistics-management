@@ -43,6 +43,8 @@ class HubQueryIntegrationTest extends PostgresIntegrationTest {
     @BeforeEach
     void setUp() {
         // Note: deleteAll()은 @SQLRestriction 때문에 논리 삭제된 행을 지우지 못해 다음 테스트에서 이름 유니크 제약에 걸린다. SQL로 직접 비운다.
+        // 기동 시 적재된 경로 272건이 허브를 FK로 참조하므로 경로부터 비운다(클래스 트랜잭션이라 롤백된다).
+        jdbcTemplate.update("DELETE FROM p_hub_routes");
         jdbcTemplate.update("DELETE FROM p_hubs");
         seoul = hubRepository.save(HubFixture.hub("서울특별시 센터", "서울특별시 송파구 송파대로 55"));
         busan = hubRepository.save(HubFixture.hub("부산광역시 센터", "부산 동구 중앙대로 206"));
