@@ -6,6 +6,7 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0017 | [Swagger 수동 테스트용 로컬 분산 추적: OpenTelemetry 에이전트와 Jaeger](0017-local-api-test-tracing.md) | 제안 | 2026-10-16 |
 | 0016 | [주문 커밋 후 배송담당자 이메일로 Slack DM 발송](0016-delivery-manager-slack-dm.md) | 제안 | 2026-10-15 |
 | 0015 | [실제 Gateway와 연결하는 물류 운영 테스트 UI](0015-logistics-test-ui.md) | 제안 | 2026-10-15 |
 | 0014 | [SA 프로젝트 구조에 common-core 모듈 반영](0014-common-core-in-sa-structure.md) | 제안 | 2026-10-15 |

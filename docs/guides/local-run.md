@@ -112,6 +112,8 @@ script/e2e-check.sh                             # 완료 기준 확인
 script/db-check.sh                              # 서비스 계정 권한 확인
 ```
 
+여러 서비스 로그를 한 화면에 모으고 요청 하나가 거친 서비스를 trace ID로 따라가려면 `script/api-test.sh`를 쓴다([Swagger 수동 테스트와 요청 흐름 보기](api-test.md)).
+
 ## 8. 기존 환경과 병행하기
 `.env`의 `COMPOSE_PROJECT_NAME`과 호스트 포트(`POSTGRES_PORT`, `CONFIG_SERVER_PORT`, `EUREKA_PORT`, `GATEWAY_PORT`)를 다르게 정한다. 자세한 내용은 루트 `README.md`에 있다.
 
