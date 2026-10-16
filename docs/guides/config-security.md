@@ -24,6 +24,8 @@ config-repo/ ──(config-server 빌드 때 jar에 포함)──▶ config-serv
 | Slack Webhook URL | `config-repo/order-service.yml`의 `${SLACK_WEBHOOK_URL:}` → `slack.webhook-url`, compose가 order에 전달 | `.env` | 알림을 생략한다. 주문 생성은 유지한다. URL과 HTTP 예외 메시지·응답 본문을 로그에 남기지 않는다 |
 | Slack Bot Token | `${SLACK_BOT_TOKEN:}` → `slack.dm.bot-token`, compose가 order에만 전달 | `.env` 또는 격리 환경의 `.env.ui-test` | DM을 생략한다. 프런트·Git·로그에 넣지 않는다 |
 
+`.env.example`의 포트 값(`POSTGRES_PORT`, `CONFIG_SERVER_PORT`, `EUREKA_PORT`, `GATEWAY_PORT`, `ZIPKIN_PORT`)과 분산 추적 설정(`TRACING_SAMPLING_PROBABILITY`)은 비밀값이 아니다. 기존 환경과 병행하거나 추적 비율을 바꿀 때 쓴다.
+
 DM은 `SLACK_DM_ENABLED=false`가 기본이며 토큰과 `SLACK_DM_WORKSPACE_ID`를 함께 확인한다. `SLACK_DM_ALLOWED_EMAILS`는 선택 수신자 제한이고, UI 테스트에서는 활성화 시 필수다. 설정·회수 범위와 실행 절차는 [Slack DM 안내](slack-dm.md)에 있다.
 
 ## 3. 규칙

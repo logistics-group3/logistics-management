@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  # Note: WebFlux는 한 요청이 여러 스레드를 옮겨 다녀 ThreadLocal인 MDC가 비기 쉽다. auto로 두면 Reactor가 traceId를 스레드 사이로 옮겨
+  # Gateway 로그 줄에도 traceId가 찍힌다(Micrometer context-propagation).
+  reactor:
+    context-propagation: auto
   cloud:
     gateway:
       server:
