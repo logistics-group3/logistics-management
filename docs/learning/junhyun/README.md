@@ -7,6 +7,7 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-16 | [허브 간 이동 도착 때 실제 거리·소요시간을 왜 필수로 받나, 그리고 배송 로직 검토](qna/2026-10-16-delivery-actual-distance-review.md) | 중급 | delivery, domain-model, validation, concurrency, optimistic-lock, privacy, msa | Junhyun An |
 | 2026-10-16 | [가속 시간과 AI 돌발 사건을 넣어 물류 시스템을 시뮬레이션 게임으로 만들면 어떤가](qna/2026-10-16-logistics-simulation-game.md) | 고급 | simulation, virtual-time, logistics, ai, replay, portfolio | Junhyun An |
 | 2026-10-16 | [리소스 부족이나 장애가 생기면 Slack 알림을 무엇으로 보내나](qna/2026-10-16-slack-monitoring-alerts.md) | 중급 | prometheus, grafana, alerting, slack, monitoring | Junhyun An |
 | 2026-10-16 | [물류 MSA의 보안을 고도화하려면 무엇부터 해야 하나](qna/2026-10-16-security-hardening-priorities.md) | 고급 | security, authorization, jwt, rate-limiting, msa, audit | Junhyun An |
