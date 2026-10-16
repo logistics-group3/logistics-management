@@ -1,7 +1,7 @@
 # feat/infra-monitoring-mentor-guide
 
 ## 지금 하는 일
-메트릭 수집·멘토 가이드 구현 완료, 검증 환경 복구 후 PR 대기
+메트릭 수집·멘토 가이드 구현 완료, 푸시·PR 대기
 
 ## 진행 상태
 - [x] dev `8e9ebe6`(PR #8 병합 후)에서 브랜치 생성. 사용자 요청: Grafana·Prometheus 연동, 프런트에 멘토 테스트 가이드·절차·테스트 데이터, 로컬의 미커밋 작업도 함께 올린다
@@ -15,7 +15,10 @@
   - 프런트 build·lint·format, 단위 테스트 46개 통과
   - E2E: 기존 15개 통과(허브 선택 조건 수정 후), 가이드 2개 통과(색 대비 수정 후). 수정 뒤 17개를 한 번에 다시 돌리지는 않았다
 - [x] 문서: `docs/guides/monitoring.md`, `docs/guides/mentor-test.md`, 보안 규칙 S4·S5, 로컬 실행, README들. `script/docs-check.sh` OK
-- [ ] 검증 환경 복구: `.env.ui-test`의 `SLACK_DM_ENABLED`를 원래 값(true)으로 되돌리고 UI 테스트 스택 정리, 개발 스택을 원래 테스트 모드(`API_TEST_SQL=DEBUG script/api-test.sh up`)로 다시 올린다
+- [x] 검증 환경 복구
+  - `.env.ui-test`의 `SLACK_DM_ENABLED`를 원래 값(true)으로 되돌렸다(백업과 동일 확인). UI 테스트 스택은 작업 전처럼 내렸다
+  - 개발 스택을 원래 테스트 모드(`API_TEST_SQL=DEBUG script/api-test.sh up`)로 다시 올리고 prometheus·grafana를 띄웠다. 수집 대상 6개 up
+  - UI 테스트 스택을 다시 띄우면 실제 DM이 켜진 상태라 `seed`·E2E가 거부된다. 멘토용 시연 전에는 DM을 끄고 `up`을 다시 실행한다
 - [ ] 푸시·PR(사용자 요청 시). 공통 영역 변경이라 팀원 전체 리뷰
 - 면접 포인트: 메트릭·로그·추적의 차이, Pull 방식 수집과 서비스 디스커버리, RED 지표, 같은 이름 메트릭의 라벨 키 충돌, 관리 포트 분리와 인증 우회 방지
 
