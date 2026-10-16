@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 51 | [허브 경로 API 병합과 다른 허브 간 주문 화면 연동](step-51-cross-hub-order-ui.md) | feat(ui): 다른 허브 간 주문 제한 해제와 멘토 가이드 갱신 |
 | 50 | [멘토 테스트 가이드 화면과 시나리오 데이터](step-50-mentor-test-guide.md) | feat(ui): 멘토 테스트 가이드 화면과 시나리오 데이터 추가 |
 | 49 | [Prometheus + Grafana 메트릭 수집](step-49-prometheus-grafana.md) | feat(infra): Prometheus·Grafana 메트릭 수집 도입 |
 | 48 | [Micrometer Tracing + Zipkin 분산 추적 도입](step-48-micrometer-tracing-zipkin.md) | feat(infra): Micrometer Tracing과 Zipkin 분산 추적 도입 |
