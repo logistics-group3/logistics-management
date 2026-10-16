@@ -1,25 +1,26 @@
 # Swagger 수동 테스트와 요청 흐름 보기
 
-Swagger로 API를 하나씩 호출하면서 서버 로그와 서비스 사이 호출 흐름을 함께 보는 로컬 도구다. `script/run.sh`로 띄운 기본 개발 스택(Gateway 8080)에 테스트 설정을 덧씌운다. 팀 `docker-compose.yml`·`config-repo`·`.env`는 바꾸지 않는다. 이렇게 만든 이유와 SA 분산 추적(Micrometer Tracing + Zipkin)과의 관계는 [ADR 0017](../decisions/0017-local-api-test-tracing.md)에 있다.
+Swagger로 API를 하나씩 호출하면서 서버 로그와 서비스 사이 호출 흐름을 함께 보는 로컬 도구다. `script/run.sh`로 띄운 기본 개발 스택(Gateway 8080)에 테스트용 로그 설정을 덧씌운다. 팀 `docker-compose.yml`·`config-repo`·`.env`는 바꾸지 않는다.
+
+분산 추적(Micrometer Tracing + Zipkin)은 이 도구가 아니라 서비스 기본 기능이다. 모든 서비스가 로그 줄에 traceId를 남기고 구간을 Zipkin(http://localhost:9411)으로 보낸다([ADR 0017](../decisions/0017-distributed-tracing-micrometer-zipkin.md)). 이 도구는 그 traceId로 로그 줄을 모으고 Zipkin 링크를 보여 준다.
 
 ## 준비
 
 - `script/run.sh`로 기본 스택이 떠 있어야 한다. Docker, Python 3, curl, perl이 필요하다.
-- 처음 `up` 할 때 OpenTelemetry Java 에이전트 2.31.1을 Maven Central에서 받아 SHA-256을 확인한다. Jaeger 이미지(`jaegertracing/jaeger:2.21.0`)도 처음에 받는다.
-- 실행 상태(시드 결과, 토큰, 로그 파일, 에이전트 jar)는 Git에서 제외된 `.local/api-test/`에 쌓인다.
+- 실행 상태(시드 결과, 토큰, 로그 파일)는 Git에서 제외된 `.local/api-test/`에 쌓인다.
 
 ## 명령
 
 | 명령 | 하는 일 |
 |---|---|
-| `script/api-test.sh up` | 접근 로그·분산 추적을 켜고 Slack을 끈 상태로 6개 서비스를 다시 만들고 Jaeger를 띄운다(이미지 재빌드 없음). 끝나면 Gateway를 거쳐 5개 서비스가 200으로 응답하는지 확인한다 |
+| `script/api-test.sh up` | 접근 로그·Gateway 라우팅 로그를 켜고 Slack을 끈 상태로 6개 서비스를 다시 만든다(이미지 재빌드 없음). 끝나면 Gateway를 거쳐 5개 서비스가 200으로 응답하는지 확인한다 |
 | `script/api-test.sh seed` | 테스트 계정·허브·업체·상품을 공개 API로 만든다. 다시 실행하면 있는 데이터는 재사용하고 삭제된 업체·상품만 새로 만든다 |
 | `script/api-test.sh tokens` | 테스트 계정 토큰을 모두 다시 발급한다(60분 유효). `.local/api-test/tokens.txt`에도 저장한다 |
 | `script/api-test.sh logs` | 6개 서비스 로그 전체를 한 화면에 모아 보여 주고 `.local/api-test/logs/`에 파일로도 저장한다 |
 | `script/api-test.sh flow` | `logs`와 같되 요청 흐름 줄(Gateway 라우팅, 접근 로그, SQL, 경고·오류)만 보여 준다 |
-| `script/api-test.sh trace <ID>` | 저장된 로그에서 trace ID 하나의 줄만 순서대로 모으고 Jaeger 링크를 출력한다 |
-| `script/api-test.sh status` | 컨테이너 상태와 Slack·접근 로그·추적·SQL 설정을 확인한다 |
-| `script/api-test.sh restore` | 팀 기본 설정으로 되돌린다. Jaeger를 내리고 `.env`의 Slack 설정이 다시 적용된다 |
+| `script/api-test.sh trace <ID>` | 저장된 로그에서 traceId 하나의 줄만 순서대로 모으고 Zipkin 링크를 출력한다 |
+| `script/api-test.sh status` | 컨테이너 상태와 Slack·접근 로그·SQL 설정, Zipkin 실행 여부를 확인한다 |
+| `script/api-test.sh restore` | 팀 기본 설정으로 되돌린다. 접근 로그가 꺼지고 `.env`의 Slack 설정이 다시 적용된다 |
 
 - `API_TEST_SQL=DEBUG script/api-test.sh up`이면 실행 SQL도 로그에 찍힌다. 변수 없이 다시 `up` 하면 꺼진다.
 - `API_TEST_PREFIX=jh2 script/api-test.sh seed`처럼 접두어를 바꾸면 새 계정 묶음을 만든다. 기본 접두어는 `jh`다.
@@ -30,8 +31,6 @@ Swagger로 API를 하나씩 호출하면서 서버 로그와 서비스 사이 �
 | 항목 | `up` 뒤 | `restore` 뒤 |
 |---|---|---|
 | 접근 로그 | Gateway(Netty)와 각 서비스(Tomcat)가 요청마다 한 줄 | 없음 |
-| 분산 추적 | 에이전트가 trace ID를 만들고 서비스 간 호출에 전달, Jaeger `http://localhost:16686` | 없음, Jaeger 제거 |
-| 로그 줄 | 레벨 뒤에 `[trace ID]` | 기본 형식 |
 | Gateway 라우팅 | `Route matched: <서비스>` 줄 | 없음 |
 | SQL | `API_TEST_SQL=DEBUG`일 때 `org.hibernate.SQL` 줄 | 없음 |
 | Slack | Webhook·DM 끔 | `.env` 값 |
@@ -53,15 +52,15 @@ DB는 기본 스택과 같다. 시드와 테스트로 만든 데이터는 `resto
 
 ## 로그 읽는 법
 
-모든 로그 줄의 레벨 뒤 `[32자]`가 trace ID다. Gateway가 요청을 받을 때 만들고 서비스 사이 호출 헤더(`traceparent`)로 넘긴다. 그래서 한 요청이 거친 모든 서비스의 줄이 같은 ID를 가진다.
+로그 줄의 스레드 이름 뒤 `[traceId-spanId]`가 분산 추적 ID다. Gateway가 외부 요청마다 traceId를 만들고 서비스 사이 호출 헤더(`traceparent`)로 넘긴다. 그래서 한 요청이 거친 모든 서비스의 줄이 같은 traceId(앞 32자)를 가진다. spanId(뒤 16자)는 서비스마다, 호출마다 다르다.
 
 | 줄 | 예 | 뜻 |
 |---|---|---|
-| Gateway 라우팅 | `Route matched: company-service` | 이 요청을 어느 서비스로 보냈는지 |
-| Gateway 접근 로그 | `"GET /api/v1/companies/... HTTP/1.1" 200 ... 112` | 외부 요청, 상태 코드, 응답 바이트, 처리 시간(ms) |
-| 서비스 접근 로그 | `ACCESS GET /api/v1/companies/{id} HTTP/1.1 -> 200 85ms user=jhsup01 traceparent=00-<trace ID>-<span ID>-03` | 그 서비스가 받은 요청, Gateway가 넣은 사용자, 넘겨받은 추적 헤더 |
-| 내부 호출 | `ACCESS GET /internal/users/{id} ... user=-` | 서비스 사이 Feign 호출. 이 예는 Gateway의 권한 재확인이며 같은 사용자는 60초 캐시된다 |
-| SQL | `org.hibernate.SQL : select ...` | 그 서비스가 실행한 쿼리 |
+| Gateway 라우팅 | `[6ad1…-bd80…] o.s.c.g.h.RoutePredicateHandlerMapping : Route matched: order-service` | 이 요청을 어느 서비스로 보냈는지 |
+| Gateway 접근 로그 | `"POST /api/v1/orders HTTP/1.1" 404 ... 674` | 외부 요청, 상태 코드, 응답 바이트, 처리 시간(ms) |
+| 서비스 접근 로그 | `ACCESS POST /api/v1/orders HTTP/1.1 -> 404 646ms user=jhrcv01 traceparent=00-<traceId>-<spanId>-01` | 그 서비스가 받은 요청, Gateway가 넣은 사용자, 넘겨받은 추적 헤더 |
+| 내부 호출 | `ACCESS GET /internal/companies/{id} ... user=jhrcv01` | 서비스 사이 Feign 호출. `user=-`인 `/internal/users/{id}`는 Gateway의 권한 재확인이며 같은 사용자는 60초 캐시된다 |
+| SQL | `[6ad1…-f84e…] org.hibernate.SQL : select ...` | 그 서비스가 실행한 쿼리(`API_TEST_SQL=DEBUG`일 때) |
 
 - 공통 예외 처리기는 4xx를 로그에 남기지 않는다. 상태 코드는 접근 로그로, 에러 코드는 Swagger 응답 본문으로 본다. 5xx는 `ERROR`와 스택 트레이스가 찍힌다.
 - 저장된 로그에서 실패만 찾기: `grep -E ' -> [45][0-9]{2}|ERROR' .local/api-test/logs/<파일>.log`
@@ -69,28 +68,32 @@ DB는 기본 스택과 같다. 시드와 테스트로 만든 데이터는 `resto
 ## 요청 하나의 흐름 따라가기
 
 1. `flow`나 `logs`를 켜 둔 채 Swagger에서 요청을 보낸다.
-2. 그 요청 줄의 `[trace ID]`를 복사한다. 서비스 접근 로그 `traceparent`의 가운데 값도 같다.
-3. `script/api-test.sh trace <trace ID>`로 그 요청의 줄만 모아 본다.
-4. Jaeger(`http://localhost:16686`)에서 Service를 `gateway-service`로 고르고 Find Traces를 누른다. 요청을 열면 서비스별 구간과 걸린 시간이 막대로 보인다.
+2. 그 요청 줄의 `[traceId-spanId]`에서 앞 32자를 복사한다. 서비스 접근 로그 `traceparent`의 가운데 값도 같다.
+3. `script/api-test.sh trace <traceId>`로 그 요청의 줄만 모아 본다. 끝에 Zipkin 링크가 나온다.
+4. Zipkin(`http://localhost:9411`)에서는 오른쪽 위 검색창에 traceId를 넣거나 Run Query로 최근 요청을 연다. 서비스별 구간과 걸린 시간이 막대로 보인다.
 
-SUP_USER가 `GET /api/v1/companies/{SUP_CO}`를 보냈을 때 Jaeger 구간이다(2026-10-16 실제 확인, 시작 시각·걸린 시간).
+RCV_USER가 없는 상품으로 주문(O-01)했을 때 Zipkin의 주요 구간이다(2026-10-16 실제 확인, 시작 시각·걸린 시간. Gateway 보안 필터 구간과 요청업체 조회의 받는 쪽 구간은 줄였다). 주문은 업체·상품을 확인하다 404로 거절되고 주문 기록은 남지 않는다.
 
 ```text
-  0.0ms 110.6ms gateway-service  GET company-service                 요청 전체
-  4.2ms   8.8ms gateway-service  GET                                 권한 재확인 호출
-  6.8ms   5.7ms user-service     GET /internal/users/{userId}
- 10.1ms   0.6ms user-service     SELECT user_schema.p_users
- 18.6ms  92.5ms gateway-service  GET                                 company-service로 전달
- 24.4ms  84.5ms company-service  GET /api/v1/companies/{companyId}
- 43.6ms  60.0ms company-service  CompanyJpaRepository.findById
-100.6ms   1.0ms company-service  SELECT company_schema.p_companies
+  0.0ms 674.2ms gateway-service  SERVER  http post /api/v1/orders
+  2.2ms   8.9ms   gateway-service  CLIENT  http get http://user-service/internal/users/{RCV_USER}   권한 재확인
+  4.7ms   5.5ms     user-service     SERVER  http get /internal/users/{userid}
+ 15.0ms 652.8ms   gateway-service  CLIENT  http post                                              order-service로 전달
+ 21.2ms 643.0ms     order-service    SERVER  http post /api/v1/orders
+362.7ms 209.7ms       order-service    CLIENT  http get /companies/{companyId}                     공급업체(Feign)
+551.6ms  18.2ms         company-service  SERVER  http get /internal/companies/{companyid}
+578.8ms   5.6ms       order-service    CLIENT  http get /companies/{companyId}                     요청업체
+585.1ms  60.3ms       order-service    CLIENT  http get /products/{productId}                      상품 → 404
+586.3ms  59.1ms         company-service  SERVER  http get /internal/products/{productid}
 ```
+
+- 들여쓰기가 부모·자식 관계다. Feign 호출(CLIENT)과 받는 쪽 처리(SERVER)가 짝을 이룬다.
+- SQL은 구간으로 남지 않는다. 쿼리는 같은 traceId의 `org.hibernate.SQL` 로그 줄로 본다([ADR 0017](../decisions/0017-distributed-tracing-micrometer-zipkin.md) 범위 밖).
 
 ## 주의
 
 - Swagger 목록 API(U-05·H-01·C-02·P-02·D-01)는 `request`에 `{}`나 필터 JSON, `pageable`에 `{"page": 0, "size": 10}`을 넣는다. 기본값의 `"sort": ["string"]`을 남기면 400 `VALIDATION_ERROR`다.
 - Swagger는 필수 헤더가 비면 요청을 보내지 않는다. 헤더 누락 같은 경우는 curl로 확인한다.
-- Jaeger는 메모리에 저장한다. Jaeger 컨테이너를 다시 만들면 기록이 사라진다. Eureka 등록 갱신 같은 백그라운드 호출도 쌓이므로 Service를 `gateway-service`로 골라 외부 요청만 본다.
-- 에이전트를 붙이면 서비스 기동이 느려지고 메모리를 더 쓴다. 성능 측정에는 쓰지 않는다.
+- Zipkin은 메모리에 저장한다. Zipkin 컨테이너를 다시 만들면 기록이 사라진다.
 - 테스트를 마치면 `restore`로 되돌린다. Slack 알림을 확인할 때도 `restore` 후 본다.
 - 시나리오와 입력값은 팀 Notion 「기능 테스트」에 있다. 실행 기록은 각자의 테스트 일지에 남긴다.
