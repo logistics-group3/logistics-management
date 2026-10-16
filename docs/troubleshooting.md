@@ -233,3 +233,11 @@
 - 해결: order 테스트 전용 `order-service/src/test/resources/application.properties`에 `spring.datasource.hikari.maximum-pool-size=4`, `minimum-idle=1`을 두었다. 공통 `PostgresIntegrationTest`는 팀 공용이라 바꾸지 않았다.
 - 확인: 설정만 바꾼 같은 코드에서 `./gradlew :order-service:test --rerun-tasks` 463개 통과(18개 실패 → 0). 컨테이너의 실제 `max_connections` 값과 모듈별 컨텍스트 수는 미확인이다. 정식 대책은 [작업 계획](reviews/2026-10-19-test-connection-exhaustion-plan.md), 배경과 과정은 [STAR 기록](reviews/2026-10-19-test-connection-exhaustion.md)에 있다.
 - 배운 점: 실패한 테스트가 변경과 무관해 보이면 테스트 자체보다 자원 공유를 의심한다. 에이전트 여러 개가 같은 `build` 디렉터리에서 Gradle을 동시에 돌리면 `Could not write XML test results`로 실패하는데, 이는 연결 고갈과 별개의 원인(추정)이므로 병렬 실행을 피한다.
+
+### TS-026 실험용 설정으로 기동하자 postgres가 뜨지 않음
+- 서비스·작성: infra / 한얼 / 2026-10-16
+- 문제: `script/run.sh --reset` 중 `✘ Container logistics-management-postgres-1 Error dependency postgres failed to start`. 뒤 서비스가 모두 기동하지 못했다.
+- 원인: `.env`가 2026-10-13에 만들어진 뒤 `.env.example`에 추가된 `POSTGRES_USER`, `POSTGRES_PASSWORD`가 없었다. `docker-compose.yml`은 이 값을 기본값 없이 넘기므로 postgres 이미지가 관리자 비밀번호 없이 시작하다 종료된다. `script/run.sh`는 `.env`가 없을 때만 복사하므로 기존 `.env`는 갱신되지 않는다.
+- 해결: `.env.example`의 두 줄을 `.env`에 추가하고 다시 기동했다.
+- 배운 점: pull 뒤 `.env.example`이 바뀌었으면 키를 비교한다. `comm -13 <(grep -v '^#' .env | cut -d= -f1 | sort) <(grep -v '^#' .env.example | cut -d= -f1 | sort)`가 `.env`에 없는 키를 보여 준다.
+

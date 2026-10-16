@@ -6,6 +6,8 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-16 | [회원가입 소속과 업체 관리자·배송담당자는 어떻게 정해지고, 배송 조회 권한은 어디서 판단하나](qna/2026-10-16-signup-affiliation-and-delivery-read-scope.md) | 중급 | auth, gateway, authorization, msa | jihaneol |
+| 2026-10-16 | [k6는 무엇을 설치해야 하고, 부하 테스트 결과는 어떻게 읽나](qna/2026-10-16-k6-load-test-basics.md) | 기초 | k6, load-test, percentile | jihaneol |
 | 2026-10-15 | [배송 서비스가 트래픽이 많을 때 먼저 막히는 곳은 어디인가](qna/2026-10-15-delivery-high-traffic-bottlenecks.md) | 고급 | performance, feign, cache, index, hikari | jihaneol |
 | 2026-10-15 | [논리 삭제를 쓰는 애그리거트에서 orphanRemoval을 걸지 않는 이유](qna/2026-10-15-orphan-removal-and-soft-delete.md) | 중급 | jpa, cascade, orphan-removal, soft-delete | jihaneol |
 | 2026-10-15 | [에이전트와 개발하면서 배우려면 일을 어떻게 나눠야 하나](qna/2026-10-15-learning-with-coding-agent.md) | 기초 | learning, ai-agent, workflow | jihaneol |
