@@ -1,6 +1,6 @@
 # 배송 부하 테스트 (k6)
 
-먼저 지금 상태를 재고(기준선), 하나씩 고친 뒤 같은 조건으로 다시 재서 비교한다. 무엇이 병목일지에 대한 분석은 [학습 노트](../../docs/learning/haneol/qna/2026-10-15-delivery-high-traffic-bottlenecks.md)에 있다. 이 문서는 그 가설을 숫자로 확인하는 절차다.
+먼저 지금 상태를 재고(기준선), 하나씩 고친 뒤 같은 조건으로 다시 재서 비교한다. 무엇이 병목일지에 대한 분석은 [학습 노트](../../docs/learning/haneol/qna/2026-10-15-delivery-high-traffic-bottlenecks.md)에 있다. 이 문서는 그 가설을 숫자로 확인하는 절차다. 실험 3(user 장애와 장애 격리)은 따로 [장애 격리 실험](fault-isolation.md)에 자세히 정리했다.
 
 ## 1. 구성
 
@@ -11,6 +11,8 @@
 | `infra/postgres/seed/delivery-e2e.sql` | 계정·업체·상품 시드(E2E와 같다) |
 | `infra/postgres/seed/delivery-load.sql` | 과거 배송 대량 데이터(기본 30만 건). 몇 달 운영한 DB를 흉내 낸다 |
 | `docker-compose.loadtest.yml` | delivery-service에 부하 테스트 API를 켜는 덧붙임 설정 |
+| `load-test/k6/fault-isolation.js`, `load-test/fault-isolation.sh` | 장애 격리 실험. 생성·조회를 동시에 보내고 중간에 user-service를 멈춘다([fault-isolation.md](fault-isolation.md)) |
+| `docker-compose.fault.yml` | 장애 격리 실험용 덧붙임 설정(Gateway 권한 캐시 10분, Tomcat 스레드 지표) |
 | `LoadTestDeliveryController` | `POST /api/v1/deliveries/load-test`. I-09와 같은 처리를 Gateway로 부른다(결정 로그 24) |
 
 주문을 거치지 않는 API를 둔 이유: 주문 생성(O-01)을 재면 order·company의 시간이 섞여 배송 쪽 변화가 묻힌다. 배송만 바꿨을 때의 효과를 보려면 배송 생성만 재야 한다. 전체 경로는 `TARGET=order`로 따로 잰다.
@@ -104,7 +106,7 @@ docker compose logs -f delivery-service
 | 0 | (기준선) | 없음 | 생성·읽기 전 지표, 두 쿼리의 실행계획 |
 | 1 | 담당 건수 쿼리가 과거 도착 구간까지 훑어 생성이 느려진다 | 진행 중 구간 부분 인덱스(V2) | `I-09 직접` p95, 담당 건수 실행계획 `Rows Removed by Filter` |
 | 2 | 생성마다 user를 2번 부르는 시간이 크다 | I-14·I-01 캐시 | `I-09 직접` p95, 최대 처리량(`dropped_iterations`가 생기기 시작하는 PEAK_RATE) |
-| 3 | user가 느려지면 배송 전체가 멈춘다 | 측정만: 생성 부하 중 `docker compose pause user-service` 30초 → `unpause`. 그다음 짧은 타임아웃·서킷 브레이커 | 멈춘 동안 실패가 빨리 나는지, 스레드가 쌓여 읽기 API까지 느려지는지 |
+| 3 | user가 느려지면 배송 전체가 멈춘다 | 측정만: 생성 부하 중 `docker compose pause user-service` 30초 → `unpause`. 그다음 짧은 타임아웃·서킷 브레이커 | 멈춘 동안 실패가 빨리 나는지, 스레드가 쌓여 읽기 API까지 느려지는지. 절차·지표·개선 단계는 [fault-isolation.md](fault-isolation.md) |
 | 4 | 허브별 최신순 목록이 정렬을 따로 한다 | `(departure_hub_id, created_at DESC)` 부분 인덱스 | `D-01 허브별` p95, 실행계획의 `Sort` |
 
 3번은 Gateway의 권한 캐시(60초)도 user-service를 부르므로, 캐시가 만료되면 모든 요청이 영향을 받는다. 배송만의 효과를 보려면 멈추는 시간을 60초보다 짧게 한다.
