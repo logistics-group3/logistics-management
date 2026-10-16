@@ -19,7 +19,7 @@
 | H-01~H-04 | `/api/v1/hubs/**`, `/api/v1/hub-routes/**` | 로그인 | 구현 | 허브 17개(V2)·경로 272건(V3)은 SQL 시드. 경로 시드는 SA 10.1의 기동 시 러너 대신 값을 고정한 마이그레이션이다. H-01~H-04는 Gateway 경유 호출로 확인했다(2026-10-16) |
 | H-05~H-06 | 재고 검색·입고 | 로그인, MASTER | 고도화 |  |
 | I-02 | `GET /internal/hubs/{hubId}` | company, user | 구현 | 응답 `hubId, name, address`(DTO 그대로), 없으면 404 `HUB_NOT_FOUND`. `/internal/**`은 Gateway에 라우팅이 없어 외부 호출이 404다. 서비스 간 호출은 미확인 |
-| I-03 | `GET /internal/hub-routes?departureHubId=&arrivalHubId=` | delivery | 예정 |  |
+| I-03 | `GET /internal/hub-routes?departureHubId=&arrivalHubId=` | delivery | 구현 | 응답 `hubRouteId, distanceKm, durationMinutes`(DTO 그대로). 두 파라미터 필수(없거나 UUID가 아니면 400 `VALIDATION_ERROR`). 경로가 없으면 404 `HUB_ROUTE_NOT_FOUND`이고, 같은 허브 ID도 경로가 없으므로 같은 404다(같은 허브 처리는 팀 합의 전 임시 동작). delivery 컨테이너에서 서비스 간 호출로 확인했다(2026-10-16) |
 | I-04~I-06 | 재고 내부 API | company, order | 고도화 |  |
 
 ## 3. 호출하는 다른 서비스 API
@@ -31,7 +31,7 @@
 - [x] 허브·경로 Entity와 Flyway 마이그레이션, 초기 데이터(V1~V3)
 - [x] H-01~H-04 조회·검색
 - [x] I-02 내부 API
-- [ ] I-03 내부 API
+- [x] I-03 내부 API
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다. 재고 관련 결정은 SA v2.0에서 고도화 범위다.
 

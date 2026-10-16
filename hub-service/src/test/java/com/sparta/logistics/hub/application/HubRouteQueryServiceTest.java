@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.hub.HubFixture;
 import com.sparta.logistics.hub.application.dto.HubRouteResult;
+import com.sparta.logistics.hub.application.dto.InternalHubRouteResult;
 import com.sparta.logistics.hub.domain.Hub;
 import com.sparta.logistics.hub.domain.HubErrorCode;
 import com.sparta.logistics.hub.domain.HubRoute;
@@ -76,6 +77,30 @@ class HubRouteQueryServiceTest {
 
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent()).extracting(r -> r.arrivalHub().name()).containsExactly("부산광역시 센터");
+    }
+
+    @Test
+    @DisplayName("내부 조회는 출발·도착 허브 쌍의 경로에서 ID·거리·시간만 담는다")
+    void getInternalHubRoute() {
+        UUID departureHubId = UUID.randomUUID();
+        UUID arrivalHubId = UUID.randomUUID();
+        given(hubRouteRepository.findByDepartureHubIdAndArrivalHubId(departureHubId, arrivalHubId)).willReturn(Optional.of(route));
+
+        InternalHubRouteResult result = hubRouteQueryService.getInternalHubRoute(departureHubId, arrivalHubId);
+
+        assertThat(result.distanceKm()).isEqualByComparingTo("422.64");
+        assertThat(result.durationMinutes()).isEqualTo(363);
+    }
+
+    @Test
+    @DisplayName("내부 조회에서 경로가 없으면 HUB_ROUTE_NOT_FOUND")
+    void getInternalHubRouteNotFound() {
+        UUID hubId = UUID.randomUUID();
+        given(hubRouteRepository.findByDepartureHubIdAndArrivalHubId(hubId, hubId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> hubRouteQueryService.getInternalHubRoute(hubId, hubId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(HubErrorCode.HUB_ROUTE_NOT_FOUND));
     }
 
     @Test

@@ -167,6 +167,50 @@ class HubRouteQueryIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.code").value("HUB_ROUTE_NOT_FOUND"));
     }
 
+    @Test
+    @DisplayName("I-03은 감싸지 않은 본문으로 출발→도착 경로 1건의 ID·거리·시간만 반환하고 방향을 구분한다")
+    void internalGetHubRoute() throws Exception {
+        String seoulToBusan = routeId(SEOUL_HUB_ID, BUSAN_HUB_ID);
+        String busanToSeoul = routeId(BUSAN_HUB_ID, SEOUL_HUB_ID);
+        BigDecimal distance = jdbcTemplate.queryForObject(
+                "SELECT distance_km FROM p_hub_routes WHERE hub_route_id = ?::uuid", BigDecimal.class, seoulToBusan);
+        Integer duration = jdbcTemplate.queryForObject(
+                "SELECT duration_minutes FROM p_hub_routes WHERE hub_route_id = ?::uuid", Integer.class, seoulToBusan);
+
+        mockMvc.perform(get("/internal/hub-routes").param("departureHubId", SEOUL_HUB_ID).param("arrivalHubId", BUSAN_HUB_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hubRouteId").value(seoulToBusan))
+                .andExpect(jsonPath("$.distanceKm").value(distance.doubleValue()))
+                .andExpect(jsonPath("$.durationMinutes").value(duration))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andExpect(jsonPath("$.departureHub").doesNotExist());
+        mockMvc.perform(get("/internal/hub-routes").param("departureHubId", BUSAN_HUB_ID).param("arrivalHubId", SEOUL_HUB_ID))
+                .andExpect(jsonPath("$.hubRouteId").value(busanToSeoul));
+    }
+
+    @Test
+    @DisplayName("I-03에서 같은 허브 쌍이거나 없는 허브면 404 HUB_ROUTE_NOT_FOUND")
+    void internalNotFound() throws Exception {
+        mockMvc.perform(get("/internal/hub-routes").param("departureHubId", SEOUL_HUB_ID).param("arrivalHubId", SEOUL_HUB_ID))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("HUB_ROUTE_NOT_FOUND"));
+        mockMvc.perform(get("/internal/hub-routes").param("departureHubId", UUID.randomUUID().toString()).param("arrivalHubId", BUSAN_HUB_ID))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("HUB_ROUTE_NOT_FOUND"));
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("I-03은 논리 삭제된 경로를 찾지 않는다")
+    void internalExcludesDeleted() throws Exception {
+        jdbcTemplate.update("UPDATE p_hub_routes SET deleted_at = NOW(), deleted_by = 'tester' WHERE hub_route_id = ?::uuid",
+                routeId(SEOUL_HUB_ID, BUSAN_HUB_ID));
+
+        mockMvc.perform(get("/internal/hub-routes").param("departureHubId", SEOUL_HUB_ID).param("arrivalHubId", BUSAN_HUB_ID))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("HUB_ROUTE_NOT_FOUND"));
+    }
+
     private String routeId(String departureHubId, String arrivalHubId) {
         return jdbcTemplate.queryForObject(
                 "SELECT hub_route_id::text FROM p_hub_routes WHERE departure_hub_id = ?::uuid AND arrival_hub_id = ?::uuid",
