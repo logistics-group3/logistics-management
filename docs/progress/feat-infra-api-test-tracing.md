@@ -1,7 +1,7 @@
 # feat/infra-api-test-tracing
 
 ## 지금 하는 일
-Micrometer Tracing + Zipkin 분산 추적 도입과 Swagger 테스트 도구 정리 커밋 완료, 푸시·PR 전
+PR #8 리뷰 대기(Micrometer Tracing + Zipkin 분산 추적 도입, 팀원 전체 리뷰 요청)
 
 ## 진행 상태
 - [x] dev `ceb2a4e`에서 브랜치 생성(원격 dev 추적 해제). 사용자 요청: 로그·테스트·분산 추적 관련 변경을 별도 브랜치로 옮긴다
@@ -12,12 +12,13 @@ Micrometer Tracing + Zipkin 분산 추적 도입과 Swagger 테스트 도구 정
 - [x] 테스트 도구에서 에이전트·Jaeger를 빼고 Zipkin 링크로 바꿈. 로컬의 옛 Jaeger 컨테이너 삭제
 - [x] 검증: `./gradlew build` 성공(테스트 729개, 실패·오류·skip 0). 이미지 재빌드 후 실제 실행에서 WebClient·Feign 전파 확인(업체 조회, 없는 허브 지정 404, 없는 상품 주문 404). Zipkin 구간 나무, 로그 `[traceId-spanId]`, 샘플링 0에서 Zipkin 미전송·traceparent 플래그 00 확인 후 1.0 복구
 - [x] 문서: ADR 0017을 Micrometer + Zipkin 결정으로 다시 씀(파일명 `0017-distributed-tracing-micrometer-zipkin.md`), 매핑 문서(local-run, config-security, frontend README, 루트 README, gateway 창구), 가이드·학습 노트, 스텝 48
-- [ ] 푸시·PR(사용자 요청 시). 공통 영역 변경이라 팀원 전체 리뷰 요청
+- [x] 2026-10-16 사용자 요청으로 푸시, dev 대상 PR #8 생성(https://github.com/logistics-group3/logistics-management/pull/8). 리뷰 요청: y0y00700, kej-2356, ChoiSeungKeun, jihaneol. CI docs-check·error-codes-check 통과
+- [ ] 리뷰 반영과 병합(squash). 리뷰 포인트: 샘플링 기본값, zipkin depends_on 유지 여부, Gateway 포함, ADR 0017 채택
 - 면접 포인트: trace·span·traceparent와 sampled 플래그, Feign 계측(feign-micrometer), WebFlux MDC와 context-propagation, 샘플링 비율과 운영 비용, 에이전트 방식과 Micrometer 방식 차이
 
 ## 다음 단계
-1. 사용자가 원하면 `git push -u origin feat/infra-api-test-tracing` 후 dev 대상 PR. 제목 후보 `feat(infra): Micrometer Tracing과 Zipkin 분산 추적 도입`, STAR 본문, AI 표기 없음. 리뷰어는 팀원 전체(git-workflow 1장 공통 영역)
-2. PR 설명에 UI 테스트 스택은 다음 `script/ui-test.sh up`부터 Zipkin 19411이 함께 뜬다는 점을 적는다(이번에 실제로 띄우지 않음)
+1. PR #8 리뷰 의견을 반영한다. ADR 0017 상태는 팀 결정에 따라 채택으로 바꾼다
+2. 병합 뒤 UI 테스트 스택을 `script/ui-test.sh up`으로 다시 띄워 Zipkin 19411을 실제로 확인한다(PR 본문에 미확인으로 적음)
 3. 정상 주문(O-01) trace로 order → company → delivery → user 전체 흐름을 확인해 가이드 예시를 보강한다
 
 ## 직접 해보기
