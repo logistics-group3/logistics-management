@@ -10,6 +10,7 @@
 | 포트 | 8080 (외부 공개는 이 포트 하나) |
 | 스키마·DB 계정 | 없음 |
 | 책임 | 외부 요청 단일 진입점, JWT 검증, 권한 재확인(60초 캐시), `X-User-*` 정리·주입, 라우팅, `/internal/**` 차단 |
+| 분산 추적 | 외부 요청마다 trace를 시작하고 하위 서비스·권한 재확인(I-01) 호출에 `traceparent`를 싣는다. `spring.reactor.context-propagation: auto`로 WebFlux 로그에도 traceId를 남긴다([ADR 0017](../../decisions/0017-distributed-tracing-micrometer-zipkin.md)) |
 
 ## 2. 제공 API (계약)
 

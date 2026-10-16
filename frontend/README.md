@@ -23,6 +23,7 @@ script/ui-test.sh frontend
 | Eureka | http://127.0.0.1:18761 |
 | PostgreSQL | 127.0.0.1:15432 |
 | Config Server | http://127.0.0.1:18888 |
+| Zipkin(분산 추적) | http://127.0.0.1:19411 |
 
 실제 Gateway 매핑은 `docker compose -p logistics-ui-test --env-file .env.ui-test port gateway-service 8080`으로 확인한다. 프런트의 기본 프록시는 이 테스트 Gateway다. 다른 환경을 사용하려면 `frontend/.env.local`의 `GATEWAY_URL`을 바꾸고 Vite를 다시 실행한다.
 

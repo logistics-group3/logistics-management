@@ -4,6 +4,8 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 48 | [Micrometer Tracing + Zipkin 분산 추적 도입](step-48-micrometer-tracing-zipkin.md) | feat(infra): Micrometer Tracing과 Zipkin 분산 추적 도입 |
+| 47 | [Swagger 테스트 보조 도구와 로컬 분산 추적](step-47-api-test-tracing.md) | cf595a8 chore(infra): Swagger 테스트 보조 도구와 로컬 분산 추적 추가 |
 | 46 | [주문 삭제와 기본 API 마무리](step-46-order-deletion.md) | feat(order): 주문 삭제와 재요청 복구 구현 |
 | 45 | [주문 생성 Idempotency-Key와 최초 응답 재사용](step-45-order-idempotency-key.md) | ed9f8d0 feat(order): 주문 생성 멱등키와 최초 응답 재사용 구현 |
 | 44 | [주문 생성 진행 기록과 커밋 재확인](step-44-order-creation-progress.md) | 39f704a feat(order): 생성 진행 기록과 커밋 결과 재확인 구현 |
