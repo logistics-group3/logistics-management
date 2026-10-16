@@ -3,7 +3,7 @@ package com.sparta.logistics.hub.presentation;
 import com.sparta.logistics.common.response.ApiResponse;
 import com.sparta.logistics.common.response.PageResponse;
 import com.sparta.logistics.hub.application.HubQueryService;
-import com.sparta.logistics.hub.application.dto.HubResult;
+import com.sparta.logistics.hub.presentation.dto.HubResponse;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -23,12 +23,12 @@ public class HubController {
 
     /** page, size(10·30·50), sort(createdAt·name)는 공통 Pageable 처리를 따른다. */
     @GetMapping
-    public ApiResponse<PageResponse<HubResult>> search(@RequestParam(required = false) String keyword, Pageable pageable) {
-        return ApiResponse.ok(PageResponse.from(hubQueryService.search(keyword, pageable)));
+    public ApiResponse<PageResponse<HubResponse>> search(@RequestParam(required = false) String keyword, Pageable pageable) {
+        return ApiResponse.ok(PageResponse.from(hubQueryService.search(keyword, pageable), HubResponse::from));
     }
 
     @GetMapping("/{hubId}")
-    public ApiResponse<HubResult> getHub(@PathVariable UUID hubId) {
-        return ApiResponse.ok(hubQueryService.getHub(hubId));
+    public ApiResponse<HubResponse> getHub(@PathVariable UUID hubId) {
+        return ApiResponse.ok(HubResponse.from(hubQueryService.getHub(hubId)));
     }
 }

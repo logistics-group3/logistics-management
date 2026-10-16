@@ -16,7 +16,7 @@
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| H-01~H-04 | `/api/v1/hubs/**`, `/api/v1/hub-routes/**` | 로그인 | 구현 | 허브 17개(V2)·경로 272건(V3)은 SQL 시드. 경로 시드는 SA 10.1의 기동 시 러너 대신 값을 고정한 마이그레이션이다. H-03·H-04는 Gateway 경유 호출로 확인했고(2026-10-16) H-01·H-02는 미확인 |
+| H-01~H-04 | `/api/v1/hubs/**`, `/api/v1/hub-routes/**` | 로그인 | 구현 | 허브 17개(V2)·경로 272건(V3)은 SQL 시드. 경로 시드는 SA 10.1의 기동 시 러너 대신 값을 고정한 마이그레이션이다. H-01~H-04는 Gateway 경유 호출로 확인했다(2026-10-16) |
 | H-05~H-06 | 재고 검색·입고 | 로그인, MASTER | 고도화 |  |
 | I-02 | `GET /internal/hubs/{hubId}` | company, user | 구현 | 응답 `hubId, name, address`(DTO 그대로), 없으면 404 `HUB_NOT_FOUND`. `/internal/**`은 Gateway에 라우팅이 없어 외부 호출이 404다. 서비스 간 호출은 미확인 |
 | I-03 | `GET /internal/hub-routes?departureHubId=&arrivalHubId=` | delivery | 예정 |  |
