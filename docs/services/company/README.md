@@ -64,3 +64,9 @@ P-01·C-05는 업체 잠금 획득 후 활성 상태와 기존 관리자 권한�
 - 확인: 삭제된 업체 아래 활성 상품이 남는 상황을 PostgreSQL에서 재현했다. 수정 전 회귀 3건 중 두 순서가 실패했다.
 - 결정: 사용자가 상세 계획을 확인하고 같은 feat/delivery-T07 브랜치에서 수정·PR 생성을 요청했다. CompanyJpaRepository.findByIdForUpdate에 PESSIMISTIC_WRITE를 적용하고 두 서비스의 기존 트랜잭션이 같은 업체 잠금을 공유한다. 일반 검색·상세 조회에는 잠금을 추가하지 않는다.
 - 결과: [#15 구현·검증 기록](../../reviews/2026-10-19-issue-15-verification.md). COMPANY-001의 내부 조회 계약 검토나 다른 수정·삭제 경쟁을 함께 완료한 것은 아니다.
+
+### COMPANY-003 업체·상품 내부 조회 캐시(company.cache.type)
+- 상태: OPEN (성능 측정용 로컬 구현, 제공 담당자 리뷰 대기)
+- 작성: kmh / 2026-10-19
+- 내용: I-07, I-08에 `@Cacheable`을 붙였다. 업체 수정은 업체 키를, 상품 수정·삭제는 상품 키를, 업체 삭제는 업체 키와 상품 캐시 전체를 지운다. 트랜잭션 인식 프록시로 감싸 삭제가 커밋 뒤에 일어난다. `company.cache.type`(`COMPANY_CACHE_TYPE`) 기본 `none`은 지금과 같다.
+- 관련: [ADR 0019](../../decisions/0019-redis-cache-measured-adoption.md), [측정 기록](../../reviews/performance/README.md) C1 조건.
