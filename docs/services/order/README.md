@@ -16,7 +16,8 @@
 
 | ID | Method·URL | 권한·호출자 | 상태 | SA와 다른 점·비고 |
 |---|---|---|---|---|
-| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | Idempotency-Key 필수·최초 응답 재사용·동시 생성 차단. 생성 진행 기록·커밋 재확인·보상·커밋 후 Slack |
+| O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | Idempotency-Key 필수·최초 응답 재사용·동시 생성 차단. **비동기 접수**: 접수 전 검증 통과 시 202와 orderId, 배송 생성·저장·보상은 별도 스레드(ADR 0010, 이슈 #16). 같은 키 재요청은 처리 중 202·완료 201. 생성 진행 기록·커밋 재확인·보상·커밋 후 Slack |
+| O-07 | `GET /api/v1/orders/creations/{orderId}` | 주문자 본인, MASTER | 구현 | 생성 진행 조회(PROCESSING·COMPLETED·ABORTED·RECOVERY_REQUIRED). 실패 사유 `failureCode`·`failureMessage`(ADR 0010) |
 | O-02 | `GET /api/v1/orders` | 로그인, USER는 본인 주문만 | 구현 | 선택 필터·QueryDSL·페이지·정렬, 내용과 count에 같은 권한 조건 |
 | O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
 | O-04 | `PATCH /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | requestNote 필수·공백 불가·최대 500자. 취소된 주문은 409 INVALID_STATUS_TRANSITION |

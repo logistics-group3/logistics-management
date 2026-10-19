@@ -82,13 +82,14 @@ Gateway는 헤더를 주문 서비스까지 그대로 전달한다. 키 범위�
 |---|---|
 | 응답 유실·통신 오류 | 같은 키·같은 본문으로 결과를 재확인. HTTP 재시도마다 키를 만들지 않음 |
 | 같은 키·본문, COMPLETED | 201과 최초 생성 응답. 회사·배송 재호출 및 주문·알림 재생성 없음 |
+| 새 요청 접수 | 202 `{orderId, status: PROCESSING}`. 처리 결과는 O-07 진행 조회(`GET /api/v1/orders/creations/{orderId}`)로 확인. 접수 뒤 실패 사유(예: DELIVERY_MANAGER_NOT_FOUND)는 응답이 아니라 ABORTED의 failureCode로 전달 |
 | 같은 키, 다른 유효한 본문 | 409 ORDER_IDEMPOTENCY_KEY_CONFLICT. 이미 사용한 키를 수정 주문에 재사용하지 않음 |
-| PROCESSING | 409 ORDER_CREATION_IN_PROGRESS. 간격을 두고 같은 키로 확인, 새 키로 우회하지 않음 |
+| PROCESSING | 202와 같은 orderId. 간격을 두고 같은 키로 재확인하거나 O-07로 조회, 새 키로 우회하지 않음 |
 | ABORTED | 409 ORDER_CREATION_ABORTED. 원인 해결 후 별도 새 주문을 시도할 때만 새 키 사용 |
 | RECOVERY_REQUIRED·기록 논리 삭제 | 409 ORDER_CREATION_RECOVERY_REQUIRED. 주문 담당자가 기존 결과를 확인, 새 키로 우회하지 않음 |
 
 헤더·본문 검증은 재요청에도 적용한다. 키가 없던 최초 요청의 업체·상품·권한 검증 실패는 키를 소비하지 않지만, 생성 기록을 커밋한 키는 실패 종료돼도 재사용하지 않는다.
-키에는 자동 만료가 없다. 주문 수정·취소·논리 삭제 뒤에도 완료 응답은 원래 생성 스냅샷이다. 현재 주문은 O-03에서 조회한다. 생성 기록 조회·자동 복구 API는 후속 범위다.
+키에는 자동 만료가 없다. 주문 수정·취소·논리 삭제 뒤에도 완료 응답은 원래 생성 스냅샷이다. 현재 주문은 O-03에서 조회한다. 생성 기록 조회는 O-07이고 자동 복구 API는 후속 범위다.
 판단 근거와 동시 요청 처리는 [ADR 0008](decisions/0008-order-idempotency-key.md), 실패 분류는 [예외 설계](failure-handling.md)를 따른다.
 
 ## O-06 삭제 재요청과 delivery의 보장
