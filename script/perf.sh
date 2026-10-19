@@ -90,6 +90,10 @@ k6() {
 
 env_value() { grep -E "^$1=" "$ENV_FILE" | head -n 1 | cut -d= -f2-; }
 
+container_env() {
+  docker inspect "$(compose ps -q "$1")" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep "^$2=" | cut -d= -f2- || true
+}
+
 wait_ready() {
   echo "Gateway 경유 응답을 기다린다(최대 5분)."
   local port
@@ -116,13 +120,17 @@ run_scenario() {
   esac
   [[ -f "$STATE/data.json" ]] || { echo "data.json이 없다. 먼저 script/perf.sh seed를 실행한다." >&2; exit 1; }
   local rate="${RATE:-20}" duration="${DURATION:-5m}" warmup="${WARMUP:-1m}"
-  local ttl
-  ttl="$(docker inspect "$(compose ps -q gateway-service)" --format '{{range .Config.Env}}{{println .}}{{end}}' \
-    | grep '^AUTH_USERCACHETTL=' | cut -d= -f2-)"
+  # 보고서에 남길 캐시 조건은 셸 값이 아니라 실제로 떠 있는 컨테이너의 환경 변수에서 읽는다.
+  local ttl auth_cache hub_cache company_cache cache
+  ttl="$(container_env gateway-service AUTH_USERCACHETTL)"
+  auth_cache="$(container_env gateway-service AUTH_USER_CACHE)"
+  hub_cache="$(container_env hub-service HUB_CACHE_TYPE)"
+  company_cache="$(container_env company-service COMPANY_CACHE_TYPE)"
+  cache="auth=${auth_cache:-local}/${ttl:-60s} hub=${hub_cache:-none} company=${company_cache:-none}"
   label="${label:-$scenario-$(date +%Y%m%d-%H%M%S)}"
   local dir="$STATE/results/$label"
   mkdir -p "$dir"
-  echo "실행: $scenario label=$label rate=$rate/s duration=$duration warmup=$warmup gateway-ttl=$ttl"
+  echo "실행: $scenario label=$label rate=$rate/s duration=$duration warmup=$warmup cache=[$cache]"
 
   K6_ARGS=(--summary-export "/out/results/$label/k6-summary.json")
   k6 "$script" -e RATE="$rate" -e DURATION="$duration" -e WARMUP="$warmup" -e LABEL="$label" \
@@ -135,7 +143,7 @@ run_scenario() {
   echo "지표 수집을 기다린다(20초)."
   sleep 20
   k6 report.js -e LABEL="$label" -e SCENARIO="$scenario" -e END="$end" -e DURATION="$duration" -e RATE="$rate" \
-    -e WARMUP="$warmup" -e PERF_AUTH_CACHE_TTL="$ttl" \
+    -e WARMUP="$warmup" -e PERF_AUTH_CACHE_TTL="$ttl" -e CACHE="$cache" \
     -e COMMIT="$(git rev-parse --short HEAD)$(git diff --quiet HEAD -- . ':!docs' || echo '-dirty')" \
     -e SAMPLING="$(env_value TRACING_SAMPLING_PROBABILITY)"
   echo "결과: $dir/report.md"

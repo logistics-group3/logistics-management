@@ -17,7 +17,11 @@
   - S3 10/s 1m: p95 11.4ms
   - publish: `docs/reviews/performance/`에 보고서와 목록 한 줄이 생기는 것을 확인한 뒤 확인용 기록은 지웠다
 - [x] 시험 실행 중 고친 것: Gateway `http_client_requests`는 라우트 프록시 지표라 I-01을 user-service 수신 수 − Feign I-01로 계산, Feign URL에 `/internal`이 없는 점 반영, company 내부 API p95 계산 오류 수정, hub API p95 열 추가
-- [ ] 목표 RPS 결정(S1, S2, S3 각각)
+- [x] 목표 RPS 결정(2026-10-19): S1 150, S2 60, S3 200. 근거 표는 `docs/reviews/performance/README.md` "목표 RPS". S2 한계(80~120)는 order-service DB 커넥션 대기
+- [x] S3를 단건 조회(H-02, H-04)로 변경, 시드에 경로 ID 추가, 보고서·목록에 캐시 설정 열 추가, 측정 환경에 Redis와 캐시 조건 변수 추가
+- [x] ADR 0019(Redis 캐시를 기본 꺼짐으로 넣고 측정으로 채택을 정한다) 제안
+- [ ] 기준선 A0·A1(S1), BC0(S2·S3) 각 3회
+- [ ] 개발·측정: A2 → B1-local·B1-redis → C1 (기능 코드는 `git stash`의 `cache-features`에 보관 중)
 - [ ] 기준선 측정: A0, A1(S1), BC0(S2, S3) 각 3회
 - 면접 포인트: 성능 개선을 어떻게 증명했나(기준선, 하나씩 변경, 3회 중앙값과 편차), 왜 고정 도착률로 부하를 줬나
 

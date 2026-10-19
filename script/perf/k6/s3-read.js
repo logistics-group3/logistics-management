@@ -1,5 +1,6 @@
 // S3 읽기: 측정 항목 B(허브·경로)의 보조 기준선. 진입점: script/perf.sh run s3
-// 프런트가 자주 부르는 허브 목록(H-01)과 허브 간 경로 검색(H-03)을 같은 비율로 섞어 호출한다.
+// 허브 단건(H-02)과 경로 단건(H-04)을 같은 비율로 무작위 호출한다. B가 캐시하는 대상이 단건 조회(I-02·I-03·H-02·H-04)라서
+// 목록 검색(H-01·H-03, 페이지 응답)은 넣지 않는다.
 import http from 'k6/http';
 import { check } from 'k6';
 import { BASE, arrivalOptions, headers, loginAll, loadData, pick } from './lib.js';
@@ -14,15 +15,11 @@ export function setup() {
 export function read(ctx) {
   const token = pick(ctx.tokens);
   if (Math.random() < 0.5) {
-    const res = http.get(`${BASE}/hubs?page=0&size=30`, { ...headers(token), tags: { name: 'GET /hubs' } });
-    check(res, { 'H-01 200': (r) => r.status === 200 });
+    const res = http.get(`${BASE}/hubs/${pick(data.hubs).hubId}`, { ...headers(token), tags: { name: 'GET /hubs/{id}' } });
+    check(res, { 'H-02 200': (r) => r.status === 200 });
   } else {
-    const from = pick(data.hubs);
-    let to = pick(data.hubs);
-    while (to.hubId === from.hubId) to = pick(data.hubs);
-    const res = http.get(`${BASE}/hub-routes?departureHubId=${from.hubId}&arrivalHubId=${to.hubId}`,
-      { ...headers(token), tags: { name: 'GET /hub-routes' } });
-    check(res, { 'H-03 200': (r) => r.status === 200 });
+    const res = http.get(`${BASE}/hub-routes/${pick(data.routes)}`, { ...headers(token), tags: { name: 'GET /hub-routes/{id}' } });
+    check(res, { 'H-04 200': (r) => r.status === 200 });
   }
 }
 

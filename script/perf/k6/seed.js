@@ -112,6 +112,7 @@ export function setup() {
     password: PASSWORD,
     master: { username: MASTER_USERNAME, password: MASTER_PASSWORD },
     hubs: hubs.map((h) => ({ hubId: h.hubId, name: h.name })),
+    routes: allPages('/hub-routes', master).map((r) => r.hubRouteId),
     receivers: receivers.map((r) => ({ username: r.username, companyId: companies[r.company].companyId, hubId: r.hub.hubId })),
     products: Object.values(products).map((p) => ({ productId: p.productId, companyId: p.companyId, hubId: p.hubId })),
     // S1 부하에 쓰는 사용자. 수령·공급 관리자와 배송담당자를 모두 넣어 캐시 키를 넓게 분산한다.
@@ -124,7 +125,7 @@ export default function () {}
 
 export function handleSummary(data) {
   const seed = data.setup_data;
-  const text = `시드 완료: 허브 ${seed.hubs.length}, 수령업체 ${seed.receivers.length}, 상품 ${seed.products.length}, `
+  const text = `시드 완료: 허브 ${seed.hubs.length}, 경로 ${seed.routes.length}, 수령업체 ${seed.receivers.length}, 상품 ${seed.products.length}, `
     + `S1 사용자 ${seed.authUsers.length}, 권한 변경 측정 사용자 ${seed.probes.length}\n`;
   return { stdout: text, '/out/data.json': JSON.stringify(seed, null, 2) };
 }

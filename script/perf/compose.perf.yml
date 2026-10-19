@@ -2,6 +2,12 @@
 # 팀 docker-compose.yml·config-repo·.env는 바꾸지 않는다. 프로젝트 이름(logistics-perf)과 .env.perf로 개발 스택과 분리한다.
 # Note: 측정값이 흔들리지 않도록 컨테이너마다 CPU·메모리 상한을 고정한다. 값을 바꾸면 이전 결과와 비교할 수 없으므로
 # 결과 보고서에 함께 기록되는 이 파일의 커밋을 기준으로 비교한다.
+#
+# 캐시 조건(script/perf.sh up 할 때 셸 환경 변수로 준다. 기본값은 팀 기본 동작과 같다)
+#   PERF_AUTH_CACHE_TTL  Gateway 권한 캐시 TTL(기본 60s, 0s면 캐시 없음)   - 항목 A
+#   PERF_AUTH_CACHE      Gateway 권한 캐시 저장소 local|redis(기본 local) - 항목 A
+#   PERF_HUB_CACHE       hub-service 조회 캐시 none|local|redis(기본 none) - 항목 B
+#   PERF_COMPANY_CACHE   company-service 내부 조회 캐시 none|local|redis(기본 none) - 항목 C
 
 x-perf-app: &perf-app
   cpus: "1.0"
@@ -11,6 +17,13 @@ services:
   postgres:
     cpus: "2.0"
     mem_limit: 1g
+  # 캐시 전용이라 디스크에 저장하지 않는다. 쓰지 않는 조건에서도 띄워 두어 조건마다 컨테이너 구성이 같게 한다.
+  redis:
+    image: redis:7.4.2
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    cpus: "1.0"
+    mem_limit: 256m
+    networks: [logistics-net]
   config-server:
     <<: *perf-app
   eureka-server:
@@ -21,12 +34,23 @@ services:
       # Note: config-repo의 auth.user-cache-ttl(60s)을 환경 변수로 덮는다. Config Server 값은 환경 변수보다 우선순위가 낮다
       # (config-repo/application.yml 첫 주석). 측정 조건 A의 기준선(0s = 캐시 없음, 60s = 현재)을 바꿀 때만 쓴다.
       AUTH_USERCACHETTL: ${PERF_AUTH_CACHE_TTL:-60s}
+      AUTH_USER_CACHE: ${PERF_AUTH_CACHE:-local}
+      REDIS_HOST: redis
   user-service:
     <<: *perf-app
+    environment:
+      AUTH_USER_CACHE: ${PERF_AUTH_CACHE:-local}
+      REDIS_HOST: redis
   hub-service:
     <<: *perf-app
+    environment:
+      HUB_CACHE_TYPE: ${PERF_HUB_CACHE:-none}
+      REDIS_HOST: redis
   company-service:
     <<: *perf-app
+    environment:
+      COMPANY_CACHE_TYPE: ${PERF_COMPANY_CACHE:-none}
+      REDIS_HOST: redis
   delivery-service:
     <<: *perf-app
   order-service:

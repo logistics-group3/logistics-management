@@ -94,7 +94,7 @@ export function setup() {
   const hubP95s = prom.serverP95.filter((r) => r.labels.application === 'hub-service').map((r) => r.value);
   const hubP95 = hubP95s.length ? Math.max(...hubP95s) : Number.NaN;
   const row = `| ${new Date(END * 1000).toISOString().slice(0, 10)} | [${LABEL}](${LABEL}.md) | ${__ENV.SCENARIO} | `
-    + `${__ENV.PERF_AUTH_CACHE_TTL} | ${__ENV.RATE} | ${fmt(iterations.count / windowSeconds, 2)} | ${fmt((failed.value || 0) * 100, 2)}% | `
+    + `${__ENV.CACHE} | ${__ENV.RATE} | ${fmt(iterations.count / windowSeconds, 2)} | ${fmt((failed.value || 0) * 100, 2)}% | `
     + `${fmt(duration.med)} | ${fmt(duration['p(95)'])} | ${fmt(duration['p(99)'])} | ${perRequest(i01)} | ${perRequest(i03)} | `
     + `${perRequest(companyCalls)} | ${Number.isFinite(companyInternalP95) ? ms(companyInternalP95) : '-'} | `
     + `${Number.isFinite(hubP95) ? ms(hubP95) : '-'} | `
@@ -114,7 +114,7 @@ export function setup() {
 | 커밋 | ${__ENV.COMMIT} |
 | 목표 도착률 | ${__ENV.RATE}/s |
 | 워밍업 / 본 측정 | ${__ENV.WARMUP} / ${__ENV.DURATION} |
-| Gateway 권한 캐시 TTL | ${__ENV.PERF_AUTH_CACHE_TTL} |
+| 캐시 설정 | ${__ENV.CACHE} |
 | 추적 샘플링 비율 | ${__ENV.SAMPLING} |
 | 집계 구간 끝(UTC) | ${new Date(END * 1000).toISOString()} |
 
