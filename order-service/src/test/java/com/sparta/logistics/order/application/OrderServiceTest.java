@@ -23,6 +23,7 @@ import com.sparta.logistics.order.application.dto.CreateOrderCommand;
 import com.sparta.logistics.order.application.dto.OrderResult;
 import com.sparta.logistics.order.application.dto.OrderCreationCommitResult;
 import com.sparta.logistics.order.application.dto.ProductResult;
+import com.sparta.logistics.order.domain.CreationFailureReason;
 import com.sparta.logistics.order.domain.Order;
 import com.sparta.logistics.order.domain.OrderRepository;
 import com.sparta.logistics.order.domain.OrderStatus;
@@ -225,6 +226,51 @@ class OrderServiceTest {
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).deleteByOrderId(orderId);
         verify(orderWriter, never()).save(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("결과를 모르는 배송 생성도 보상이 성공하고 I-17이 CLOSED면 시도를 ABORTED로 닫는다")
+    void abortsUnknownDeliveryWhenClosureConfirmed() {
+        stubLookup();
+        given(deliveryGateway.create(any())).willThrow(timeout());
+        given(deliveryGateway.isCreationClosed(any())).willReturn(true);
+
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
+                .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
+        UUID orderId = captureCreatedOrderId();
+        verify(deliveryGateway).isCreationClosed(orderId);
+        verify(orderWriter).abort(any(), eq(null), eq(CommonErrorCode.SERVICE_UNAVAILABLE.code()), any());
+        verify(orderWriter, never()).requireRecovery(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("I-17이 CLOSED가 아니거나 조회에 실패하면 복구 필요로 남긴다")
+    void keepsRecoveryWhenClosureNotConfirmed() {
+        stubLookup();
+        given(deliveryGateway.create(any())).willThrow(timeout());
+        given(deliveryGateway.isCreationClosed(any())).willReturn(false).willThrow(timeout());
+
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
+                .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
+        assertThatThrownBy(() -> service.create(user, "test-key-2", command))
+                .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
+
+        verify(orderWriter, times(2)).requireRecovery(any(), eq(null), eq(CreationFailureReason.DELIVERY_RESULT_UNKNOWN));
+        verify(orderWriter, never()).abort(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("삭제 보상이 실패하면 I-17을 확인하지 않고 복구 필요로 남긴다")
+    void skipsClosureCheckWhenCompensationFails() {
+        stubLookup();
+        given(deliveryGateway.create(any())).willThrow(timeout());
+        willThrow(timeout()).given(deliveryGateway).deleteByOrderId(any());
+
+        assertThatThrownBy(() -> service.create(user, "test-key", command))
+                .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
+
+        verify(deliveryGateway, never()).isCreationClosed(any());
+        verify(orderWriter).requireRecovery(any(), eq(null), eq(CreationFailureReason.DELIVERY_RESULT_UNKNOWN));
     }
 
     @Test

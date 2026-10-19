@@ -32,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -70,7 +71,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
 
     @DynamicPropertySource
     static void configureClients(DynamicPropertyRegistry registry) {
-        for (String client : List.of("order-company", "order-delivery-create", "order-delivery-delete")) {
+        for (String client : List.of("order-company", "order-delivery-create", "order-delivery-delete", "order-delivery-state")) {
             registry.add("spring.cloud.openfeign.client.config." + client + ".url", STUB::url);
         }
     }
@@ -215,6 +216,27 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         assertFailedProgress(acceptAndGetProgress(), "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
         assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
         assertCompensated(1);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"CLOSED,ABORTED,SERVICE_UNAVAILABLE", "ACTIVE,RECOVERY_REQUIRED,DELIVERY_RESULT_UNKNOWN",
+            "NONE,RECOVERY_REQUIRED,DELIVERY_RESULT_UNKNOWN"})
+    @DisplayName("배송 생성 결과를 모르면 삭제 보상 뒤 I-17이 CLOSED일 때만 시도를 닫는다")
+    void closesUnknownCreationOnlyWhenClosed(String state, String status, String failureCode) throws Exception {
+        STUB.reset(request -> {
+            if (request.method().equals("POST")) {
+                return failure(500, "INTERNAL_SERVER_ERROR");
+            }
+            if (request.method().equals("GET") && request.path().startsWith("/internal/deliveries/orders/")) {
+                UUID orderId = UUID.fromString(request.path().substring("/internal/deliveries/orders/".length()));
+                return Reply.json(200, json(Map.of("orderId", orderId, "state", state)));
+            }
+            return normalReply(request);
+        });
+
+        assertFailedProgress(acceptAndGetProgress(), status, failureCode);
+        assertCompensated(1, status, status.equals("ABORTED") ? null : failureCode);
+        assertThat(STUB.requests("GET", "/internal/deliveries/orders/")).hasSize(1);
     }
 
     @Test
@@ -553,6 +575,10 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     }
 
     private void assertCompensated(int attempts) throws Exception {
+        assertCompensated(attempts, "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
+    }
+
+    private void assertCompensated(int attempts, String recordStatus, String recordReason) throws Exception {
         UUID orderId = UUID.fromString(mapper.readTree(STUB.requests("POST", "/internal/deliveries").get(0).body())
                 .path("orderId").asText());
         assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/"))
@@ -562,7 +588,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
                 });
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id = ?",
                 Integer.class, orderId)).isZero();
-        assertCreationRecord(orderId, "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
+        assertCreationRecord(orderId, recordStatus, recordReason);
     }
 
     private String json(Object value) {

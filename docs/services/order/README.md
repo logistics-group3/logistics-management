@@ -109,7 +109,7 @@ O-04 본문은 `{"requestNote":"오후 도착 희망"}`이다. 누락·null·빈
 O-05는 본문 없이 호출하며 성공 데이터는 orderId·status=CANCELED다. 취소 여부는 배송 I-11이 원자적으로 판단한다. 진행 중·복구 대기인 주문은 409로 새 실행을 막으며 타임아웃·5xx를 실패 확정으로 취급하지 않는다.
 진행 기록은 2026-10-15 주문 담당자의 명시적 승인으로 V2에 추가했고 SA의 주문 영역에 반영했다. 구현 이유·재현은 [스텝 43](../../learning/junhyun/steps/step-43-order-cancellation.md), 생성·취소의 상세 실패 행렬과 후속 보강안은 [예외 처리 설계](failure-handling.md)에 있다.
 
-O-01은 배송 생성 전에 p_order_creations를 커밋하고 주문과 COMPLETED를 함께 저장한다. 저장 예외가 나도 커밋이 확인되면 201을 반환하며, 조회 실패·상태 불일치에는 배송을 삭제하지 않는다. I-09 타임아웃 보상은 기존대로 시도하지만 지연 생성이 끝났다는 보장이 없어 RECOVERY_REQUIRED를 유지한다.
+O-01은 배송 생성 전에 p_order_creations를 커밋하고 주문과 COMPLETED를 함께 저장한다. 저장 예외가 나도 커밋이 확인되면 201을 반환하며, 조회 실패·상태 불일치에는 배송을 삭제하지 않는다. I-09 타임아웃은 I-13 보상을 시도하고, I-17이 CLOSED로 확인하면 ABORTED로 닫는다. 확인하지 못하면 지연 생성이 끝났다는 보장이 없어 RECOVERY_REQUIRED를 유지한다(ADR 0011).
 O-01 호출자는 `Idempotency-Key`를 반드시 보낸다. 새 주문에 새 키를 만들고 응답 유실·네트워크 재시도에는 **같은 키와 같은 본문**을 사용한다. UUID를 권장하며 1~128자 영문·숫자·`.`·`_`·`:`·`-`만 허용한다. 사용자 ID별로 구분하며 대소문자를 구별한다.
 같은 키·본문의 완료 요청은 최초 생성 응답으로 201을 반환한다. 요청사항 수정·취소 이후에도 생성 응답은 그대로이며 현재 상태는 O-03에서 조회한다. 다른 본문·처리 중·실패 종료·복구 대기는 각 전용 코드로 409다. 키는 자동 만료하지 않는다([ADR 0008](decisions/0008-order-idempotency-key.md)).
 전체 원본 요청 저장·자동 재실행·복구 API는 아직 없다. 생성 기록·커밋 재확인은 [스텝 44](../../learning/junhyun/steps/step-44-order-creation-progress.md), 멱등키 구현 이유는 [스텝 45](../../learning/junhyun/steps/step-45-order-idempotency-key.md), 타 서비스의 호출·재시도 규칙은 [연동 실패 계약](integration-contract.md)에 정리했다.

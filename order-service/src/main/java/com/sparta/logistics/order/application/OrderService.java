@@ -196,9 +196,24 @@ public class OrderService {
     }
 
     private void handleUnknownDelivery(OrderCreationAttempt attempt, RuntimeException failure) {
-        // Note: SA 7.1의 삭제 보상은 시도하지만 204 뒤 지연 생성이 끝났다고 단정하지 않는다. 확인 대상 기록을 남긴다.
-        compensateDelivery(attempt);
+        // Note: I-13 204만으로는 지연된 I-09가 뒤늦게 배송을 만들지 않는다고 단정할 수 없다. 보상이 성공한 뒤 I-17이
+        // CLOSED(종료 표시 있음, 이후 I-09는 409로 거절)일 때만 시도를 닫고, 나머지는 확인 대상으로 남긴다.
+        if (compensateDelivery(attempt) && isCreationClosed(attempt)) {
+            abortCreationSafely(attempt, null, new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE));
+            return;
+        }
         markCreationRecoverySafely(attempt, null, CreationFailureReason.DELIVERY_RESULT_UNKNOWN, failure);
+    }
+
+    /** I-17 확인. 조회에 실패하면 닫을 근거가 없으므로 닫히지 않은 것으로 본다. */
+    private boolean isCreationClosed(OrderCreationAttempt attempt) {
+        try {
+            return deliveryGateway.isCreationClosed(attempt.orderId());
+        } catch (RuntimeException exception) {
+            log.warn("배송 생성 시도 종료 확인 실패: orderId={}, attemptId={}, cause={}",
+                    attempt.orderId(), attempt.attemptId(), exception.getClass().getSimpleName());
+            return false;
+        }
     }
 
     private OrderResult handleCreationFailure(OrderCreationAttempt attempt, UUID deliveryId, RuntimeException failure) {

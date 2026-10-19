@@ -12,6 +12,12 @@ public interface DeliveryGateway {
     /** I-13 한 번 호출. 대상이 없어도 성공이다. 보상 재시도는 OrderService가 맡아 중첩 재시도를 막는다. */
     void deleteByOrderId(UUID orderId);
 
+    /**
+     * I-17. orderId의 생성 시도가 종료돼 더는 배송이 생기지 않는지 확인한다. 종료(CLOSED)일 때만 true이고,
+     * 배송이 있거나(ACTIVE) 결과가 아직 없으면(NONE) false다. 응답을 해석할 수 없으면 예외를 던진다.
+     */
+    boolean isCreationClosed(UUID orderId);
+
     /** I-11. 집하 시작 전인지 판단하고 배송·구간을 취소한다. 자동 재시도하지 않는다. */
     void cancel(UUID deliveryId);
 

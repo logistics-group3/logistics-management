@@ -68,7 +68,7 @@ Controller마다 try/catch를 반복하지 않는다. application에서는 **보
 | 동시 생성 기록 INSERT의 유니크 충돌 | 기존 결과에 따라 201·409 | 실패한 트랜잭션 종료 후 기존 키 재조회. 충돌한 요청의 I-09 호출 없음 |
 | 다른 생성 기록 시작의 DB 예외 | 500 INTERNAL_SERVER_ERROR | I-09 호출 없음. 시작 기록이 커밋됐을 수도 있어 로그의 orderId·attemptId로 확인 |
 | I-09의 명확한 4xx | 하위 오류 코드 유지 | ABORTED 기록, 삭제 보상 없음 |
-| I-09 타임아웃·5xx·잘못된 성공 응답 | 503 SERVICE_UNAVAILABLE | 기존 I-13 보상 시도, 성공해도 DELIVERY_RESULT_UNKNOWN으로 복구 대기 |
+| I-09 타임아웃·5xx·잘못된 성공 응답 | 503 SERVICE_UNAVAILABLE | I-13 보상이 성공하고 I-17이 CLOSED면 ABORTED(SERVICE_UNAVAILABLE). 보상 실패·I-17이 ACTIVE·NONE·조회 실패면 DELIVERY_RESULT_UNKNOWN으로 복구 대기 |
 | 배송 생성 뒤 엔티티 검증·저장 예외, 미저장 확인 | 원래 업무 오류 또는 500 | I-13 성공이면 ABORTED, 실패이면 DELIVERY_DELETE_FAILED |
 | 저장 예외 후 실제 커밋 확인 | 201 유지 | 저장된 OrderResult 반환, I-13·이벤트 재발행 없음 |
 | 저장 결과 조회 실패·상태 불일치 | 최초 실패 유지 | ORDER_COMMIT_UNKNOWN, 자동 삭제 없음 |
@@ -260,7 +260,7 @@ O-05 61개, 생성 진행 기록 40개, 멱등키 55개에 이어 O-06 테스트
 | I-12 통신 3회·5xx 1회, 복구 기록 | 실제 Feign·HTTP 호출 횟수 확인 |
 | O-01 커밋 뒤 반환 예외·조회 실패 | 실제 DB 커밋 후 transaction advice 바깥에서 예외 주입. 주문·배송 보존·알림 1회 확인. 네트워크 패킷 유실 주입은 미실행 |
 | O-01 미완료 저장 중 재확인 | 실제 PostgreSQL 잠금 대기 후 커밋·롤백 결과 구분 |
-| O-01 I-13 선행 후 지연 I-09 완료 | 실제 Feign·HTTP 대역에서 RECOVERY_REQUIRED 유지 확인 |
+| O-01 I-13 선행 후 지연 I-09 완료 | 실제 Feign·HTTP 대역에서 I-17 CLOSED면 ABORTED, ACTIVE·NONE이면 RECOVERY_REQUIRED 확인(`OrderHttpIntegrationTest`) |
 | O-01 같은 키 동시 실행·본문 충돌 | PostgreSQL의 실제 UNIQUE 경쟁 후 한 주문·배송·이벤트만 생성, 패자는 201 또는 전용 409 |
 | O-01 완료·실패·복구 상태 재요청 | HTTP에서 최초 스냅샷 201·상태별 409, 회사·배송 재호출 없음 |
 | O-01 V3 기존 행·삭제된 생성 기록 | V3 데이터에 V4 적용 후 보존, 삭제된 키 재사용 차단 |
