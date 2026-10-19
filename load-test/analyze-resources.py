@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """sample-resources.py의 CSV와 단계 구간(markers: 라벨,시작epoch,끝epoch)으로 단계별 컨테이너 평균·최대 CPU를 표로 낸다.
 사용: analyze-resources.py <resources.csv> <markers.csv>"""
-import collections, csv, sys
+import collections, csv, re, sys
+
+ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 samples = collections.defaultdict(list)
 for t, name, cpu in csv.reader(open(sys.argv[1])):
     try:
-        samples[name].append((float(t), float(cpu)))
+        samples[ANSI.sub("", name)].append((float(t), float(ANSI.sub("", cpu).rstrip("%"))))
     except ValueError:
         pass
 for label, start, end in csv.reader(open(sys.argv[2])):
