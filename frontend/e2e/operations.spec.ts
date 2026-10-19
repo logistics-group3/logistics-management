@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import fs from 'node:fs'
+import { createOrderViaApi } from './order-creation'
 const data = JSON.parse(fs.readFileSync('../.local/ui-test-data.json', 'utf8'))
 const password = 'UiLocal!2026'
 async function login(page: Page, username = 'uimaster') {
@@ -253,19 +254,14 @@ test('배송담당자의 배정 구간 처리와 세션 만료', async ({ page, 
     data: { username: 'uimaster', password },
   })
   const token = (await auth.json()).data.accessToken
-  const headers = { Authorization: `Bearer ${token}`, 'Idempotency-Key': crypto.randomUUID() }
-  const response = await request.post('/api/v1/orders', {
-    headers,
-    data: {
-      supplierCompanyId: data.supplierCompanyId,
-      receiverCompanyId: data.receiverCompanyId,
-      productId: data.products[0].productId,
-      quantity: 1,
-      requestNote: 'E2E 배송담당자 테스트',
-    },
+  const headers = { Authorization: `Bearer ${token}` }
+  const order = await createOrderViaApi(request, headers, {
+    supplierCompanyId: data.supplierCompanyId,
+    receiverCompanyId: data.receiverCompanyId,
+    productId: data.products[0].productId,
+    quantity: 1,
+    requestNote: 'E2E 배송담당자 테스트',
   })
-  expect(response.status()).toBe(201)
-  const order = (await response.json()).data
   await page.goto(`/deliveries/${order.deliveryId}`)
   await login(page, 'uidriver')
   await expect(page.getByText('이준호 (나)', { exact: false }).first()).toBeVisible()
