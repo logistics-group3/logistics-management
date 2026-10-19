@@ -95,11 +95,12 @@ sum by (name) (rate(resilience4j_circuitbreaker_not_permitted_calls_total{applic
 
 | 통제 | 방법 | 이유 |
 |---|---|---|
-| Gateway 권한 캐시 | 실험 중 TTL을 10분으로 늘린다 (아래 덧붙임 파일) | Gateway도 user를 부른다. 장애 중 캐시가 만료되면 모든 요청이 Gateway에서 3초 뒤 503으로 끝난다. 그러면 delivery를 격리했는지 볼 수 없다. Gateway 쪽 격리는 7절 S4에서 따로 본다 |
+| Gateway 권한 캐시 | 실험 중 TTL을 1시간으로 늘린다 (아래 덧붙임 파일). 캐시는 쓴 시각 기준으로 만료돼 10분이면 실험 도중 만료될 수 있다(2026-10-19 S1-resilience에서 장애 10초 뒤 만료되어 조회가 Gateway에서 503) | Gateway도 user를 부른다. 장애 중 캐시가 만료되면 모든 요청이 Gateway에서 3초 뒤 503으로 끝난다. 그러면 delivery를 격리했는지 볼 수 없다. Gateway 쪽 격리는 7절 S4에서 따로 본다 |
 | 추적 비율 | `.env`에 `TRACING_SAMPLING_PROBABILITY=0.1` | 1.0이면 구간 전송 비용이 결과에 섞인다. 비율은 Gateway가 정하므로 전체에 한 번만 둔다 |
 | Tomcat 스레드 지표 | delivery에 `SERVER_TOMCAT_MBEANREGISTRY_ENABLED=true` | 이 설정이 없으면 `tomcat_threads_*` 지표가 나오지 않는다 |
 | 수집 주기 | 로컬에서만 `infra/prometheus/prometheus.yml`의 `scrape_interval`을 `5s`로 바꾼다. 커밋하지 않는다 | 장애가 30초인데 15초마다 수집하면 점이 2개뿐이다. 끝나면 `git restore infra/prometheus/prometheus.yml` |
-| DB 상태 | 매번 `--reset` 후 시드만 넣는다. 30만 건 대량 데이터는 넣지 않는다 | 이 실험은 조회가 원래 빠른 상태에서 "장애 때문에 느려지는 것"을 봐야 한다. 쿼리가 느리면 원인이 섞인다 |
+| DB 상태 | 처음 한 번만 `--reset` 후 시드를 넣는다. 측정 사이에는 `load-test/reset-delivery-data.sh`로 배송·구간 테이블만 비운다. 30만 건 대량 데이터는 넣지 않는다 | 이 실험은 조회가 원래 빠른 상태에서 "장애 때문에 느려지는 것"을 봐야 한다. 쿼리가 느리면 원인이 섞인다 |
+| 예열과 안정 확인 | 기동 직후에는 재지 않는다. 같은 속도로 1분씩 2번 이상 돌려 p95가 더 내려가지 않을 때까지 예열한다. `--reset`은 컨테이너를 다시 만들어 예열이 사라지므로 측정 사이에 쓰지 않는다 | 2026-10-19 같은 초당 10+10에서 기동 직후 1분은 생성 p95 2,151ms·delivery CPU 227%, 바로 다음 1분은 1,433ms·20%였다. GC는 원인이 아니었다(누적 GC 0.6초, 힙 사용 30% 이하). 첫 S1은 기동 1분 만에 시작해 장애 전부터 커넥션 풀이 바닥나 쓸 수 없었다 |
 | 반복 | 같은 조건으로 3번 재고 중앙값을 쓴다 | 맥 한 대에서 k6와 서비스가 CPU를 나눠 쓰므로 편차가 크다 |
 | 환경 기록 | 맥 모델, 메모리, Docker 할당 CPU·메모리를 결과에 적는다 | 절대 수치보다 전후 비율을 내세운다 |
 
@@ -115,7 +116,8 @@ services:
   gateway-service:
     environment:
       # auth.user-cache-ttl. 환경 변수는 점을 _로, 대시는 빼고 대문자로 쓴다(Spring relaxed binding)
-      AUTH_USERCACHETTL: 10m
+      # Note: 캐시는 쓴 시각 기준으로 만료된다(expireAfterWrite). 10분이면 실험 도중 만료될 수 있어(2026-10-19 S1) 1시간으로 둔다.
+      AUTH_USERCACHETTL: 1h
   delivery-service:
     environment:
       SERVER_TOMCAT_MBEANREGISTRY_ENABLED: "true"
@@ -222,13 +224,58 @@ S0 → S1(전) → A → S1 → A+B → S1 → A+B+C → S1 → A+B+C+D → S1, 
 
 같은 PC, 같은 속도(CREATE_RATE, READ_RATE), 같은 장애 시간끼리만 비교한다. 값은 3번 잰 중앙값이다.
 
-환경: (맥 모델 / 메모리 / Docker CPU·메모리 할당 / 날짜)
+환경: MacBook Air / Docker CPU 8개·메모리 7.8GiB / 서비스 JVM `-Xms128m -Xmx384m`(이미지 기본) / 추적 100%(실험 내내 고정, 바꾸면 컨테이너를 다시 만들어 예열이 사라진다) / 2026-10-19~
+
+### 측정 조건 (S0·S1 공통, 결과를 말할 때 함께 쓴다)
+
+| 항목 | 값 |
+|---|---|
+| 부하 모델 | 도착률 고정(열린 모델, k6 `constant-arrival-rate`). 서버가 느려져도 초당 요청 수를 줄이지 않는다 |
+| 부하량 | 배송 생성 초당 10건 + 배송 목록 조회 초당 10건 = **초당 20요청**, 4분 |
+| 동시 사용자(VU) | 정하지 않는다. k6가 도착률을 지키는 데 필요한 만큼 늘린다(최대 400). 평소 1~2명, 장애 중 최대 151명이었다 |
+| 장애 | 시작 90초 뒤 user-service `pause` 30초. 구간: before(30~90초), fault(90~120초), recovery(120~150초), after(150초~) |
+| 클라이언트 타임아웃 | 10초. 넘으면 실패로 센다 |
+| 계정·데이터 | 생성은 MASTER(`dmaster`)가 서울 허브 → 서울 허브(같은 허브라 hub 호출 없음, user 호출 2번). 조회는 MASTER의 서울 허브 최신순 10건. 측정 전 배송 테이블을 비운다 |
+| 예열 | 같은 속도로 1분 이상 실행한 뒤 측정 |
+
+"사용자 몇 명"으로 바꾸면: 동시 사용자 수 = 초당 요청 × (응답 시간 + 사용자가 다음 요청까지 쉬는 시간)이다(리틀의 법칙). 사용자가 10초에 한 번 요청한다고 보면 초당 20요청은 동시 사용자 약 200명이다. 장애 중 VU가 151명까지 늘어난 것은 응답이 10초씩 걸려 진행 중인 요청이 쌓였기 때문이다(초당 10 × 10초 ≈ 100 + 조회).
+
+### 예비 측정: 예열과 한계점 (2026-10-19, 장애 없음, 각 1분)
+본 측정 조건(속도, 예열)을 정하려고 잰 값이다. S0·S1과 비교하는 값이 아니다.
+
+| 실행 | 속도(생성+조회) | 생성 실패 | 생성 p95 | 조회 p95 | delivery CPU | 커넥션 대기 | 메모 |
+|---|---|---|---|---|---|---|---|
+| cap-5 | 5+5 | 13% | 10,001ms | 10,000ms | 111% | 0 | 기동 직후 첫 실행 |
+| cap-10 | 10+10 | 0% | 4,744ms | 3,709ms | 124% | 0 | |
+| cap-20 | 20+20 | 0.7% | 7,219ms | 5,532ms | 551% | 30 | 바쁜 스레드 67 |
+| warm-10 | 10+10 | 0% | 2,151ms | 1,311ms | 227% | 0 | 재기동 후 첫 실행 |
+| cap2-10 | 10+10 | 0% | 1,433ms | 836ms | 20% | 0 | 바로 다음 실행 |
+| cap2-20 | 20+20 | 0% | 539ms | 281ms | 123% | 0 | 그다음 실행 |
+
+- 같은 속도에서 첫 실행과 다음 실행의 CPU가 10배 차이 난다. JVM 예열(JIT 컴파일) 비용이다. 누적 GC는 delivery 0.6초, 힙 사용 30% 이하라 GC는 원인이 아니다.
+- 결정: 본 측정은 생성 10 + 조회 10(초당). 20+20도 버텨 여유가 있고, 장애 때 스레드 고갈(10 × 60초 = 600 > 200)을 재현하기에 충분하다.
+
+서킷 판단 창 튜닝 확인(초당 40+40, 장애 없음, 1분, 개선 A~D 적용 후):
+
+| 실행 | 서킷 판단 창 | 생성 실패 | 생성 p95 | 조회 p95 | delivery CPU | 커넥션 대기 | 메모 |
+|---|---|---|---|---|---|---|---|
+| cap3-40 (11:59) | 최근 20건 | 19% (503) | 1,546ms | 1,371ms | 76% | 0 | 순간 지연에 서킷이 열리는 오탐 |
+| cap4-40 (12:33) | 최근 10초 | 78% | 10,003ms | 10,002ms | 429% | 170 | **무효.** 설정 반영으로 재시작한 직후 예열 없이 80요청 |
+| cap5-40 (13:30) | 최근 10초 | 0.4% (503 10건, 시작 10초 안) | 140ms | 82ms | 15% | 0 | 예열 후. 서킷이 한 번도 열리지 않았다(거절 호출 수 변화 0) |
+
+- 예열된 상태에서는 초당 80요청도 p95 1초 안, 실패 1% 미만, dropped 1로 처리한다. cap4-40처럼 예열 없이 같은 부하를 넣으면 CPU 4~9코어를 쓰며 회복하지 못한다(TS-028).
+- 남은 503 10건은 속도를 올린 첫 10초에 user 동시 호출이 10개를 넘어 벌크헤드가 거절한 것으로 본다(서킷 거절 수는 변하지 않았다).
 
 | 단계 | D-01 p95 before | D-01 p95 fault | D-01 실패율 fault | I-09 p95 fault | I-09 실패율 fault | 최대 busy 스레드 | Hikari pending 최대 | 복구 시간(초) | 증폭 비율(S2) | 메모 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| S0 기준선 | | - | - | - | - | | | - | 1.0 | user p99 = |
-| S1 개선 전 | | | | | | | | | | |
+| S0 기준선 | 468(전 구간, 4분) | - | - | - | - | | 0 | - | 1.0 | 1회. 생성 p95 779ms, 실패 0% |
+| S1 개선 전 | 21 | **4,307** | 0% | 10,000 | 81% | **189 / 200** | **0** | **120초 넘게 회복 안 됨** | | 2026-10-19 11:05. 복구 직후 30초 조회 p95 7,691ms(장애 중보다 나쁨), 그 뒤 90초도 3,145ms. 복구 40초 뒤 CPU delivery 436%·postgres 297% |
+| + A~D 한 번에 (1차) | 13 | 126 (장애 첫 10초) | 0% (첫 10초) | 2,830 | 97% | **1 / 200** | 0 | **약 20초** | | 2026-10-19 11:41, 6분. 장애 10초 뒤 Gateway 권한 캐시(10분)가 만료돼 그 뒤 20초는 조회·생성 모두 Gateway에서 3초 뒤 503(user 조회 타임아웃). delivery 자체는 스레드 1개만 사용. 캐시 1시간으로 고친 재측정은 아래 "초당 20요청 재측정" 행. 시계열은 `load-test/timeline.py` |
 | + A 타임아웃 | | | | | | | | | | |
+| + A~D, 초당 40요청(20+20) | 8 | **224** | **0%** | 501 | 98.5% | (스레드 2) | 0 | **약 20초** | | 2026-10-19 12:01, 6분. 장애 30초 내내 조회 100% 성공. 개선 전 측정의 2배 부하 |
+| + A~D, 초당 80요청(40+40) | 720 | 58 | 0% | 97 | 98.2% | 2 / 200 | 0 | 약 20초 | | 2026-10-19 12:07. 장애 전 구간부터 생성 30%가 503: 순간 지연에 서킷이 열리는 오탐. 서킷 판단 창을 10초로 바꾼 재측정은 아래 "서킷 튜닝 뒤" 행(결정 로그 26) |
+| + A~D, 초당 20요청(10+10) 재측정 | 12 | **15** | **0%** | 2,014 | 99% | **1 / 200** | 0 | **약 20초** | | 2026-10-19 13:07, 1회. 개선 전(11:05)과 같은 조건(예열 후, Gateway 캐시 1시간). 장애 중 생성은 중앙값 9ms에 503. p95 2초는 서킷이 열리기 전 첫 10초의 읽기 타임아웃이다. user 재개 10초 뒤 83%, 20초 뒤 100% |
+| + A~D, 초당 80요청(40+40), 서킷 튜닝 뒤 | 6 | **7.7** | **0%** | 8.7 (p99 2,006) | 97% | 1 / 200 | 0 | 약 20초 | | 2026-10-19 13:32, 1회. 개선 전 측정의 4배 부하. 장애 전 90초 동안 서킷 오탐 없음(생성 성공 100%, p95 9ms). 장애 중 delivery CPU 9%. 그 전에 잰 cap4-40·s1-resilience-40b(12:33~12:35)는 재시작 직후 예열 없이 80요청을 넣어 장애 전부터 10초 타임아웃으로 무너져 무효(TS-028 재발) |
 | + B 재시도 | | | | | | | | | | |
 | + C 벌크헤드 | | | | | | | | | | |
 | + D 서킷 | | | | | | | | | | |
@@ -267,7 +314,7 @@ S0 → S1(전) → A → S1 → A+B → S1 → A+B+C → S1 → A+B+C+D → S1, 
 // 장애 격리 실험(delivery-service/docs/fault-isolation.md). 생성과 조회를 동시에 보내고, 요청마다 장애 전후 구간(phase) 태그를 붙인다.
 // 장애 자체는 load-test/fault-isolation.sh가 FAULT_AT(epoch 초)에 넣는다. 두 쪽이 같은 시각을 기준으로 구간을 나눈다.
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, fail } from 'k6';
 import { BASE_URL, SEED, login, numberEnv, params, uuid } from './lib/delivery.js';
 
 const TARGET = __ENV.TARGET || 'delivery';
@@ -318,10 +365,15 @@ export const options = {
 };
 
 export function setup() {
-  return {
-    creator: login(TARGET === 'delivery' ? 'dmaster' : 'dreceiver'),
-    reader: login('dmaster'),
-  };
+  const creator = login(TARGET === 'delivery' ? 'dmaster' : 'dreceiver');
+  if (TARGET === 'delivery') {
+    // 부하 테스트 API가 꺼져 있으면 모든 생성이 405로 끝나 실험이 무의미하다. 빈 본문에 400(검증 실패)이면 켜져 있다.
+    const probe = http.post(`${BASE_URL}/api/v1/deliveries/load-test`, '{}', params(creator, 'setup'));
+    if (probe.status !== 400) {
+      fail(`부하 테스트 API가 꺼져 있다(${probe.status}). COMPOSE_FILE에 docker-compose.loadtest.yml을 넣고 다시 기동한다: delivery-service/docs/fault-isolation.md 5-2`);
+    }
+  }
+  return { creator, reader: login('dmaster') };
 }
 
 function tagged(token, name, headers) {
@@ -385,21 +437,83 @@ FAULT_AT=$(( $(date +%s) + LEAD ))
 OUT="load-test/results/fault-${LABEL}-$(date +%Y%m%d-%H%M%S).json"
 mkdir -p load-test/results
 
+# 실험용 설정(부하 테스트 API, Gateway 권한 캐시 1시간)이 빠진 채 띄웠으면 결과를 비교에 쓸 수 없다. 기동한 터미널과 같은 설정인지 먼저 확인한다.
+for key in DELIVERY_LOAD_TEST_ENABLED AUTH_USERCACHETTL; do
+  if ! docker compose config 2>/dev/null | grep -q "$key"; then
+    echo "실험용 설정($key)이 없다. 다음을 export한 터미널에서 script/run.sh로 다시 띄우고 실행한다:" >&2
+    echo "  export COMPOSE_FILE=docker-compose.yml:docker-compose.loadtest.yml:docker-compose.fault.yml" >&2
+    exit 1
+  fi
+done
+
+# 서비스를 막 다시 띄웠으면 delivery가 Eureka에 등록될 때까지 Gateway가 503을 준다. 부하 테스트 API가 400(빈 본문 검증 실패)을
+# 돌려줄 때까지 최대 2분 기다린다. 기다린 만큼 장애 시각도 뒤로 민다.
+base="${BASE_URL:-http://localhost:8080}"
+for i in $(seq 1 24); do
+  token=$(curl -s -m 5 -X POST "$base/api/v1/auth/login" -H 'Content-Type: application/json' \
+    -d '{"username":"dmaster","password":"Sparta!2026"}' | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p')
+  code=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $token" \
+    -H 'Content-Type: application/json' -d '{}' "$base/api/v1/deliveries/load-test")
+  [ "$code" = 400 ] && break
+  echo "서비스 준비 대기 중(부하 테스트 API $code)... $((i * 5))초" >&2
+  sleep 5
+done
+[ "$code" = 400 ] || { echo "2분 안에 준비되지 않았다(마지막 응답 $code). docker compose ps와 Eureka(http://localhost:8761)를 확인한다." >&2; exit 1; }
+FAULT_AT=$(( $(date +%s) + LEAD ))
+
 if [ "$FAULT_MODE" = none ]; then K6_FAULT_AT=0; else K6_FAULT_AT=$FAULT_AT; fi
-k6 run -e FAULT_AT="$K6_FAULT_AT" -e FAULT_SEC="$FAULT_SEC" --summary-export="$OUT" load-test/k6/fault-isolation.js &
+# 요청별 기록(CSV)도 남긴다. 요약은 구간 전체 값이라 "복구까지 몇 초"는 10초 단위 시계열로 계산해야 한다.
+k6 run -e FAULT_AT="$K6_FAULT_AT" -e FAULT_SEC="$FAULT_SEC" --summary-export="$OUT" \
+  --out csv="${OUT%.json}.csv.gz" load-test/k6/fault-isolation.js &
 K6_PID=$!
+
+# 부하 중 서버 상태 스냅샷(컨테이너 CPU·메모리, delivery 커넥션 풀·스레드). k6 결과만으로는 원인을 알 수 없다.
+STATS="${OUT%.json}-stats.txt"
+snap() {
+  # Note: 멈춘 user-service에는 exec가 실패한다. set -e로 스크립트가 여기서 끝나면 unpause를 못 해 장애가 끝나지 않는다(2026-10-19 S1).
+  {
+    echo "== $1 $(date +%T)"
+    docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}' | sed 's/logistics-management-//'
+    docker compose exec -T delivery-service sh -c 'curl -s localhost:8085/actuator/prometheus' 2>/dev/null \
+      | grep -E "^(hikaricp_connections_(active|pending|timeout_total)|tomcat_threads_busy_threads|resilience4j_circuitbreaker_state\{.*state=\"(open|closed|half_open)\"|resilience4j_circuitbreaker_not_permitted_calls_total|resilience4j_bulkhead_available_concurrent_calls|resilience4j_circuitbreaker_calls_seconds_count)"
+    # 힙이 작아 GC가 CPU를 먹는지 본다(이미지 기본 -Xmx384m). 누적 GC 시간이 실행 사이에 크게 늘면 GC 압박이다.
+    for svc in delivery-service:8085 user-service:8081 gateway-service:8090; do
+      if docker compose ps --status paused --services 2>/dev/null | grep -qx "${svc%%:*}"; then echo "${svc%%:*} 멈춤 상태(건너뜀)"; continue; fi
+      docker compose exec -T "${svc%%:*}" sh -c "curl -s localhost:${svc##*:}/actuator/prometheus" 2>/dev/null \
+        | grep -E "^(jvm_gc_pause_seconds_(sum|count)|jvm_memory_used_bytes\{.*area=\"heap\"|jvm_memory_max_bytes\{.*area=\"heap\"|process_cpu_usage)" \
+        | sed "s/^/${svc%%:*} /" | awk '{print $1, $2, $NF}' | cut -c1-200
+    done
+    echo
+  } >> "$STATS" 2>&1 || true
+}
+echo "Docker 할당: CPU $(docker info --format '{{.NCPU}}')개, 메모리 $(docker info --format '{{.MemTotal}}' | awk '{printf "%.1fGiB", $1/1024/1024/1024}')" > "$STATS"
+if [ "$FAULT_MODE" = none ]; then SNAP_AT=40; else SNAP_AT=$(( LEAD - 10 )); fi
+( sleep "$SNAP_AT"; snap "before(장애 전, 시작 ${SNAP_AT}초)" ) &
+
+restore() {
+  case "$FAULT_MODE" in
+    pause) docker compose unpause user-service >/dev/null 2>&1 || true ;;
+    stop) docker compose start user-service >/dev/null 2>&1 || true ;;
+  esac
+}
+# 스크립트가 어디서 끝나든(오류, Ctrl+C) user-service를 되살린다
+trap restore EXIT
 
 if [ "$FAULT_MODE" != none ]; then
   sleep $(( FAULT_AT - $(date +%s) ))
+  # k6가 setup에서 멈췄으면(로그인 실패, 부하 테스트 API 꺼짐) 장애를 넣지 않고 끝낸다
+  kill -0 "$K6_PID" 2>/dev/null || { echo "k6가 먼저 끝났다. 위 k6 출력을 확인한다. 장애는 넣지 않았다." >&2; exit 1; }
   echo "[$(date +%T)] user-service ${FAULT_MODE}"
   docker compose "$FAULT_MODE" user-service
-  sleep "$FAULT_SEC"
+  sleep $(( FAULT_SEC - 10 )); snap "fault(장애 중)"; sleep 10
   if [ "$FAULT_MODE" = pause ]; then docker compose unpause user-service; else docker compose start user-service; fi
   echo "[$(date +%T)] user-service 복구"
+  ( sleep 40; snap "after(복구 40초 뒤)" ) &
 fi
 
 wait "$K6_PID" || true
 echo "결과: $OUT"
+echo "서버 상태: $STATS"
 ```
 - `FAULT_MODE=none`이면 phase 태그가 `nofault` 하나다. 기준선은 그 줄을 읽는다.
 - 장애 시각과 복구 시각이 터미널에 찍힌다. Grafana 그래프의 시간과 맞춰 본다.
