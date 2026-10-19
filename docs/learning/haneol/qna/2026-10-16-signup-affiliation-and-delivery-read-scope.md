@@ -78,3 +78,5 @@ tags: [auth, jwt, gateway, authorization, msa, data-ownership]
 ## 참고
 - 확인한 코드(2026-10-16): `AuthService.signup`, `JwtProvider`, `UserVerifyingJwtConverter`, `UserHeaderInjectionFilter`, `CompanyService.resolveManager`, `V1__create_p_companies.sql`, `OrderService.create`
 - `./gradlew :delivery-service:test` 54개 통과(2026-10-16, 사용자 맥)
+
+> 2026-10-19 추가: 위 범위 변경은 PR에 넣지 않았다. 팀이 dev 결정 로그 22(#12)로 "일반 USER 배송 전체 조회 유지"를 먼저 정했고, 사용자도 그 결정을 따르기로 했다. 아래쪽의 업체 관리자 조회 호출과 범위 코드는 `backup/delivery-T06-before-rebase` 브랜치에만 있다. 본문의 "결정 로그 21"은 rebase 전 번호다.
