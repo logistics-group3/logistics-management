@@ -18,9 +18,9 @@
 |---|---|---|---|---|
 | D-01 | `GET /api/v1/deliveries` | 로그인. 배송담당자는 담당 구간이 있는 배송만 | 구현 | 정렬 `createdAt`, `status` |
 | D-02 | `GET /api/v1/deliveries/{deliveryId}` | 로그인. 배송담당자는 담당 구간이 있는 배송만(아니면 403) | 구현 |  |
-| D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 업체 배송 구간 담당자, MASTER | 구현 | 두 필드 모두 없으면 400 `VALIDATION_ERROR`(SA에 없는 규칙) |
+| D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 현재 배송담당자인 업체 배송 구간 담당자, MASTER | 구현 | 지정 해제 후 배정 ID만 같아도 403. 두 필드 모두 없으면 400 `VALIDATION_ERROR`(SA에 없는 규칙) |
 | D-04 | `POST /api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | MASTER | 구현 |  |
-| D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 그 구간 담당자, MASTER | 구현 | `status`에 `WAITING`·`CANCELED`를 보내면 409 `INVALID_STATUS_TRANSITION` |
+| D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 현재 배송담당자인 그 구간 담당자, MASTER | 구현 | 지정 해제 후 배정 ID만 같아도 403. `status`에 `WAITING`·`CANCELED`를 보내면 409 `INVALID_STATUS_TRANSITION` |
 | I-09 | `POST /internal/deliveries` | order | 구현 | 새로 만들면 201, 같은 orderId면 200 + 기존 값. 응답에 `orderId`도 담는다(SA는 deliveryId, status) |
 | I-10 | `GET /internal/deliveries/{deliveryId}` | order | 구현 |  |
 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order | 구현 | 응답 `deliveryId, orderId, status`. 이미 취소면 200 |
@@ -120,12 +120,14 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 
 ### DELIVERY-007 배송담당자 지정 해제 시 진행 중 구간 처리
 
-- 상태: OPEN
+- 상태: 로컬 구현, 팀 리뷰 대기 (#13)
 - 작성: 공통 인프라(멘토 가이드 검증) / Junhyun An 작업 / 2026-10-16
 - 관련: user U-07, D-04·D-05, I-14
 - 내용: D-05 권한은 `route.managerId`만 비교한다. 배송담당자 지정을 해제한 사용자가 맡던 WAITING·MOVING 구간은 그대로 남는다. 그 사용자는 계속 처리할 수 있고 조회 범위 제한은 풀린다. 자동 재배정은 없다.
 - 검토 요청: 해제를 막을지(진행 중 구간이 있으면 409), 해제 시 재배정을 요구할지, D-05에서 현재 배송담당자인지 다시 확인할지 user 담당자와 함께 정한다.
-- 결정:
+- 결정: 2026-10-19 사용자가 상세 수정안을 확인하고 #13 구현을 요청했다. D-03·D-05는 MASTER 또는 현재 배송담당자이면서 해당 구간 담당자만 허용한다. 기존 배정이 남아 있어도 현재 자격이 false면 403이다. 요청·응답 DTO·DB·내부 API는 그대로다.
+- 인계: 진행 중인 WAITING·MOVING 구간은 MASTER가 기존 D-04로 같은 구간 담당 허브의 현재 배송담당자에게 수동 재배정한다. 해제 자체 거절·자동 인계는 추가하지 않는다. Gateway의 60초 캐시 반영 지연과 일반 USER 전체 조회 정책(#12)은 별도 범위다. 팀 전체 승인·병합 완료를 뜻하지 않는다.
+- 검증 기록: [T07](../../../delivery-service/docs/tasks/T07.md).
 
 ### DELIVERY-008 배송 검색 보조 정렬과 HTTP·I-03 계약 테스트
 

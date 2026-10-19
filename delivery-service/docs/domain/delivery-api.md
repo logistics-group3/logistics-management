@@ -31,9 +31,9 @@ flowchart LR
 |---|---|---|---|---|
 | 제공·외부 | D-01 | `GET /api/v1/deliveries` | 클라이언트 | [SA] |
 | 제공·외부 | D-02 | `GET /api/v1/deliveries/{deliveryId}` | 클라이언트 | [SA] |
-| 제공·외부 | D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 업체 배송 구간 담당자, MASTER | [SA] |
+| 제공·외부 | D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 현재 배송담당자인 업체 배송 구간 담당자, MASTER | [SA] |
 | 제공·외부 | D-04 | `POST /api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | MASTER | [SA] |
-| 제공·외부 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 구간 담당자, MASTER | [SA] |
+| 제공·외부 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 현재 배송담당자인 구간 담당자, MASTER | [SA] |
 | 제공·내부 | I-09 | `POST /internal/deliveries` | order (주문 생성) | [제안] |
 | 제공·내부 | I-10 | `GET /internal/deliveries/{deliveryId}` | order | [제안] |
 | 제공·내부 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order (주문 취소) | [제안] |
@@ -168,7 +168,7 @@ Response `200 OK`
 Error: 403 `FORBIDDEN` (담당하지 않은 배송) · 404 `DELIVERY_NOT_FOUND`
 
 ### D-03. 배송지·수령인 수정 [SA]
-`PATCH /api/v1/deliveries/{deliveryId}` · 업체 배송(`LAST_MILE`) 구간 담당자 본인, MASTER
+`PATCH /api/v1/deliveries/{deliveryId}` · 현재 배송담당자인 업체 배송(`LAST_MILE`) 구간 담당자 본인, MASTER
 업체 배송 출발(`OUT_FOR_DELIVERY`) 전까지만.
 
 | Body | 타입 | 필수 | 설명 |
@@ -204,7 +204,9 @@ Response `200 OK`: 수정된 `DeliveryResponse` (구간 포함)
 Error: 400 `MANAGER_HUB_MISMATCH` · 403 `FORBIDDEN` · 404 `DELIVERY_NOT_FOUND` · `DELIVERY_ROUTE_NOT_FOUND` · `DELIVERY_MANAGER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (도착·취소된 구간)
 
 ### D-05. 구간 상태 변경 [SA]
-`PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` · 그 구간 담당자 본인, MASTER
+`PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` · 현재 배송담당자인 그 구간 담당자 본인, MASTER
+
+지정 해제 후 배정 ID만 남은 사용자는 D-03·D-05에서 403이다. 권한 캐시 반영 지연과 MASTER 수동 인계 절차는 [서비스 계약 DELIVERY-007](../../../docs/services/delivery/README.md#delivery-007-배송담당자-지정-해제-시-진행-중-구간-처리)을 따른다.
 
 | Body | 타입 | 필수 | 설명 |
 |---|---|---|---|

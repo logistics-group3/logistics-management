@@ -5,12 +5,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.logistics.common.auth.Role;
 import com.sparta.logistics.common.auth.UserContext;
+import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.common.support.PostgresIntegrationTest;
 import com.sparta.logistics.delivery.application.DeliveryCreationService;
 import com.sparta.logistics.delivery.application.DeliveryManagerReader;
@@ -41,12 +43,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -242,6 +247,62 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
         assertThat(deliveryQueryService.getNotificationRecipients(id).managerIds()).isEmpty();
         deliveryService.deleteByOrderId(orderId);
         mockMvc.perform(get("/internal/deliveries/{id}/notification-recipients", id)).andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"USER, false, true, 403", "USER, false, false, 403", "USER, true, false, 403",
+            "USER, true, true, 200", "MASTER, false, false, 200", "MASTER, true, false, 200"})
+    @DisplayName("D-05 HTTP는 현재 자격과 담당 구간을 검사하고 거절 시 DB 값을 보존한다")
+    void routeChangeHttpAuthorization(Role role, boolean activeManager, boolean assigned, int expectedStatus) throws Exception {
+        UUID manager = UUID.randomUUID();
+        givenManagers(Map.of(supplierHub, List.of(manager), receiverHub, List.of(manager)));
+        UUID id = create(UUID.randomUUID());
+        DeliveryResponse before = deliveryQueryService.getDelivery(master(), id);
+        UserContext user = new UserContext(assigned ? manager : UUID.randomUUID(), "caller", role, activeManager);
+
+        mockMvc.perform(patch("/api/v1/deliveries/{id}/routes/{route}/status", id, before.routes().get(0).deliveryRouteId())
+                        .headers(userHeaders(user)).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MOVING\"}"))
+                .andExpect(status().is(expectedStatus));
+
+        DeliveryResponse after = deliveryQueryService.getDelivery(master(), id);
+        if (expectedStatus == 403) {
+            assertThat(after).isEqualTo(before);
+        } else {
+            assertThat(after.routes().get(0).status()).isEqualTo(RouteStatus.MOVING);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"USER, false, true, 403", "USER, false, false, 403", "USER, true, false, 403",
+            "USER, true, true, 200", "MASTER, false, false, 200", "MASTER, true, false, 200"})
+    @DisplayName("D-03 HTTP는 현재 자격과 마지막 구간을 검사하고 거절 시 DB 값을 보존한다")
+    void recipientChangeHttpAuthorization(Role role, boolean activeManager, boolean assigned, int expectedStatus) throws Exception {
+        UUID manager = UUID.randomUUID();
+        givenManagers(Map.of(supplierHub, List.of(manager), receiverHub, List.of(manager)));
+        UUID id = create(UUID.randomUUID());
+        DeliveryResponse before = deliveryQueryService.getDelivery(master(), id);
+        UserContext user = new UserContext(assigned ? manager : UUID.randomUUID(), "caller", role, activeManager);
+
+        mockMvc.perform(patch("/api/v1/deliveries/{id}", id).headers(userHeaders(user))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"deliveryAddress\":\"새 배송지\",\"recipientName\":\"새 수령인\"}"))
+                .andExpect(status().is(expectedStatus));
+
+        DeliveryResponse after = deliveryQueryService.getDelivery(master(), id);
+        if (expectedStatus == 403) {
+            assertThat(after).isEqualTo(before);
+        } else {
+            assertThat(after.delivery().deliveryAddress()).isEqualTo("새 배송지");
+            assertThat(after.delivery().recipientName()).isEqualTo("새 수령인");
+        }
+    }
+
+    private static HttpHeaders userHeaders(UserContext user) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(UserHeaders.USER_ID, user.userId().toString());
+        headers.set(UserHeaders.USERNAME, user.username());
+        headers.set(UserHeaders.ROLE, user.role().name());
+        headers.set(UserHeaders.DELIVERY_MANAGER, Boolean.toString(user.deliveryManager()));
+        return headers;
     }
 
     private UUID create(UUID orderId) {

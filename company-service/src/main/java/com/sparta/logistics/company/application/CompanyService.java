@@ -71,7 +71,8 @@ public class CompanyService {
     /** C-05 업체 삭제. 업체와 소속 상품을 한 로컬 트랜잭션에서 논리 삭제한다(SA 7.5). */
     @Transactional
     public void delete(UserContext user, UUID companyId) {
-        Company company = getCompany(companyId);
+        Company company = companyRepository.findByIdForUpdate(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
         user.validateSelfOrMaster(company.getManagerId());
         productRepository.findAllByCompanyId(companyId)
                 .forEach(product -> product.softDelete(user.username()));

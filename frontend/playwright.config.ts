@@ -8,7 +8,7 @@ export default defineConfig({
   expect: { timeout: 8000 },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:5174',
+    baseURL: process.env.UI_TEST_BASE_URL || 'http://127.0.0.1:5174',
     channel: 'chrome',
     viewport: { width: 1440, height: 1000 },
     screenshot: 'only-on-failure',

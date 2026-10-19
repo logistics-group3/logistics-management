@@ -5,13 +5,14 @@
 # 스파르타 물류 SA 문서
 
 > MSA 기반 국내 B2B 물류 관리 및 배송 시스템 — System Architecture
-작성일: 2026-10-12 · 최종 수정: 2026-10-16 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
+작성일: 2026-10-12 · 최종 수정: 2026-10-19 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
 >
 
 **변경 이력**
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v2.0 배송 권한 보강 | 2026-10-19 | 사용자 확인을 받은 #13의 로컬 수정이다. D-03·D-05는 현재 배송담당자인 해당 구간 담당자 또는 MASTER만 허용한다. 60초 캐시와 MASTER 수동 인계를 유지하며 팀 리뷰·병합 전이다. |
 | v1.0 | 2026-10-12 | 초안 |
 | v1.1 | 2026-10-12 | [SA 제작 미팅](https://app.notion.com/p/SA-3f77bd823b7580eaaab5f0f9e1248abf?pvs=21) 결정 반영: 출고 허브 결정 방식(요청업체 허브 우선, 부족분은 가까운 허브 순으로 모아서 출고), 주문 권한(요청업체 관리자 본인), Gateway 권한 캐시 60초, PK는 UUID로 확정, Kafka는 고도화 단계로 이동, docker-compose 형식 복구 |
 | v1.2 | 2026-10-13 | 추가 요구사항 반영: 배송담당자 소속 허브(`p_users.hub_id`)와 출발지 허브 기준 배정 검증, 배송담당자 없음(`DELIVERY_MANAGER_NOT_FOUND`)·소속 허브 불일치(`MANAGER_HUB_MISMATCH`) 에러 추가, user → hub 호출 추가, I-12 응답·재시도 표현 정리 |
@@ -988,9 +989,9 @@ erDiagram
 | O-06 | order | DELETE | `/api/v1/orders/{orderId}` | 주문 삭제 (배송 포함 논리 삭제) | MASTER |
 | D-01 | delivery | GET | `/api/v1/deliveries` | 배송 검색 | 로그인 (배송담당자는 본인 담당만) |
 | D-02 | delivery | GET | `/api/v1/deliveries/{deliveryId}` | 배송 단건 조회 (구간 포함) | 로그인 (배송담당자는 본인 담당만) |
-| D-03 | delivery | PATCH | `/api/v1/deliveries/{deliveryId}` | 배송지·수령인 수정 | 업체 배송 구간 담당자, MASTER |
+| D-03 | delivery | PATCH | `/api/v1/deliveries/{deliveryId}` | 배송지·수령인 수정 | 현재 배송담당자인 업체 배송 구간 담당자, MASTER |
 | D-04 | delivery | POST | `/api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | 구간 담당자 재배정 | MASTER |
-| D-05 | delivery | PATCH | `/api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 구간 상태 변경 (집하·허브 이동·업체 배송) | 구간 담당자, MASTER |
+| D-05 | delivery | PATCH | `/api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 구간 상태 변경 (집하·허브 이동·업체 배송) | 현재 배송담당자인 구간 담당자, MASTER |
 
 > 배송 생성·삭제는 주문 생성·삭제에 종속되므로 외부 API로 제공하지 않고 내부 API(I-09, I-13)로만 처리한다. 구간 담당자는 배송 생성 때 자동 배정되고(I-09), D-04는 MASTER가 담당자를 바꿀 때만 쓴다.
 >
@@ -2141,7 +2142,7 @@ Authorization: Bearer {accessToken}
 
 | Method | URL | 권한 |
 | --- | --- | --- |
-| PATCH | `/api/v1/deliveries/{deliveryId}` | 업체 배송 구간 담당자 본인, MASTER |
+| PATCH | `/api/v1/deliveries/{deliveryId}` | 현재 배송담당자인 업체 배송 구간 담당자 본인, MASTER |
 
 업체 배송 출발(`OUT_FOR_DELIVERY`) 전까지만 수정할 수 있다.
 
@@ -2190,7 +2191,7 @@ Content-Type: application/json
 
 | Method | URL | 권한 |
 | --- | --- | --- |
-| PATCH | `/api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 구간 담당자 본인, MASTER |
+| PATCH | `/api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 현재 배송담당자인 구간 담당자 본인, MASTER |
 
 **Request Body**
 
@@ -2403,12 +2404,15 @@ UPDATE hub_schema.p_hub_stocks
 | 작업 | 처리 | 실패 시 |
 | --- | --- | --- |
 | 업체 삭제 (C-05) | 업체 + 소속 상품 논리 삭제를 한 로컬 트랜잭션으로 처리 | 전체 롤백 |
+| 상품 생성 (P-01)·업체 삭제 (C-05) 경쟁 | 같은 업체 행의 비관적 쓰기 잠금을 획득한 뒤 활성 상태·권한을 확인한다. 생성 선행이면 삭제가 새 상품까지 포함하고, 삭제 선행이면 생성은 COMPANY_NOT_FOUND | 각 로컬 트랜잭션 롤백, 잠금은 종료 시 해제 |
 | 주문 삭제 (O-06) | 삭제 허가 근거 별도 커밋 → 주문 잠금 안에서 논리 삭제·I-13·완료 기록 처리 | 실패 시 로컬 롤백·기록 보존. 같은 DELETE는 저장된 허가로 I-13 반복·로컬 삭제를 완료. 커밋 확인 시 200 유지 |
 | 배송 생성 (I-09) | 배송, 구간 기록, 구간별 담당자 배정을 한 로컬 트랜잭션으로 저장 | 전체 롤백 → order-service가 보상 수행 |
 | 조회 | `@SQLRestriction("deleted_at IS NULL")`로 삭제 데이터 자동 제외 | - |
 
 O-06은 기존 SA 경계를 유지하므로 I-13 동안 주문 잠금·DB 연결을 사용한다. 최초 I-10 조회는 트랜잭션 밖이다. 잠금 안에서 재시도를 중첩하지 않고 I-13을 요청당 1회 호출한다.
 생성·취소의 미확정 작업을 새 시도로 다시 실행하는 것과, 삭제의 같은 종료 동작을 계속하는 것을 구분한다. 운영 복구·자동 스케줄러는 별도 범위다.
+
+2026-10-19 #15 사용자 확인 범위: P-01·C-05가 CompanyRepository.findByIdForUpdate를 공유하고 커밋까지 업체 행 잠금을 유지한다. 다른 업체의 생성은 독립 진행하며 같은 업체의 생성은 직렬화된다. 스키마·API 요청·응답·권한은 유지한다. 로컬 보강이며 팀 리뷰·병합 전이다.
 
 ### 7.6 Saga 방식 결정 (멘토 피드백)
 
@@ -2498,7 +2502,10 @@ sequenceDiagram
 | 업체 | 로그인 (USER는 본인이 관리자) | 로그인 | 업체 관리자 / MASTER | 업체 관리자 / MASTER |
 | 상품 | 업체 관리자 / MASTER | 로그인 | 업체 관리자 / MASTER | 업체 관리자 / MASTER |
 | 주문 | 요청업체 관리자 / MASTER | 본인 주문 / MASTER 전체 | 요청사항·취소: 주문자 / MASTER | MASTER |
-| 배송 | 내부 (주문 생성 시) | 로그인 (배송담당자는 본인 담당만) | 구간 상태: 구간 담당자 / MASTER. 담당자: 생성 시 자동 배정, 재배정은 MASTER (구간 담당 허브 소속만) | 내부 (주문 삭제 시) |
+| 배송 | 내부 (주문 생성 시) | 로그인 (배송담당자는 본인 담당만) | 배송지·수령인: 현재 배송담당자인 마지막 구간 담당자 / MASTER. 구간 상태: 현재 배송담당자인 구간 담당자 / MASTER. 재배정은 MASTER (구간 담당 허브 소속만) | 내부 (주문 삭제 시) |
+
+D-03·D-05는 MASTER가 아니면 `X-Delivery-Manager=true`와 해당 구간의 `manager_id` 일치를 모두 확인한다. 지정 해제 후 기존 배정 ID만 남은 사용자는 403이다. Gateway의 60초 캐시가 갱신되기 전 지연은 8.2를 따르며 즉시 권한 폐기를 보장하지 않는다.
+진행 중인 구간은 MASTER가 D-04로 현재 배송담당자에게 수동 인계한다. 해제 자체 차단·자동 재배정·일반 USER 조회 범위 변경은 #13의 로컬 수정에 포함하지 않는다.
 
 ### 8.5 입력값 검증 규칙 (Spring Validation)
 

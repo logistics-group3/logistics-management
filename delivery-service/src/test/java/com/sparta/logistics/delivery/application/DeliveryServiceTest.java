@@ -27,6 +27,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -103,6 +106,59 @@ class DeliveryServiceTest {
                 .extracting("errorCode").isEqualTo(CommonErrorCode.FORBIDDEN);
         DeliveryResponse result = deliveryService.updateRecipient(manager(RECEIVER_MANAGER), delivery.getId(), command);
         assertThat(result.delivery().recipientName()).isEqualTo("부산수산도매 2창고");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false, true", "false, false", "true, false"})
+    @DisplayName("D-05 현재 배송담당자가 아니거나 담당 구간이 아니면 상태를 바꾸지 않는다")
+    void rejectsUnauthorizedRouteChange(boolean activeManager, boolean assigned) {
+        UserContext user = new UserContext(assigned ? SUPPLIER_MANAGER : UUID.randomUUID(), "user", Role.USER, activeManager);
+
+        assertThatThrownBy(() -> deliveryService.changeRouteStatus(user, delivery.getId(), routeId(0), MOVING))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(CommonErrorCode.FORBIDDEN);
+        assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.PICKUP_WAITING);
+        assertThat(delivery.getRoutes()).extracting(route -> route.getStatus()).containsOnly(RouteStatus.WAITING);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false, true", "false, false", "true, false"})
+    @DisplayName("D-03 현재 배송담당자가 아니거나 마지막 구간 담당자가 아니면 수령 정보를 바꾸지 않는다")
+    void rejectsUnauthorizedRecipientChange(boolean activeManager, boolean assigned) {
+        UserContext user = new UserContext(assigned ? RECEIVER_MANAGER : UUID.randomUUID(), "user", Role.USER, activeManager);
+        String address = delivery.getDeliveryAddress();
+        String name = delivery.getRecipientName();
+
+        assertThatThrownBy(() -> deliveryService.updateRecipient(user, delivery.getId(),
+                new UpdateRecipientCommand("바뀐 주소", "바뀐 수령인")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(CommonErrorCode.FORBIDDEN);
+        assertThat(delivery.getDeliveryAddress()).isEqualTo(address);
+        assertThat(delivery.getRecipientName()).isEqualTo(name);
+        assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.PICKUP_WAITING);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @DisplayName("D-05 MASTER는 배송담당자 지정과 구간 소유에 관계없이 상태를 바꾼다")
+    void masterChangesRouteRegardlessOfManagerFlag(boolean activeManager) {
+        UserContext master = new UserContext(UUID.randomUUID(), "master", Role.MASTER, activeManager);
+
+        deliveryService.changeRouteStatus(master, delivery.getId(), routeId(0), MOVING);
+
+        assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.PICKING_UP);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    @DisplayName("D-03 MASTER는 배송담당자 지정과 구간 소유에 관계없이 수령 정보를 바꾼다")
+    void masterChangesRecipientRegardlessOfManagerFlag(boolean activeManager) {
+        UserContext master = new UserContext(UUID.randomUUID(), "master", Role.MASTER, activeManager);
+
+        deliveryService.updateRecipient(master, delivery.getId(), new UpdateRecipientCommand("바뀐 주소", "바뀐 수령인"));
+
+        assertThat(delivery.getDeliveryAddress()).isEqualTo("바뀐 주소");
+        assertThat(delivery.getRecipientName()).isEqualTo("바뀐 수령인");
     }
 
     private UUID routeId(int index) {

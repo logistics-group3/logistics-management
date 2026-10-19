@@ -104,6 +104,10 @@ script/error-codes-check.sh
 E2E는 실행 중인 UI·테스트 서버와 시드가 필요하며 로컬 Google Chrome을 사용한다. `frontend/test-results/`에 화면 증거, `frontend/playwright-report/`에 보고서가 생성된다. 인증 토큰을 포함할 수 있는 네트워크 trace는 저장하지 않는다. E2E가 생성한 주문은 각 정상 시나리오 마지막에 취소 또는 배송 완료 후 삭제한다.
 실제 DM이 활성화돼 있으면 E2E·시드는 실행을 거부한다. `.env.ui-test`의 `SLACK_DM_ENABLED=false`를 저장한 뒤 `script/ui-test.sh up`으로 컨테이너에 반영하고 자동 검증한다. E2E는 UI 프록시가 전용 DB로 연결되는지도 확인한다.
 
+기본 UI 포트 5174를 다른 프로젝트가 쓰면 그 프로세스를 종료하지 않고 다른 포트로 실행한다. 예: `npm --prefix frontend run dev -- --port 5175 --strictPort` 후 `UI_TEST_BASE_URL=http://127.0.0.1:5175 npm --prefix frontend run test:e2e`. globalSetup은 지정한 URL의 MASTER ID가 전용 DB와 일치하는지 기존과 동일하게 확인한다.
+
+배송 출발·도착 버튼은 현재 배송담당자이면서 해당 구간 담당자인 사용자 또는 MASTER에게 표시한다. 지정 해제 후 기존 담당 ID만 남아 있어도 D-03·D-05는 403이다. Gateway의 최대 60초 캐시 반영 지연과 MASTER 수동 인계는 [DELIVERY-007](../docs/services/delivery/README.md#delivery-007-배송담당자-지정-해제-시-진행-중-구간-처리)을 따른다. `delivery-authorization.spec.ts`는 캐시 반영 뒤 기존 토큰 차단·UI 버튼 제거·수동 재배정을 검증하고 원래 담당자 지정을 복구한다.
+
 [검증 기록](../docs/reviews/logistics-test-ui.md)에서 실제 실행 결과와 검증 범위를 확인한다.
 [Slack DM 검증 기록](../docs/reviews/slack-dm.md)은 이메일 UI를 포함한 최신 41개 단위·15개 E2E·729개 백엔드 테스트와 실제 DM 1건의 범위를 구분한다.
 
