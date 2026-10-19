@@ -2,6 +2,11 @@
 
 물류 관리 MSA 프로젝트. Java 17, Spring Boot 3.5.16, Spring Cloud 2025.0.3, PostgreSQL 16.
 
+`frontend/`의 React·TypeScript·Vite 운영 콘솔은 Node.js 24·npm으로 별도 빌드한다. **Gradle 빌드에는 프런트가 포함되지 않는다.** 전체 검증 명령은 [백엔드·프런트 빌드 기준](docs/guides/full-build.md), 화면 실행은 [frontend README](frontend/README.md)를 따른다. AI 에이전트는 루트 `AGENTS.md`와 `CLAUDE.md`에서 같은 기준을 읽는다.
+
+## 멘토·튜터 테스트
+전용 테스트 환경을 띄우고 http://127.0.0.1:5174/guide 에서 발제 필수 기능 시나리오를 계정 버튼으로 차례로 확인한다. 실행 명령 4줄과 데이터는 [멘토·튜터 테스트 안내](docs/guides/mentor-test.md)에 있다.
+
 ## 빠른 실행
 ```bash
 script/run.sh                 # .env가 없으면 .env.example을 복사하고, 빌드 후 전체 기동(빌드는 Dockerfile 안에서 한다)
@@ -9,10 +14,14 @@ script/run.sh --check         # 기동 후 공통 인프라 완료 기준 6개 �
 script/run.sh --reset         # DB 볼륨까지 지우고 새로 시작
 script/run.sh hub-service     # 지정한 서비스만 다시 빌드·기동 (--scale hub-service=2도 된다)
 script/db-check.sh            # 서비스 계정 5개의 실제 인증·스키마 접근 권한 확인
+script/delivery-e2e-check.sh  # 배송 시드 데이터를 넣고 주문 → 배송 완료 전체 연결과 배송 API 규칙 확인(delivery-service/docs/e2e.md)
+# 배송 부하 테스트(k6)는 delivery-service/docs/load-test.md
 # 권한 재확인 60초 캐시와 만료 후 재조회까지 보려면 script/e2e-check.sh --with-cache-ttl (약 65초)
 ```
 자세한 실행 방법(IDE 병행, 바꾼 것만 다시 올리기)은 [로컬 실행 가이드](docs/guides/local-run.md)에 있다.
 - Eureka 대시보드: http://localhost:8761 (관리용 포트는 이 PC에서만 열린다)
+- 분산 추적(Zipkin): http://localhost:9411 (로그 줄의 traceId로 요청 하나의 서비스별 구간을 본다)
+- 메트릭 대시보드(Grafana): http://localhost:3000 (로그인 없이 보기. 요청 수·오류·응답 시간, [메트릭 모니터링](docs/guides/monitoring.md))
 - API 진입점(Gateway): http://localhost:8080
 - 종료: `docker compose down` (DB까지 지우려면 `docker compose down -v` 또는 다음 기동 때 `script/run.sh --reset`)
 - 서비스 스키마·계정은 `infra/postgres/init.sh`가 빈 DB에서 처음 한 번 만들고, 테이블 변경은 Flyway가 관리한다(`*/src/main/resources/db/migration`).
@@ -34,18 +43,18 @@ open http://localhost:8080/swagger-ui.html
 
 # 회원가입 → 로그인 → 토큰을 변수에 저장
 curl -s -X POST localhost:8080/api/v1/auth/signup -H 'Content-Type: application/json' \
-  -d '{"username":"hong01","password":"Sparta!2026","name":"홍길동","slackId":"U01","affiliationType":"COMPANY","affiliationName":"부산수산도매"}'
+  -d '{"username":"hong01","password":"Sparta!2026","name":"홍길동","slackEmail":"hong@example.com","affiliationType":"COMPANY","affiliationName":"부산수산도매"}'
 TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"hong01","password":"Sparta!2026"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
 
-curl -s localhost:8080/api/v1/users/sample/me    -H "Authorization: Bearer $TOKEN"   # 200, 내 정보
-curl -s localhost:8080/api/v1/users/sample/admin -H "Authorization: Bearer $TOKEN"   # 403 FORBIDDEN (USER)
-curl -s localhost:8080/api/v1/users/sample/me                                        # 401 UNAUTHORIZED (토큰 없음)
+curl -s localhost:8080/api/v1/users/me    -H "Authorization: Bearer $TOKEN"   # 200, 내 정보
+curl -s localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"   # 403 FORBIDDEN (USER)
+curl -s localhost:8080/api/v1/users/me                                        # 401 UNAUTHORIZED (토큰 없음)
 curl -s localhost:8080/internal/users/x          -H "Authorization: Bearer $TOKEN"   # 404 (외부 차단)
 
 MASTER=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"master","password":"Master!2026"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
-curl -s localhost:8080/api/v1/users/sample/admin -H "Authorization: Bearer $MASTER"  # 200 (기동 시 만든 MASTER)
+curl -s localhost:8080/api/v1/users -H "Authorization: Bearer $MASTER"  # 200 (기동 시 만든 MASTER)
 
 docker compose logs -f user-service                                                  # 로그 보기
 docker compose exec gateway-service curl -s http://user-service:8081/actuator/health # 내부 헬스 체크

@@ -37,7 +37,8 @@ public class AuthService {
             throw new BusinessException(UserErrorCode.DUPLICATE_USERNAME);
         }
         User user = User.signup(command.username(), passwordEncoder.encode(command.password()), command.name(),
-                command.slackId(), command.affiliationType(), command.affiliationName());
+                null, command.affiliationType(), command.affiliationName());
+        user.changeSlackEmail(command.slackEmail());
         try {
             return SignupResult.from(userRepository.saveAndFlush(user));
         } catch (DataIntegrityViolationException e) {

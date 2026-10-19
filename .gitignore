@@ -41,3 +41,10 @@ CLAUDE.local.md
 .claude/.setup-agents-files
 # Claude Code가 만드는 임시 worktree
 .claude/worktrees/
+
+### 로컬 운영 UI ###
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+.local/

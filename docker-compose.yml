@@ -1,6 +1,6 @@
 # 실행: docker compose up -d --build   (빌드는 Dockerfile 안에서 한다)
 # 사전 준비: cp .env.example .env
-# 관리용 포트(postgres, config-server, eureka)는 이 PC(127.0.0.1)에서만 열고, 외부에는 Gateway 8080만 공개한다.
+# 관리용 포트(postgres, config-server, eureka, zipkin, prometheus, grafana)는 이 PC(127.0.0.1)에서만 열고, 외부에는 Gateway 8080만 공개한다.
 
 x-app: &app
   build:
@@ -16,6 +16,10 @@ x-service-env: &service-env
   # Note: 컨테이너 호스트명(컨테이너 ID) 대신 IP로 Eureka에 등록해야 Gateway가 다른 컨테이너에서 찾아갈 수 있다.
   EUREKA_PREFER_IP: "true"
   DB_HOST: postgres
+  # 분산 추적 구간을 보낼 곳(config-repo/application.yml의 management.zipkin.tracing.endpoint)
+  ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+  # 추적할 요청 비율(0.0~1.0). .env에 TRACING_SAMPLING_PROBABILITY를 넣어 바꾼다. 비우면 1.0(모든 요청)
+  TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-1.0}
 
 x-db-service: &db-service
   <<: *app
@@ -25,6 +29,8 @@ x-db-service: &db-service
     config-server:
       condition: service_healthy
     eureka-server:
+      condition: service_started
+    zipkin:
       condition: service_started
 
 services:
@@ -70,6 +76,56 @@ services:
     ports:
       - "127.0.0.1:${EUREKA_PORT:-8761}:8761"
 
+  # 분산 추적 수집·조회(SA 3.2). 화면: http://localhost:9411 . 구간은 메모리에만 저장하므로 컨테이너를 다시 만들면 사라진다.
+  zipkin:
+    image: openzipkin/zipkin:3.6.1
+    ports:
+      - "127.0.0.1:${ZIPKIN_PORT:-9411}:9411"
+    networks: [logistics-net]
+
+  # 메트릭 수집(ADR 0018). Eureka에서 서비스 인스턴스 목록을 받아 15초마다 /actuator/prometheus를 가져간다. 화면: http://localhost:9090
+  # Note: exemplar-storage를 켜야 응답 시간 bucket에 붙은 traceId(예시)를 저장해 Grafana에서 Zipkin trace로 넘어갈 수 있다.
+  # 데이터는 컨테이너 안에만 둔다. 컨테이너를 다시 만들면 지난 메트릭은 사라진다(로컬 개발용).
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --enable-feature=exemplar-storage
+      - --storage.tsdb.retention.time=3d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      eureka-server:
+        condition: service_started
+    networks: [logistics-net]
+
+  # 메트릭 대시보드(ADR 0018). 화면: http://localhost:3000 . 로그인 없이 보기 권한으로 열리고, 편집은 admin / GRAFANA_ADMIN_PASSWORD로 한다.
+  # 데이터소스(Prometheus, Zipkin)와 대시보드는 infra/grafana의 파일로 매번 다시 만든다. 화면에서 고친 내용은 저장되지 않는다.
+  grafana:
+    image: grafana/grafana:12.1.1
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-GrafanaLocal!2026}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/logistics-overview.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+      zipkin:
+        condition: service_started
+    networks: [logistics-net]
+
   gateway-service:
     <<: *app
     build:
@@ -84,6 +140,8 @@ services:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_started
+      zipkin:
         condition: service_started
 
   user-service:
@@ -125,6 +183,11 @@ services:
       <<: *service-env
       ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_DM_ENABLED: ${SLACK_DM_ENABLED:-false}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_DM_WORKSPACE_ID: ${SLACK_DM_WORKSPACE_ID:-}
+      SLACK_DM_API_BASE_URL: ${SLACK_DM_API_BASE_URL:-https://slack.com/api}
+      SLACK_DM_ALLOWED_EMAILS: ${SLACK_DM_ALLOWED_EMAILS:-}
 
   delivery-service:
     <<: *db-service

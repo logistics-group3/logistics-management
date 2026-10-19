@@ -1,0 +1,44 @@
+# Swagger 수동 테스트용 Compose 오버라이드(로컬 전용). script/api-test.sh up 이 docker-compose.yml 위에 덧씌운다.
+# 팀 docker-compose.yml·config-repo·.env는 그대로 두고 환경 변수만 더한다. 되돌리기: script/api-test.sh restore
+# Note: 파일 이름을 docker-compose.override.yml로 두면 모든 docker compose 명령이 자동으로 읽어 script/run.sh에도 끼어든다.
+# -f로 줄 때만 적용되게 다른 이름과 위치에 둔다.
+#
+# Note: 공통 예외 처리기는 4xx BusinessException을 로그에 남기지 않는다. 요청마다 상태 코드가 보이도록
+# Gateway(Netty)와 각 MVC 서비스(Tomcat)의 접근 로그를 표준 출력으로 켠다. 서비스 간 Feign 호출도 받는 쪽 접근 로그에 남는다.
+# 분산 추적(traceId, Zipkin)은 서비스 기본 기능이라 여기서 따로 켜지 않는다(ADR 0017).
+
+x-access-log: &access-log
+  SERVER_TOMCAT_ACCESSLOG_ENABLED: "true"
+  SERVER_TOMCAT_ACCESSLOG_DIRECTORY: /dev
+  SERVER_TOMCAT_ACCESSLOG_PREFIX: stdout
+  SERVER_TOMCAT_ACCESSLOG_SUFFIX: ""
+  SERVER_TOMCAT_ACCESSLOG_FILEDATEFORMAT: ""
+  SERVER_TOMCAT_ACCESSLOG_ROTATE: "false"
+  SERVER_TOMCAT_ACCESSLOG_BUFFERED: "false"
+  # traceparent = 00-<traceId 32자>-<호출한 쪽 spanId>-<플래그>. 앞 서비스가 넘겨준 추적 헤더다.
+  SERVER_TOMCAT_ACCESSLOG_PATTERN: "ACCESS %r -> %s %{ms}Tms user=%{X-Username}i traceparent=%{traceparent}i"
+  # API_TEST_SQL=DEBUG로 up 하면 실행 SQL도 출력한다(기본 끔).
+  # Note: LOGGING_LEVEL_* 환경 변수는 로거 이름이 소문자로 바뀌어(org.hibernate.sql) 대문자가 든 org.hibernate.SQL에 걸리지 않는다.
+  # 이름을 그대로 넘기려고 SPRING_APPLICATION_JSON을 쓴다.
+  SPRING_APPLICATION_JSON: '{"logging.level.org.hibernate.SQL":"${API_TEST_SQL:-INFO}"}'
+
+services:
+  gateway-service:
+    environment:
+      JAVA_OPTS: "-Xms128m -Xmx384m -Dreactor.netty.http.server.accessLogEnabled=true"
+      # 요청이 어느 라우트(서비스)로 가는지 한 줄씩 남긴다. 클래스 이름에 대문자가 있어 SPRING_APPLICATION_JSON으로 넘긴다.
+      SPRING_APPLICATION_JSON: '{"logging.level.org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping":"DEBUG"}'
+  user-service:
+    environment: *access-log
+  hub-service:
+    environment: *access-log
+  company-service:
+    environment: *access-log
+  delivery-service:
+    environment: *access-log
+  order-service:
+    environment:
+      <<: *access-log
+      # 많은 주문을 만드는 동안 실제 Slack 채널로 알림이 가지 않게 끈다. 알림을 확인할 때만 restore 후 본다.
+      SLACK_WEBHOOK_URL: ""
+      SLACK_DM_ENABLED: "false"
