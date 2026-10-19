@@ -31,5 +31,5 @@ paths:
 
 ## 하지 않는 것
 - Gateway 라우트나 화이트리스트에 다른 서비스의 `/actuator/**` 추가
-- actuator `env`, `configprops`, `heapdump` 노출(허용 범위는 `health`, `info`, `prometheus`. Gateway는 공개하지 않는 관리 포트 8090)
+- actuator `env`, `configprops`, `heapdump` 노출
 - `ddl-auto`를 `update`·`create`로 변경(스키마는 Flyway가 만든다)

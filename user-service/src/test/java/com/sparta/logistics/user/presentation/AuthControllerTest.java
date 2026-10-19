@@ -29,7 +29,7 @@ class AuthControllerTest {
     @DisplayName("SA 8.5 규칙을 어긴 username과 password는 VALIDATION_ERROR")
     void rejectsInvalidSignup() throws Exception {
         String body = """
-                {"username":"Hong","password":"weak","name":"홍길동","slackEmail":"hong@example.com",
+                {"username":"Hong","password":"weak","name":"홍길동","slackId":"U01",
                  "affiliationType":"COMPANY","affiliationName":"부산수산도매"}
                 """;
         mockMvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -42,7 +42,7 @@ class AuthControllerTest {
     @DisplayName("정의되지 않은 소속 구분 값은 VALIDATION_ERROR")
     void rejectsUnknownEnum() throws Exception {
         String body = """
-                {"username":"hong01","password":"Sparta!2026","name":"홍길동","slackEmail":"hong@example.com",
+                {"username":"hong01","password":"Sparta!2026","name":"홍길동","slackId":"U01",
                  "affiliationType":"SCHOOL","affiliationName":"부산수산도매"}
                 """;
         mockMvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(body))

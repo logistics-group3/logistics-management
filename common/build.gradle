@@ -12,9 +12,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-    // Feign 메트릭 이름 필터(FeignMeterFilter)용. 실제 Micrometer는 각 서비스의 actuator가 넣는다.
-    compileOnly 'io.micrometer:micrometer-core'
-    testImplementation 'io.micrometer:micrometer-core'
 }
 
 dependencies {

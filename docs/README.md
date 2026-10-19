@@ -6,10 +6,6 @@
 
 | 상황 | 읽을 문서 |
 |---|---|
-| 브라우저로 주문·배송을 테스트한다 | [운영 UI 실행 안내](../frontend/README.md), [검증 기록](reviews/logistics-test-ui.md) |
-| 멘토·튜터가 발제 기능을 차례로 확인한다 | [멘토·튜터 테스트 안내](guides/mentor-test.md), 운영 콘솔 `/guide` |
-| Swagger로 API를 하나씩 테스트하며 서비스 간 요청 흐름을 본다 | [Swagger 수동 테스트와 요청 흐름 보기](guides/api-test.md) |
-| 요청 수·오류·응답 시간 그래프를 본다 | [메트릭 모니터링](guides/monitoring.md) |
 | 처음 합류했다, 로컬에서 띄워 보고 싶다 | 루트 `README.md` → [로컬 실행 가이드](guides/local-run.md) |
 | 내 서비스 구현을 시작한다 | [서비스 협업 창구](services/README.md)의 내 서비스 → SA 해당 절 → [구현 가이드](guides/dev-guide.md) → 모듈 폴더의 `AGENTS.md` |
 | 다른 서비스 API를 호출해야 한다 | 그 서비스의 `docs/services/{service}/README.md` 제공 API 표 |
@@ -20,7 +16,6 @@
 | 막혔다 | [문제 해결 기록](troubleshooting.md) |
 | 왜 이렇게 만들었는지 궁금하다 | [결정 기록](decisions/README.md) |
 | AI 에이전트로 작업한다 | 루트 `AGENTS.md`(공통 진입점) |
-| 프런트까지 전체 빌드하거나 API 연동을 검증한다 | [전체 빌드·검증](guides/full-build.md): Gradle과 npm을 각각 실행 |
 
 ## 정보별 기준 위치
 
@@ -39,7 +34,6 @@
 | 에이전트 공통 규칙 | 루트 `AGENTS.md`, `docs/agents/` | 팀 규칙이 바뀔 때 |
 | 레이어별 코드 규칙 | `docs/agents/rules/` | 코드 규칙이 바뀔 때 |
 | 모듈 작업 지침 | `{module}/AGENTS.md` | 모듈 규칙이 바뀔 때 |
-| delivery 작업 규칙·태스크 기록 | `delivery-service/docs/` | 태스크를 시작할 때, 커밋할 때 |
 | 공용 스킬 | `.agents/skills/` | PR 리뷰에서 추가·수정·삭제를 판단한다 |
 | 학습 노트 | `docs/learning/<이름>/` | 각자 |
 | 브랜치 작업 인계 | `docs/progress/<브랜치명의 /를 -로 바꾼 이름>.md` | 작업을 시작·전환·종료할 때(`handoff` 스킬) |

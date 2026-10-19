@@ -20,7 +20,7 @@
 | `common` `auth` | `@CurrentUser UserContext`, `@RequireRole`, 소유자 검증(`validateSelfOrMaster` 등) | 인증·인가 |
 | `common` `entity` | `BaseEntity`(Audit 6컬럼, `softDelete`) | 모든 테이블의 Audit 컬럼(SA 5.1) |
 | `common` `config`, `page`, `querydsl`, `response` | Pageable 규칙(10·30·50, `createdAt,DESC`), `SortAllowList`, `QuerydslSupport`, `PageResponse` | 검색 API |
-| `common` `feign` | `FeignHeaderInterceptor`, `FeignErrorDecoder`, `IdempotentRetryConfig`, `FeignMeterFilter` | 서비스 간 호출의 헤더 전달·오류 변환·재시도. Feign 메트릭 이름을 `feign.client.requests`로 나눠 Prometheus 등록 충돌을 막는다(ADR 0018, Micrometer가 있을 때만) |
+| `common` `feign` | `FeignHeaderInterceptor`, `FeignErrorDecoder`, `IdempotentRetryConfig` | 서비스 간 호출의 헤더 전달·오류 변환·재시도 |
 | `common` testFixtures | `PostgresIntegrationTest` | DB 통합 테스트 |
 
 ## 3. 구현 현황

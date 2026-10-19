@@ -26,9 +26,7 @@ import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 import org.springframework.security.web.server.firewall.ServerExchangeRejectedHandler;
-import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 
 /**
@@ -47,13 +45,11 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, AuthProperties properties,
-                                                         UserLookup userLookup, ErrorResponseWriter errorWriter,
-                                                         ManagementPortMatcher managementPort) {
+                                                         UserLookup userLookup, ErrorResponseWriter errorWriter) {
         JsonAuthenticationEntryPoint entryPoint = new JsonAuthenticationEntryPoint(errorWriter);
         return http
-                .securityMatcher(new NegatedServerWebExchangeMatcher(new OrServerWebExchangeMatcher(
-                        ServerWebExchangeMatchers.pathMatchers(properties.whitelist().toArray(String[]::new)),
-                        new AndServerWebExchangeMatcher(managementPort, ServerWebExchangeMatchers.pathMatchers("/actuator/**")))))
+                .securityMatcher(new NegatedServerWebExchangeMatcher(
+                        ServerWebExchangeMatchers.pathMatchers(properties.whitelist().toArray(String[]::new))))
                 .csrf(CsrfSpec::disable)
                 .formLogin(FormLoginSpec::disable)
                 .httpBasic(HttpBasicSpec::disable)
@@ -90,16 +86,6 @@ public class SecurityConfig {
 
     private static JwtClaimValidator<Object> required(String claim) {
         return new JwtClaimValidator<>(claim, Objects::nonNull);
-    }
-
-    /**
-     * Note: 관리 포트(management.server.port)로 들어온 /actuator/** 요청만 토큰 검증에서 뺀다. Security 필터는 관리 서버에도 적용되기 때문이다.
-     * Prometheus는 JWT 없이 /actuator/prometheus를 가져가야 한다. 관리 포트는 호스트에 공개하지 않아 Compose 네트워크 안에서만 닿는다.
-     * 경로까지 묶는 이유: 관리 포트로 /api/**를 보내도 인증을 건너뛰지 않게 해서, 라우팅 설정과 무관하게 우회 경로가 생기지 않게 한다.
-     */
-    @Bean
-    public ManagementPortMatcher managementPortMatcher() {
-        return new ManagementPortMatcher();
     }
 
     /** 방화벽이 거부한 요청(경로 우회 시도 등)도 SA 6.1 형식의 400으로 응답한다. 기본값은 본문 없는 400이다. */

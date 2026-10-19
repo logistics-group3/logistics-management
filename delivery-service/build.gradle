@@ -2,15 +2,6 @@ plugins {
     id 'org.springframework.boot'
 }
 
-// Note: resilience4j 모듈 버전을 한 BOM으로 맞춘다. spring-boot3만 2.3.0으로 적었더니 Spring Cloud BOM이 관리하는
-// resilience4j-spring6가 다른 버전으로 올라와 기동 시 RxJava3FallbackDecorator를 찾지 못했다(TS-026).
-// 이 블록은 루트에서 가져온 Boot·Cloud BOM 뒤에 적용되므로 resilience4j 버전은 여기 값이 이긴다.
-dependencyManagement {
-    imports {
-        mavenBom 'io.github.resilience4j:resilience4j-bom:2.3.0'
-    }
-}
-
 dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
     implementation project(':common')
@@ -21,11 +12,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-
-    // Note: user 장애가 배송 전체로 번지지 않게 벌크헤드·서킷 브레이커를 건다(결정 로그 24). 애너테이션 방식이라 AOP가 필요하다.
-    // 버전은 아래 dependencyManagement의 resilience4j BOM이 정한다. delivery에만 넣는다(공통 모듈 변경은 팀 리뷰 대상).
-    implementation 'io.github.resilience4j:resilience4j-spring-boot3'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
 
     runtimeOnly 'org.postgresql:postgresql'
 

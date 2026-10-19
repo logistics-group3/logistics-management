@@ -14,8 +14,6 @@
 | 확인 | 결과 |
 |---|---|
 | `./gradlew build` | |
-| 프런트 `build`·`lint`·`format:check`·`test` | 실행 결과 또는 미실행 사유 ([기준](../docs/guides/full-build.md)) |
-| 브라우저 `test:e2e` | 실행 환경·결과 또는 미실행 사유. 실제 Slack 비활성화 여부 |
 | `script/docs-check.sh` | |
 
 ## 리뷰 포인트

@@ -52,7 +52,7 @@ class UserAuthIntegrationTest extends PostgresIntegrationTest {
     private MockMvc mockMvc;
 
     private static SignupCommand signup(String username) {
-        return new SignupCommand(username, PASSWORD, "홍길동", AffiliationType.HUB, "서울특별시 센터", "hong@example.com");
+        return new SignupCommand(username, PASSWORD, "홍길동", "U01", AffiliationType.HUB, "서울특별시 센터");
     }
 
     @Test
@@ -131,7 +131,7 @@ class UserAuthIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.role").value("USER"))
                 .andExpect(jsonPath("$.isDeliveryManager").value(false))
                 .andExpect(jsonPath("$.hubId").doesNotExist())
-                .andExpect(jsonPath("$.slackId").isEmpty())
+                .andExpect(jsonPath("$.slackId").value("U01"))
                 .andExpect(jsonPath("$.data").doesNotExist());
     }
 

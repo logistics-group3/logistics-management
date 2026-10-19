@@ -6,8 +6,8 @@ public record SignupCommand(
         String username,
         String password,
         String name,
+        String slackId,
         AffiliationType affiliationType,
-        String affiliationName,
-        String slackEmail
+        String affiliationName
 ) {
 }

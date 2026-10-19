@@ -2,7 +2,6 @@ package com.sparta.logistics.user.presentation.dto;
 
 import com.sparta.logistics.user.application.dto.SignupCommand;
 import com.sparta.logistics.user.domain.AffiliationType;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -20,12 +19,12 @@ public record SignupRequest(
         String password,
 
         @NotBlank @Size(max = 50) String name,
+        @NotBlank @Size(max = 50) String slackId,
         @NotNull AffiliationType affiliationType,
-        @NotBlank @Size(max = 100) String affiliationName,
-        @NotBlank @Email(message = "올바른 Slack 계정 이메일을 입력해 주세요.") @Size(max = 254) String slackEmail
+        @NotBlank @Size(max = 100) String affiliationName
 ) {
 
     public SignupCommand toCommand() {
-        return new SignupCommand(username, password, name, affiliationType, affiliationName, slackEmail);
+        return new SignupCommand(username, password, name, slackId, affiliationType, affiliationName);
     }
 }

@@ -8,6 +8,3 @@ company-service 안의 되돌리기 어려운 결정이다. 여러 서비스에 
 |---|---|---|---|
 | 0001 | [입고 진입점: company-service가 받아 hub에 반영](0001-stock-inbound-via-company.md) | 제안 (SA와 다름) | 최승근 ADR-07 |
 | 0002 | [상품·업체 삭제와 재고: 판매 중지, 수량 보존, 실패 시 롤백](0002-delete-stops-stock-sales.md) | 제안 (SA와 다름) | 최승근 ADR-13 |
-| 0003 | [상품 가격 타입: SA를 따라 BIGINT(Long)](0003-price-bigint.md) | 채택 (규칙 문서와 다름) | |
-
-0001, 0002는 재고가 고도화 범위라 기본 구현(`feat/company-crud`)에 넣지 않는다. 채택 여부는 재고 고도화를 시작할 때 다시 정한다.

@@ -80,29 +80,3 @@ configure(subprojects.findAll { it.name.endsWith('-service') && it.name != 'gate
         runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     }
 }
-
-// Note: 분산 추적(SA 3.3, ADR 0017). Micrometer Tracing이 요청마다 traceId를 만들고 서비스 간 HTTP 호출 헤더(W3C traceparent)로 넘긴다.
-// Brave 리포터가 구간(span)을 Zipkin으로 보내고, 로그 줄에는 Boot가 traceId·spanId를 자동으로 붙인다. 버전은 Boot·Cloud BOM이 관리한다.
-// Gateway(WebFlux)도 포함해야 외부 요청의 시작점부터 한 trace로 묶인다.
-configure(subprojects.findAll { it.name.endsWith('-service') }) {
-    dependencies {
-        implementation 'io.micrometer:micrometer-tracing-bridge-brave'
-        implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
-    }
-}
-
-// Note: 메트릭 수집(ADR 0018). Micrometer가 모아 둔 요청 수·지연·JVM·DB 커넥션 지표를 /actuator/prometheus에서 Prometheus 텍스트 형식으로 내보낸다.
-// Prometheus가 주기적으로 가져가는(pull) 방식이라 서비스는 수집 서버 주소를 몰라도 된다. 실행에만 필요하므로 runtimeOnly로 둔다.
-configure(subprojects.findAll { it.name.endsWith('-service') }) {
-    dependencies {
-        runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-    }
-}
-
-// Note: Feign 호출에도 traceparent를 싣고 구간을 남기려면 feign-micrometer가 있어야 한다. 있으면 Spring Cloud OpenFeign이 모든 FeignClient에 계측을 붙인다.
-// Gateway는 Feign 대신 Boot의 WebClient.Builder를 쓰므로 따로 넣지 않는다(빌더가 이미 계측돼 있다).
-configure(subprojects.findAll { it.name.endsWith('-service') && it.name != 'gateway-service' }) {
-    dependencies {
-        implementation 'io.github.openfeign:feign-micrometer'
-    }
-}

@@ -43,7 +43,7 @@ class AuthServiceTest {
     }
 
     private final SignupCommand signup = new SignupCommand(
-            "hong01", "Sparta!2026", "홍길동", AffiliationType.COMPANY, "부산수산도매", "hong@example.com");
+            "hong01", "Sparta!2026", "홍길동", "U01ABCDE2FG", AffiliationType.COMPANY, "부산수산도매");
 
     @Test
     @DisplayName("회원가입하면 비밀번호를 해시해 USER 권한으로 저장한다")

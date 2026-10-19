@@ -16,14 +16,9 @@
 | [common](common/README.md) | 응답·오류 계약, Audit, 현재 사용자·역할·소유자 검사, Feign 공통 처리, 페이지·정렬 규칙 | 업무 서비스는 API별 비즈니스 인가와 허용 정렬 필드를 정한다 |
 | [hub](hub/README.md) | 허브·허브 간 경로 조회(I-02, I-03) | company, user, delivery가 호출한다 |
 | [company](company/README.md) | 업체·상품 조회(I-07, I-08) | order가 호출한다 |
-| [order](order/README.md) | 주문 생성·취소 Saga와 진행 기록 | company·delivery를 호출한다. 재고·hub 직접 호출 없음 |
+| [order](order/README.md) | 주문 생성 Saga 오케스트레이션 | company, hub, delivery를 호출한다 |
 | [delivery](delivery/README.md) | 배송 생성·취소·삭제(I-09~I-13) | order가 호출한다 |
 | PostgreSQL 초기화 | 스키마·전용 계정 | 빈 볼륨에서 한 번, 테이블 변경은 Flyway |
-
-## 주문과 연동하는 작업을 시작할 때
-
-[주문 연동 실패 계약](order/integration-contract.md)을 먼저 읽는다. company·delivery가 제공할 기존 API 계약, 4xx·5xx·타임아웃의 구분, 멱등키·보상·미확정 결과 처리와 실제 연동 체크 항목을 정리했다.
-주문 내부의 상세 예외 흐름과 수동 확인 절차는 [실패 처리 설계](order/failure-handling.md)에 있다. 외부 서비스 대역으로 확인한 내용과 팀 담당자의 실제 구현·합의 상태를 구분한다.
 
 ## 협업 로그 규칙
 

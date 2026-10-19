@@ -6,11 +6,6 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
-| 0018 | [메트릭 수집: Prometheus + Grafana 도입](0018-metrics-prometheus-grafana.md) | 제안 | 2026-10-16 |
-| 0017 | [분산 추적: Micrometer Tracing + Zipkin 도입](0017-distributed-tracing-micrometer-zipkin.md) | 제안 | 2026-10-16 |
-| 0016 | [주문 커밋 후 배송담당자 이메일로 Slack DM 발송](0016-delivery-manager-slack-dm.md) | 제안 | 2026-10-15 |
-| 0015 | [실제 Gateway와 연결하는 물류 운영 테스트 UI](0015-logistics-test-ui.md) | 제안 | 2026-10-15 |
-| 0014 | [SA 프로젝트 구조에 common-core 모듈 반영](0014-common-core-in-sa-structure.md) | 제안 | 2026-10-15 |
 | 0013 | [서비스 간 통신: 동기 OpenFeign](0013-sync-openfeign-communication.md) | 제안 (최승근 ADR-04) | 2026-10-14 |
 | 0012 | [데이터 분리: 서비스별 스키마, FK 없음, UUID 논리 참조](0012-schema-per-service-uuid-reference.md) | 제안 (최승근 ADR-03) | 2026-10-14 |
 | 0011 | [서비스 경계: 비즈니스 서비스 5개와 인프라 서비스 2개](0011-service-boundaries.md) | 제안 (최승근 ADR-01) | 2026-10-14 |
