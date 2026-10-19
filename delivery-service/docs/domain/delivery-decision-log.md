@@ -29,6 +29,9 @@
 | 18 | 1:1 복사 Response 없애기 | Result 하나면 그대로 응답, 여러 Result를 합칠 때만 `Response`(`DeliveryResponse`). delivery만의 코드 규칙으로 `delivery-service/AGENTS.md`에 둠 |
 | 19 | 주문 DM용 수신자 조회 | I-15로 활성 구간 담당자만 제공. 로컬 구현·담당자 리뷰 대기(ADR 0016) |
 | 20 | 배송담당자 지정 해제 후 변경 권한 | D-03·D-05는 현재 자격과 구간 배정을 함께 검사한다. #13 사용자 확인 범위의 로컬 수정이다. |
+| 24 | 부하 테스트 방법과 테스트 전용 API | k6로 기준선 → 하나씩 변경 → 재측정. 배송 생성만 재려고 `POST /api/v1/deliveries/load-test`(기본 꺼짐, MASTER, 문서 제외)를 두고 덧붙임 compose 파일로만 켠다 |
+| 25 | 로컬 부하 측정 방식 | 예열 2회 후 측정, 측정 사이에는 배송 테이블만 비움(`--reset` 금지), 본 측정 속도 초당 10+10, 추적 100% 고정, 서버 지표 자동 수집 |
+| 26 | user 장애 격리 | user·hub 호출 read 2초·connect 1초, 연결 실패만 1번 재시도, user 호출에 벌크헤드 10·서킷 브레이커, I-01은 user 장애 때 Slack ID 없이 진행. 네 가지를 한 번에 넣고 S1로 잰다 |
 
 ---
 
@@ -278,6 +281,55 @@ SA에 같은 용도의 내부 API가 이미 있으면 그 이름을 따른다.
 **어떻게** — 시도 토큰과 종료 표시를 비교했다. order는 시도마다 `orderId`를 새로 만들어 I-09·I-13에 쓰므로 `orderId`가 이미 시도 식별자라 토큰 필드가 필요 없다. 그래서 종료 표시(`p_delivery_creation_closures`, order_id 기본키)를 택했다. 표만으로는 "I-09가 표를 확인한 뒤 저장하기 전에 I-13이 표와 삭제를 끝내는" 순서가 남는다. 이를 막으려고 I-09의 저장과 I-13이 같은 orderId의 PostgreSQL advisory lock(`pg_advisory_xact_lock`)을 잡는다. 행 잠금은 쓸 수 없다. 잠글 행이 아직 없기 때문이다. I-09는 원격 호출을 잠금 밖에서 하고, 저장 직전 짧은 트랜잭션에서만 잠금·기존 배송 재확인·표 확인·저장을 한다. 원격 호출 전에도 한 번 확인해 불필요한 호출을 줄인다.
 
 **결론** — I-13은 대상 유무와 상관없이 표를 남기고(멱등), I-09는 표가 있으면 409 `DELIVERY_CREATION_CLOSED`로 거절한다. 표는 만료하지 않는다. 이 변경 이전에 논리 삭제된 배송은 V2가 표를 채운다(안 채우면 같은 orderId의 I-09가 order_id 유니크 위반 500이 된다). 결과 확인은 I-17(`ACTIVE`·`CLOSED`·`NONE`)로 제공한다. 번호는 user의 I-16과 겹치지 않게 I-17로 했다. order의 RECOVERY_REQUIRED 자동 종료·운영 복구 API는 범위 밖이다. 테스트 4개(`DeliveryCreationClosureIntegrationTest`)로 지연 생성 거절, 저장 직전 삭제의 직렬화, 삭제 뒤 재생성 거절과 멱등, I-17 상태와 HTTP 409를 확인했다. DELIVERY-002의 결정이다.
+
+## 24. 부하 테스트 방법과 테스트 전용 배송 생성 API (2026-10-15)
+
+**왜** — 동시성을 잡은 뒤 트래픽이 많을 때의 병목을 코드로 분석했다(학습 노트 `2026-10-15-delivery-high-traffic-bottlenecks.md`). 가장 큰 후보는 배송 생성(I-09) 안의 원격 호출과 담당 건수 쿼리였다. 고치기 전에 k6로 지금 상태를 재고, 하나씩 바꾸며 다시 재는 흐름으로 가기로 했다. 그런데 배송 생성은 내부 API라 Gateway가 막고, 주문(O-01)을 거치면 order·company 시간이 섞여 배송만 바꾼 효과가 묻힌다. 그래서 주문을 거치지 않고 배송에 직접 부하를 줄 테스트용 컨트롤러를 두기로 했다.
+
+**어떻게** — 세 방법을 비교했다.
+- delivery-service 포트를 열고 `/internal/deliveries`를 직접 부르기: 코드 변경이 없다. 하지만 Gateway를 거치지 않아 실제 경로(인증 필터, 라우팅)와 다르고, 사용자 헤더를 손으로 넣어야 한다.
+- 주문 API로만 재기: 실제 경로지만 배송 쪽 변화를 따로 볼 수 없다. 전체 경로 측정용(`TARGET=order`)으로는 남긴다.
+- 외부 경로에 테스트 전용 컨트롤러: Gateway·인증까지 실제와 같고 배송 생성만 잰다. 대신 내부 전용 처리를 외부로 여는 것이라 운영에서 켜지면 안 된다.
+
+세 번째를 고르고 세 겹으로 막았다. `@ConditionalOnProperty(delivery.load-test.enabled=true)`가 아니면 빈이 없다. `@RequireRole(MASTER)`이고 `@Hidden`으로 Swagger에 싣지 않는다. 처리는 `DeliveryCreationService.create`를 그대로 불러 I-09와 같다.
+
+켜는 방법은 팀 설정 규칙("새 환경 변수는 `.env.example`과 `docker-compose.yml`에 함께 추가")과 다르게 갔다. `docker-compose.yml`에 넣으면 모든 팀원의 기본 실행에 변수가 생기고 팀 리뷰 대상이 된다. 대신 덧붙임 파일 `docker-compose.loadtest.yml`을 두고 `COMPOSE_FILE`로 합칠 때만 켠다. `config-repo/delivery-service.yml`의 기본값은 `false`다.
+
+**결론**
+- 측정: `load-test/k6/delivery-create.js`(`TARGET=delivery|order`), `delivery-read.js`. 데이터는 시드(`delivery-e2e.sql`)와 과거 배송 대량 데이터(`delivery-load.sql`, 기본 30만 건). 매 측정은 `--reset`한 같은 DB 상태에서 시작한다.
+- 테스트 API: `LoadTestDeliveryController`(`POST /api/v1/deliveries/load-test`), 꺼짐·켜짐 조건 테스트 3개.
+- 절차·실험 계획·결과 표: [`../load-test.md`](../load-test.md). 실험 순서는 담당 건수 부분 인덱스 → user 호출 캐시 → user 장애 재현과 타임아웃 → 목록 인덱스다. 한 번에 하나만 바꾼다.
+
+## 25. 로컬 부하 측정 방식: 예열을 통제하고 데이터만 비운다 (2026-10-19)
+
+**왜** — 장애 격리 실험(S1)을 세 번 돌렸는데 모두 장애 전부터 실패해 쓸 수 없었다. 첫 번째는 실험 설정이 빠졌고(TS-027), 두 번째와 세 번째는 기동 직후 부하로 커넥션 풀이 바닥났다(TS-028).
+
+**어떻게** — 속도를 5 → 10 → 20으로 올리며 각 1분씩 쟀고, 실행 스크립트가 부하 중 컨테이너 CPU, 커넥션 풀, 스레드, GC를 남기게 했다. 같은 초당 10+10에서 재기동 후 첫 실행은 delivery CPU 227%·생성 p95 2,151ms, 바로 다음 실행은 20%·1,433ms였다. GC는 누적 0.6초, 힙 사용 30% 이하였다. 힙 부족(`-Xmx384m`) 가설은 기각하고 JIT 예열로 판단했다. 매 측정마다 `--reset`으로 컨테이너를 다시 만든 것이 예열을 없앴다.
+
+**결론**
+- 측정 전 같은 속도로 1분씩 2번 이상 예열한다. 측정 사이에는 `load-test/reset-delivery-data.sh`로 배송·구간 테이블만 비운다. `--reset`은 처음 한 번만 쓴다.
+- 본 측정 속도는 초당 생성 10 + 조회 10. 20+20도 버텼으므로 여유가 있고, 장애 때 스레드 고갈(10 × 60초 = 600 > 200)을 재현하기에 충분하다.
+- 분산 추적은 실험 내내 100%로 고정한다. 바꾸려면 컨테이너를 다시 만들어야 해 예열이 사라진다. zipkin CPU는 5% 수준이었다.
+- 근거 수치는 [fault-isolation.md](../fault-isolation.md) 8절 예비 측정, 방법론은 학습 노트 `2026-10-19-local-load-test-methodology.md`.
+
+## 26. user 장애 격리: 타임아웃·재시도·벌크헤드·서킷 브레이커를 한 번에 (2026-10-19)
+
+**왜** — S1(초당 생성 10·조회 10, user 30초 정지)에서 user를 부르지 않는 조회 p95가 21ms → 4,307ms가 됐다. delivery 스레드 189/200이 user 응답을 기다렸고 커넥션 대기는 0이었다. user를 되살린 뒤에도 묶였던 요청이 한꺼번에 풀려 2분 넘게 회복하지 못했다(fault-isolation.md 8절).
+
+**어떻게** — 실험 문서는 한 번에 하나씩 넣고 매번 재는 순서였다. 사용자가 "read 20초·재시도 3번은 측정 없이도 명백히 과하다"며 한 번에 넣고 재기로 했다. 대신 각 장치가 얼마나 작동했는지는 Resilience4j 메트릭(벌크헤드 거절 수, 서킷 상태, 거절 호출 수)으로 구분한다. 타임아웃만으로 부족한 이유는 계산으로 설명한다(초당 10 × 최대 2초 = 스레드 20개, 재시도·조회가 겹치면 더 많다).
+- 타임아웃: user·hub 모두 connect 1초, read 2초(`config-repo/delivery-service.yml`). 평소 내부 조회는 수십 ms다.
+- 재시도: `ConnectFailureRetryer`. 연결 실패(거부, 연결 타임아웃)만 1번 더 시도한다. 읽기 타임아웃은 상대가 느린 것이라 다시 보내면 스레드만 더 묶인다. 공통 `IdempotentRetryConfig`는 바꾸지 않고 delivery 클라이언트만 바꿨다.
+- 벌크헤드(user, 동시 10, 대기 0): 평소 동시 호출은 초당 20 × 0.03초 < 1이다(리틀의 법칙). user가 멈춰도 user를 기다리는 스레드가 10개를 넘지 않는다.
+- 서킷 브레이커(user): 최근 20번 중 실패 50% 또는 1초 넘는 호출 50%면 열고, 10초 뒤 3번 시험한다. 4xx 거절은 실패로 세지 않는다(`UserServiceFailures`).
+- 실패 처리: 담당자 후보(I-14)와 재배정 대상(I-01, D-04)은 대신할 값이 없어 503으로 빨리 실패한다. 수령인 Slack ID(I-01, 배송 생성)는 Slack ID 없이 배송을 만든다(사용자 결정, 부분 저하). 서킷·벌크헤드 거절은 그대로 두면 500이라 fallback에서 503으로 바꾼다.
+
+**결론**
+- 코드: `UserClientAdapter`(애너테이션, fallback), `UserServiceFailures`, `ConnectFailureRetryer`·`ConnectFailureRetryConfig`, `UserClient`·`HubClient`·`CompanyClient`의 재시도 설정, delivery `build.gradle`(resilience4j-spring-boot3 2.3.0, AOP).
+- 테스트: `ConnectFailureRetryerTest`, `UserServiceFailuresTest`, `UserClientResilienceIntegrationTest`(AOP로 fallback·서킷이 실제로 걸리는지).
+- 측정: 같은 조건의 S1을 `DURATION=6m`으로 다시 잰다. 결과는 fault-isolation.md 8절.
+- order → delivery 타임아웃 예산(재시도 증폭, S2)은 order 설정이라 이번 범위가 아니다.
+- 추가(같은 날): 부하를 초당 80요청(생성 40·조회 40)으로 올리자 장애가 없는데도 생성 19%가 503이었다. 시작 직후 순간 지연(p95 3~4초)에 서킷이 열려 약 10초간 거절했다. 최근 20건 창은 초당 80번 호출에서 0.25초 분량이라 순간 지연에 너무 민감했다. 판단 창을 최근 10초(TIME_BASED, 최소 20건)로, 느린 호출 기준을 1.5초·80%로 바꿨다.
+- 검증(같은 날 13시): 예열 후 같은 초당 80요청에서 장애 없이 생성 503이 19% → 0.4%(시작 10초 안 10건, 벌크헤드 거절로 판단)가 됐고 서킷은 한 번도 열리지 않았다. 같은 부하에 user 30초 정지를 넣어도 조회 p95 7.7ms·성공 100%, 복구 약 20초였다. 개선 전과 같은 초당 20요청 조건에서는 조회 p95 4,307ms → 15ms, 바쁜 스레드 189 → 1, 복구 120초+ → 약 20초(fault-isolation.md 8절).
 
 ## 남은 일
 

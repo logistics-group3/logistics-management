@@ -111,3 +111,9 @@
 - 종료 표시만으로 "확인 후 저장 사이에 삭제가 끼는" 순서를 막지 못하는 이유는?
 - 행 잠금 대신 advisory lock을 쓴 이유는? 단점은?
 - I-17이 NONE일 때 "종료됐다"고 판단하면 안 되는 이유는?
+
+## T06 배송 E2E 스크립트 (2026-10-15)
+### 처리 과정
+- E2E는 `script/delivery-e2e-check.sh`, 시드는 `infra/postgres/seed/delivery-e2e.sql`, 실행 방법은 [`e2e.md`](../../../delivery-service/docs/e2e.md).
+### 핵심
+- 단위·통합 테스트는 hub·user·order를 목으로 바꿔 서비스 사이 연결을 확인하지 못한다. 고정 ID 시드로 Gateway를 거쳐 주문 → 배송 완료 → 삭제를 한 번에 확인한다.

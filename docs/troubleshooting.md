@@ -233,3 +233,40 @@
 - 해결: 1차로 order 테스트 전용 풀 상한(PR #18)을 두었다. 근본 대책으로 `common` 테스트 지원에 `spring.properties`(`spring.test.context.cache.maxSize=8`)를 추가해 캐시 컨텍스트를 8개로 제한하고 order 로컬 풀 상한은 제거했다. 최악 연결은 8 x 10 = 80개로 한도 안이다.
 - 확인: 같은 코드·같은 명령에서 `script/test-db-connections.sh :order-service:test --rerun-tasks`로 연결 수를 잰 결과 캐시 상한 없이는 최대 91개·96개·91개(idle, 3회)에서 BUILD FAILED, 상한을 두면 최대 72개·80개·80개(3회)에서 BUILD SUCCESSFUL이었다. 컨테이너 `max_connections`는 100(예약 3)이다. 측정 과정은 [작업 계획](reviews/2026-10-19-test-connection-exhaustion-plan.md), 배경은 [STAR 기록](reviews/2026-10-19-test-connection-exhaustion.md)에 있다.
 - 배운 점: 실패한 테스트가 변경과 무관해 보이면 테스트 자체보다 자원 공유를 의심한다. 에이전트 여러 개가 같은 `build` 디렉터리에서 Gradle을 동시에 돌리면 `Could not write XML test results`로 실패하는데, 이는 연결 고갈과 별개의 원인(추정)이므로 병렬 실행을 피한다.
+
+### TS-026 실험용 설정으로 기동하자 postgres가 뜨지 않음
+- 서비스·작성: infra / 한얼 / 2026-10-16
+- 문제: `script/run.sh --reset` 중 `✘ Container logistics-management-postgres-1 Error dependency postgres failed to start`. 뒤 서비스가 모두 기동하지 못했다.
+- 원인: `.env`가 2026-10-13에 만들어진 뒤 `.env.example`에 추가된 `POSTGRES_USER`, `POSTGRES_PASSWORD`가 없었다. `docker-compose.yml`은 이 값을 기본값 없이 넘기므로 postgres 이미지가 관리자 비밀번호 없이 시작하다 종료된다. `script/run.sh`는 `.env`가 없을 때만 복사하므로 기존 `.env`는 갱신되지 않는다.
+- 해결: `.env.example`의 두 줄을 `.env`에 추가하고 다시 기동했다.
+- 배운 점: pull 뒤 `.env.example`이 바뀌었으면 키를 비교한다. `comm -13 <(grep -v '^#' .env | cut -d= -f1 | sort) <(grep -v '^#' .env.example | cut -d= -f1 | sort)`가 `.env`에 없는 키를 보여 준다.
+
+### TS-027 장애 격리 실험(S1)에서 배송 생성이 장애 전부터 100% 실패
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: `load-test/fault-isolation.sh` 결과에서 생성 확인 4,773건 모두 실패(약 30ms), 장애 중 조회 실패가 3~4초에 몰림.
+- 원인: `COMPOSE_FILE`을 export하지 않은 터미널에서 `script/run.sh --reset`을 실행해 덧붙임 파일이 빠졌다. 부하 테스트 API가 꺼져 405, Gateway 권한 캐시도 기본 60초라 user가 멈춘 동안 만료되면 Gateway가 3초 뒤 503을 냈다. k6 요약에는 상태 코드가 없어 증상과 설정으로 추정했다.
+- 해결: 실행 스크립트가 시작 전에 `docker compose config`로 실험 설정 두 개를 확인하고, k6 `setup()`이 부하 테스트 API에 빈 본문을 보내 400이 아니면 멈추게 했다.
+- 배운 점: 실험 전제 조건은 사람이 기억하지 않고 스크립트가 확인하게 한다.
+
+### TS-028 기동 직후 부하 테스트에서 delivery 커넥션 풀이 바닥나 모든 요청이 10초 타임아웃
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: 장애를 넣기 전부터 생성·조회의 84~96%가 k6 타임아웃(10초). delivery 로그 `HikariPool-1 - Connection is not available, request timed out after 30009ms (total=10, active=9, idle=1, waiting=157)`. 부하가 끝날 때까지 회복하지 않았다.
+- 원인: 기동 1분 안에 초당 20+20건을 넣어 예열 안 된 JVM이 요청마다 CPU를 많이 썼다(delivery 551%, user 319%, gateway 296%). 처리가 느려져 커넥션 10개가 금방 찼고, k6가 10초에 포기한 뒤에도 서버는 그 요청을 끝까지 처리해(서버 기준 201 1,668건) 밀린 일이 계속 쌓였다. 같은 속도의 두 번째 실행은 CPU가 10분의 1이었고 GC는 원인이 아니었다(누적 0.6초, 힙 30% 이하).
+- 해결: 측정 전 같은 속도로 1분씩 2번 이상 예열하고, 측정 사이에는 `--reset` 대신 `load-test/reset-delivery-data.sh`로 배송 테이블만 비운다. 실행 스크립트가 부하 중 컨테이너 CPU·커넥션 풀·GC를 `-stats.txt`로 남긴다. 상태 수집은 `load-test/diagnose.sh`.
+- 배운 점: 로컬 성능 측정은 JVM 예열 상태를 통제하지 않으면 측정값이 코드가 아니라 예열 정도를 보여 준다. k6 타임아웃만 보면 원인을 알 수 없어 서버 쪽 지표를 같이 남겨야 한다.
+- 재발(2026-10-19 12:30~12:35): 서킷 설정을 반영하려고 delivery를 재시작한 뒤 예열 실행부터 초당 40+40으로 돌렸다(앞 실험에서 셸에 남은 `CREATE_RATE`·`READ_RATE` 40으로 추정). 예열 실행에서 이미 CPU 781%·커넥션 대기 101이었고, 쉬지 않고 이어 돌린 cap4-40(시작 40초에 대기 170)과 s1-resilience-40b도 장애 전부터 90% 안팎이 10초 타임아웃이었다. k6가 포기한 요청을 서버가 계속 처리해 밀린 일이 다음 실행으로 넘어갔다. 처음에는 맥 용량 한계로 봤지만, 예열된 11:59에는 같은 부하를 CPU 76%로 처리했고 13:30 예열 후 재측정도 CPU 15%·실패 0.4%였다. 데이터 누적(배송 6,733건)도 원인에서 뺐다. 대처: 재시작 뒤에는 속도를 명시해(`CREATE_RATE=10 READ_RATE=10`) 낮은 속도부터 예열하고, 무너진 실행 뒤에는 쉬었다가 배송 데이터를 비운 뒤 다시 잰다.
+
+### TS-029 장애 격리 실험 뒤 user-service가 멈춘 채 남아 복구 구간이 무효
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: S1에서 user-service를 되살린 뒤에도 배송 생성이 12ms 만에 100% 실패했다. `docker compose ps`에서 user-service가 `paused`였다.
+- 원인: 실행 스크립트가 장애 중 상태를 모으려고 멈춘 user-service에 `docker compose exec`를 했고, 실패가 `set -euo pipefail`에 걸려 스크립트가 그 자리에서 끝났다. 뒤의 `unpause`가 실행되지 않았다. k6는 백그라운드라 계속 돌아 복구 구간과 그 뒤를 잘못 쟀다.
+- 해결: 상태 수집 실패가 스크립트를 끝내지 않게 하고(`|| true`, 실행 중이 아닌 컨테이너 건너뜀), `trap restore EXIT`로 어떻게 끝나든 user-service를 되살린다. 복구 40초 뒤 상태도 수집한다. 멈춘 채 남았다면 `docker compose unpause user-service`.
+- 배운 점: 장애를 주입하는 스크립트는 정상 종료 경로가 아니라 `trap`으로 원상 복구를 보장한다.
+
+### TS-030 resilience4j를 넣자 delivery 통합 테스트가 모두 컨텍스트 로드 실패
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: `./gradlew :delivery-service:test`에서 통합 테스트 4개 클래스(16개)가 `Failed to load ApplicationContext`. 원인 줄은 `ClassNotFoundException: io.github.resilience4j.spring6.fallback.RxJava3FallbackDecorator`(`FallbackConfigurationOnMissingBean` 조건 처리 중).
+- 원인: `resilience4j-spring-boot3`만 버전(2.3.0)을 적었다. 그 의존성인 `resilience4j-spring6` 등은 Spring Cloud BOM이 관리하는 다른 버전으로 올라와, spring-boot3 자동 설정이 참조하는 클래스가 spring6 jar에 없었다(버전 불일치로 판단, 의존성 트리로 확인 필요).
+- 해결: delivery `build.gradle`에 `resilience4j-bom:2.3.0`을 dependencyManagement로 가져와 resilience4j 모듈 버전을 한 번에 맞췄다. 의존성에는 버전을 적지 않는다.
+- 배운 점: 여러 모듈로 나뉜 라이브러리는 한 모듈만 버전을 올리지 말고 BOM으로 맞춘다. 확인: `./gradlew :delivery-service:dependencies --configuration runtimeClasspath | grep resilience4j`
+
