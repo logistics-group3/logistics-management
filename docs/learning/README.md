@@ -5,6 +5,7 @@
 | 폴더 | 내용 |
 |---|---|
 | [junhyun](junhyun/README.md) | 질문 노트(`qna/`), 공통 인프라 구현 스텝 기록(`steps/`), 역량 로드맵 |
+| [kmh](kmh/README.md) | 질문 노트(`qna/`) |
 
 ## 규칙
 - 자기 폴더만 고친다. 다른 사람의 노트에 의견이 있으면 PR 리뷰나 Notion에 남긴다.
