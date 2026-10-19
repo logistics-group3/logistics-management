@@ -382,7 +382,7 @@ erDiagram
 | recipient_name | VARCHAR(100) | NOT NULL | 기본값 요청업체명 |
 | recipient_slack_id | VARCHAR(50) | NULL | 요청업체 관리자 Slack ID (I-01) |
 
-인덱스: `status`, `supplier_company_id`, `receiver_company_id`, `departure_hub_id`, `destination_hub_id`
+인덱스: `status`, `supplier_company_id`, `receiver_company_id`, `departure_hub_id`, `destination_hub_id`, D-01 허브별 최신순 목록용 `(departure_hub_id, created_at DESC) INCLUDE (delivery_id) WHERE deleted_at IS NULL`(V4 `idx_p_deliveries_departure_hub_id_created_at`, 결정 로그 28)
 
 ### `p_delivery_routes` — 배송 구간 (배송 1건당 2~3건)
 | 컬럼 | 타입 | 제약 | 설명 |

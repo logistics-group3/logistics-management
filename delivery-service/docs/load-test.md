@@ -109,6 +109,8 @@ docker compose logs -f delivery-service
 | 3 | user가 느려지면 배송 전체가 멈춘다 | 측정만: 생성 부하 중 `docker compose pause user-service` 30초 → `unpause`. 그다음 짧은 타임아웃·서킷 브레이커 | 멈춘 동안 실패가 빨리 나는지, 스레드가 쌓여 읽기 API까지 느려지는지. 절차·지표·개선 단계는 [fault-isolation.md](fault-isolation.md) |
 | 4 | 허브별 최신순 목록이 정렬을 따로 한다 | `(departure_hub_id, created_at DESC)` 부분 인덱스 | `D-01 허브별` p95, 실행계획의 `Sort` |
 
+4번은 T08 재측정에서 확인해 V4로 넣었다. 30만 건에서 D-01 1건당 DB 시간 33ms → 4.4ms, 생성+조회 160+160이 무너지던 원인이 풀렸다(결정 로그 28, `tasks/T08.md` "성능 고도화 단계" 1). 1번의 담당 건수 쿼리는 상태 인덱스로 0.05ms라 병목이 아니었다.
+
 3번은 Gateway의 권한 캐시(60초)도 user-service를 부르므로, 캐시가 만료되면 모든 요청이 영향을 받는다. 배송만의 효과를 보려면 멈추는 시간을 60초보다 짧게 한다.
 
 ## 7. 결과 기록
