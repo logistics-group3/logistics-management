@@ -10,6 +10,7 @@
 | 멘토·튜터가 발제 기능을 차례로 확인한다 | [멘토·튜터 테스트 안내](guides/mentor-test.md), 운영 콘솔 `/guide` |
 | Swagger로 API를 하나씩 테스트하며 서비스 간 요청 흐름을 본다 | [Swagger 수동 테스트와 요청 흐름 보기](guides/api-test.md) |
 | 요청 수·오류·응답 시간 그래프를 본다 | [메트릭 모니터링](guides/monitoring.md) |
+| 캐시 도입 전후 성능을 측정·비교한다 | [성능 측정 가이드](guides/performance-test.md), [측정 기록](reviews/performance/README.md) |
 | 처음 합류했다, 로컬에서 띄워 보고 싶다 | 루트 `README.md` → [로컬 실행 가이드](guides/local-run.md) |
 | 내 서비스 구현을 시작한다 | [서비스 협업 창구](services/README.md)의 내 서비스 → SA 해당 절 → [구현 가이드](guides/dev-guide.md) → 모듈 폴더의 `AGENTS.md` |
 | 다른 서비스 API를 호출해야 한다 | 그 서비스의 `docs/services/{service}/README.md` 제공 API 표 |

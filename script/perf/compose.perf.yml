@@ -1,0 +1,38 @@
+# 성능 측정 전용 Compose 오버라이드(로컬 전용). script/perf.sh가 docker-compose.yml 위에 덧씌운다.
+# 팀 docker-compose.yml·config-repo·.env는 바꾸지 않는다. 프로젝트 이름(logistics-perf)과 .env.perf로 개발 스택과 분리한다.
+# Note: 측정값이 흔들리지 않도록 컨테이너마다 CPU·메모리 상한을 고정한다. 값을 바꾸면 이전 결과와 비교할 수 없으므로
+# 결과 보고서에 함께 기록되는 이 파일의 커밋을 기준으로 비교한다.
+
+x-perf-app: &perf-app
+  cpus: "1.0"
+  mem_limit: 768m
+
+services:
+  postgres:
+    cpus: "2.0"
+    mem_limit: 1g
+  config-server:
+    <<: *perf-app
+  eureka-server:
+    <<: *perf-app
+  gateway-service:
+    <<: *perf-app
+    environment:
+      # Note: config-repo의 auth.user-cache-ttl(60s)을 환경 변수로 덮는다. Config Server 값은 환경 변수보다 우선순위가 낮다
+      # (config-repo/application.yml 첫 주석). 측정 조건 A의 기준선(0s = 캐시 없음, 60s = 현재)을 바꿀 때만 쓴다.
+      AUTH_USERCACHETTL: ${PERF_AUTH_CACHE_TTL:-60s}
+  user-service:
+    <<: *perf-app
+  hub-service:
+    <<: *perf-app
+  company-service:
+    <<: *perf-app
+  delivery-service:
+    <<: *perf-app
+  order-service:
+    <<: *perf-app
+    environment:
+      # 측정 중 대량 주문이 실제 Slack으로 나가지 않게 고정값으로 끈다. 셸·.env 값과 무관하다.
+      SLACK_WEBHOOK_URL: ""
+      SLACK_DM_ENABLED: "false"
+      SLACK_BOT_TOKEN: ""

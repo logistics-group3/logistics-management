@@ -35,3 +35,4 @@ settings.gradle	README.md,AGENTS.md	모듈 구성 표, 프로젝트(모듈과 �
 
 frontend/src/*	frontend/README.md	UI 범위·계약·검증
 script/ui-test*	frontend/README.md,docs/guides/local-run.md	테스트 환경·기동·시드
+script/perf*	docs/guides/performance-test.md	구성, 한 회차 측정
