@@ -19,8 +19,9 @@
 - 면접 포인트: 트랜잭션과 동시성 제어의 차이, 비관적·낙관적 잠금 선택 기준, 잠금 안의 원격 호출 위험.
 
 ## 다음 단계
-1. 최종 `./gradlew build --rerun-tasks`·프런트 검증을 한 번 더 하고 한 PR로 올린다(사용자 확인 후).
-2. 연결 고갈의 정식 대책은 별도 PR로 계획 문서를 따른다. #13(feat/delivery-T07)과 `DeliveryService.java`·`DeliveryServiceTest.java`·delivery README·SA·결정 로그가 겹치므로 먼저 병합되는 쪽에 맞춰 rebase한다.
+1. PR [#18](https://github.com/logistics-group3/logistics-management/pull/18) 리뷰를 기다린다. 병합 전까지 push된 상태이며 최종 `./gradlew build --rerun-tasks` 815개 통과·프런트 검증·E2E 19/19를 마쳤다.
+2. 연결 고갈의 정식 대책은 별도 브랜치 `feat/test-connection-limits`에서 [작업 계획](../reviews/2026-10-19-test-connection-exhaustion-plan.md)을 따른다.
+3. 병합 뒤 `logistics-ui-test` 볼륨에는 order V6·delivery V2가 이미 적용돼 있다. 이 브랜치 이전 코드로 같은 볼륨을 쓰면 Flyway 검증이 실패할 수 있으므로(미확인) 병합 전에는 이 브랜치 이미지로만 쓴다.
 
 ## 직접 해보기
 1. `DeliveryService.changeRouteStatus`에서 `getDeliveryForUpdate`를 `deliveryRepository.findById`로 임시로 바꾼다.
