@@ -7,6 +7,7 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-19 | [성능 병목은 어떤 과정으로 찾나](qna/2026-10-19-finding-bottlenecks.md) | 중급 | performance, bottleneck, use-method, red-method, tracing, load-test | Junhyun An |
 | 2026-10-19 | [이 프로젝트는 DDoS에 대비돼 있나, 그리고 k6로 DDoS 테스트를 할 수 있나](qna/2026-10-19-ddos-readiness-and-k6.md) | 고급 | security, ddos, rate-limiting, k6, gateway, resilience, portfolio | Junhyun An |
 | 2026-10-16 | [허브 간 이동 도착 때 실제 거리·소요시간을 왜 필수로 받나, 그리고 배송 로직 검토](qna/2026-10-16-delivery-actual-distance-review.md) | 중급 | delivery, domain-model, validation, concurrency, optimistic-lock, privacy, msa | Junhyun An |
 | 2026-10-16 | [가속 시간과 AI 돌발 사건을 넣어 물류 시스템을 시뮬레이션 게임으로 만들면 어떤가](qna/2026-10-16-logistics-simulation-game.md) | 고급 | simulation, virtual-time, logistics, ai, replay, portfolio | Junhyun An |
