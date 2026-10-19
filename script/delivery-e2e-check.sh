@@ -147,18 +147,23 @@ create_order() {
   delivery_id=$(field "d['data']['deliveryId']")
 }
 # MASTER로 배송을 읽어 구간 ID와 담당자를 pickup_*, last_mile_*에 둔다.
+# 담당자는 배송 생성 뒤 허브별 배정 작업이 비동기로 채운다(결정 로그 27). 최대 10초 동안 0.5초마다 다시 읽는다.
 pickup_route=''; pickup_mgr=''; last_mile_route=''; last_mile_mgr=''
 load_delivery() {
-  call GET "/api/v1/deliveries/$1" "$master_token" ''
-  pickup_route=$(field "d['data']['routes'][0]['deliveryRouteId']")
-  pickup_mgr=$(field "d['data']['routes'][0]['managerId']")
-  last_mile_route=$(field "d['data']['routes'][-1]['deliveryRouteId']")
-  last_mile_mgr=$(field "d['data']['routes'][-1]['managerId']")
+  for _ in $(seq 1 20); do
+    call GET "/api/v1/deliveries/$1" "$master_token" ''
+    pickup_route=$(field "d['data']['routes'][0]['deliveryRouteId']")
+    pickup_mgr=$(field "d['data']['routes'][0]['managerId']")
+    last_mile_route=$(field "d['data']['routes'][-1]['deliveryRouteId']")
+    last_mile_mgr=$(field "d['data']['routes'][-1]['managerId']")
+    [[ "$pickup_mgr" != None && "$last_mile_mgr" != None ]] && return
+    sleep 0.5
+  done
 }
 # move DELIVERY ROUTE TOKEN STATUS: D-05 구간 상태 변경
 move() { call PATCH "/api/v1/deliveries/$1/routes/$2/status" "$3" "{\"status\":\"$4\"}"; }
 
-echo "[1] 전체 연결: 주문(O-01) → 배송 생성(I-09, 자동 배정) → 구간 진행(D-05) → 배송 완료 → 주문 삭제(O-06 → I-10, I-13)"
+echo "[1] 전체 연결: 주문(O-01) → 배송 생성(I-09) → 비동기 자동 배정 → 구간 진행(D-05) → 배송 완료 → 주문 삭제(O-06 → I-10, I-13)"
 create_order
 check "O-01 주문 생성 201" "201" "$http_status"
 check "주문 응답에 deliveryId" "yes" "$([[ -n "$delivery_id" && "$delivery_id" != None ]] && echo yes || echo no)"

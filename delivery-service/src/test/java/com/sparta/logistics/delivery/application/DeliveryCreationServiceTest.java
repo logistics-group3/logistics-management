@@ -3,23 +3,22 @@ package com.sparta.logistics.delivery.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.delivery.DeliveryFixture;
+import com.sparta.logistics.delivery.application.assignment.AssignmentTrigger;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
-import com.sparta.logistics.delivery.application.dto.ActiveRouteCount;
 import com.sparta.logistics.delivery.domain.Delivery;
 import com.sparta.logistics.delivery.domain.DeliveryCreationClosureRepository;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
 import com.sparta.logistics.delivery.domain.DeliveryRoute;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,72 +35,49 @@ class DeliveryCreationServiceTest {
 
     private static final UUID SUPPLIER_HUB = UUID.randomUUID();
     private static final UUID RECEIVER_HUB = UUID.randomUUID();
-    private static final UUID MANAGER_A = UUID.fromString("a0000000-0000-0000-0000-000000000000");
-    private static final UUID MANAGER_B = UUID.fromString("b0000000-0000-0000-0000-000000000000");
-    private static final UUID MANAGER_C = UUID.fromString("c0000000-0000-0000-0000-000000000000");
 
     @Mock
     private DeliveryRepository deliveryRepository;
     @Mock
     private DeliveryCreationClosureRepository closureRepository;
     @Mock
-    private DeliveryQueryRepository deliveryQueryRepository;
-    @Mock
     private HubRouteReader hubRouteReader;
     @Mock
-    private DeliveryManagerReader deliveryManagerReader;
-    @Mock
     private RecipientReader recipientReader;
+    @Mock
+    private AssignmentTrigger assignmentTrigger;
     private DeliveryCreationService deliveryCreationService;
 
     @BeforeEach
     void setUp() {
-        deliveryCreationService = new DeliveryCreationService(deliveryRepository, closureRepository, deliveryQueryRepository,
-                hubRouteReader, deliveryManagerReader, recipientReader, TransactionOperations.withoutTransaction());
+        deliveryCreationService = new DeliveryCreationService(deliveryRepository, closureRepository, hubRouteReader,
+                recipientReader, TransactionOperations.withoutTransaction(), assignmentTrigger);
     }
 
     @Test
-    @DisplayName("구간 담당 허브에 배송담당자가 없으면 DELIVERY_MANAGER_NOT_FOUND이고 아무것도 저장하지 않는다")
-    void noDeliveryManager() {
-        CreateDeliveryCommand command = command(SUPPLIER_HUB, RECEIVER_HUB);
-        given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty());
-        given(hubRouteReader.getExpectedRoute(SUPPLIER_HUB, RECEIVER_HUB)).willReturn(DeliveryFixture.HUB_ROUTE);
-        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
-        given(deliveryManagerReader.findIdsByHub(RECEIVER_HUB)).willReturn(List.of());
-
-        assertThatThrownBy(() -> deliveryCreationService.create(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(DeliveryErrorCode.DELIVERY_MANAGER_NOT_FOUND);
-        then(deliveryRepository).should(never()).saveAndFlush(any());
-    }
-
-    @Test
-    @DisplayName("담당 건수가 가장 적은 후보를 배정하고, 같은 배송의 집하 배정을 세어 허브 이동은 다음 후보가 받는다")
-    void assignsLeastLoadedCountingSameDelivery() {
+    @DisplayName("배송담당자 후보를 보지 않고 구간을 담당자 없이 저장한 뒤, 구간 담당 허브 두 곳의 배정을 깨운다")
+    void savesWithoutManagersAndRequestsAssignment() {
         CreateDeliveryCommand command = command(SUPPLIER_HUB, RECEIVER_HUB);
         givenNoExistingDelivery(command);
         given(hubRouteReader.getExpectedRoute(SUPPLIER_HUB, RECEIVER_HUB)).willReturn(DeliveryFixture.HUB_ROUTE);
-        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_B, MANAGER_A));
-        given(deliveryManagerReader.findIdsByHub(RECEIVER_HUB)).willReturn(List.of(MANAGER_C));
-        // A는 담당 1건, B는 0건: 집하는 B. B가 1건이 되어 A와 동점이므로 허브 이동은 userId가 앞선 A
-        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of(new ActiveRouteCount(MANAGER_A, 1L)));
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.of("U02BCDEF3GH"));
 
         CreateDeliveryResult result = deliveryCreationService.create(command);
 
         Delivery saved = savedDelivery();
         assertThat(result.created()).isTrue();
-        assertThat(saved.getRoutes()).extracting(DeliveryRoute::getManagerId).containsExactly(MANAGER_B, MANAGER_A, MANAGER_C);
+        assertThat(saved.getRoutes()).hasSize(3).allMatch(DeliveryRoute::isAwaitingManager);
+        assertThat(saved.getRoutes()).extracting(DeliveryRoute::getManagingHubId)
+                .containsExactly(SUPPLIER_HUB, SUPPLIER_HUB, RECEIVER_HUB);
         assertThat(saved.getRecipientSlackId()).isEqualTo("U02BCDEF3GH");
+        then(assignmentTrigger).should().request(Set.of(SUPPLIER_HUB, RECEIVER_HUB));
     }
 
     @Test
-    @DisplayName("같은 허브면 I-03을 부르지 않고 I-14도 한 번만 불러 2구간을 만든다")
+    @DisplayName("같은 허브면 I-03을 부르지 않고 2구간을 만들며, 그 허브 하나만 깨운다")
     void sameHub() {
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
         givenNoExistingDelivery(command);
-        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
-        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.empty());
 
         deliveryCreationService.create(command);
@@ -110,11 +86,11 @@ class DeliveryCreationServiceTest {
         assertThat(saved.getRoutes()).hasSize(2);
         assertThat(saved.getRecipientSlackId()).isNull();
         then(hubRouteReader).shouldHaveNoInteractions();
-        then(deliveryManagerReader).should().findIdsByHub(SUPPLIER_HUB);
+        then(assignmentTrigger).should().request(Set.of(SUPPLIER_HUB));
     }
 
     @Test
-    @DisplayName("같은 orderId 배송이 이미 있으면 다른 서비스를 부르지 않고 기존 배송을 돌려준다")
+    @DisplayName("같은 orderId 배송이 이미 있으면 다른 서비스를 부르지 않고 기존 배송을 돌려주며 배정을 깨우지 않는다")
     void existingOrder() {
         Delivery existing = DeliveryFixture.threeRoutes();
         CreateDeliveryCommand command = command(SUPPLIER_HUB, RECEIVER_HUB);
@@ -124,19 +100,18 @@ class DeliveryCreationServiceTest {
 
         assertThat(result.created()).isFalse();
         assertThat(result.delivery().deliveryId()).isEqualTo(existing.getId());
-        then(deliveryManagerReader).shouldHaveNoInteractions();
+        then(hubRouteReader).shouldHaveNoInteractions();
         then(deliveryRepository).should(never()).saveAndFlush(any());
+        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     @Test
-    @DisplayName("저장 시점에 order_id 유니크 위반(동시 요청)이면 먼저 저장된 배송을 돌려준다")
+    @DisplayName("저장 시점에 order_id 유니크 위반(동시 요청)이면 먼저 저장된 배송을 돌려주고 배정은 먼저 저장한 쪽에 맡긴다")
     void concurrentDuplicate() {
         Delivery winner = DeliveryFixture.twoRoutes();
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
         // 처음 조회, 저장 트랜잭션 안의 재조회는 비어 있고, 유니크 위반 뒤 새 조회에서 먼저 저장된 배송이 보인다
         given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty(), Optional.empty(), Optional.of(winner));
-        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
-        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.empty());
         given(deliveryRepository.saveAndFlush(any())).willThrow(new DataIntegrityViolationException("uk_p_deliveries_order_id"));
 
@@ -144,6 +119,7 @@ class DeliveryCreationServiceTest {
 
         assertThat(result.created()).isFalse();
         assertThat(result.delivery().deliveryId()).isEqualTo(winner.getId());
+        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     @Test
@@ -157,8 +133,9 @@ class DeliveryCreationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(DeliveryErrorCode.DELIVERY_CREATION_CLOSED);
         then(hubRouteReader).shouldHaveNoInteractions();
-        then(deliveryManagerReader).shouldHaveNoInteractions();
+        then(recipientReader).shouldHaveNoInteractions();
         then(deliveryRepository).should(never()).saveAndFlush(any());
+        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     @Test
@@ -166,8 +143,6 @@ class DeliveryCreationServiceTest {
     void closedWhileRemoteCallsRunning() {
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
         given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty());
-        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
-        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.empty());
         // 처음 확인은 없음, 잠금 안의 확인은 있음
         given(closureRepository.existsById(command.orderId())).willReturn(false, true);
@@ -177,6 +152,7 @@ class DeliveryCreationServiceTest {
                 .extracting("errorCode").isEqualTo(DeliveryErrorCode.DELIVERY_CREATION_CLOSED);
         then(closureRepository).should().lockOrder(command.orderId());
         then(deliveryRepository).should(never()).saveAndFlush(any());
+        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     private void givenNoExistingDelivery(CreateDeliveryCommand command) {

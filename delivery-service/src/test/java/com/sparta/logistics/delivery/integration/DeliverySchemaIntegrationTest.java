@@ -54,8 +54,8 @@ class DeliverySchemaIntegrationTest extends PostgresIntegrationTest {
     private void insertRoute(UUID deliveryId, int sequence, String routeType, String status) {
         jdbcTemplate.update("""
                 INSERT INTO p_delivery_routes (delivery_route_id, sequence, route_type, status, delivery_id, manager_id,
-                    created_at, created_by, updated_at, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, now(), 'test', now(), 'test')
-                """, UUID.randomUUID(), sequence, routeType, status, deliveryId, UUID.randomUUID());
+                    managing_hub_id, created_at, created_by, updated_at, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, now(), 'test', now(), 'test')
+                """, UUID.randomUUID(), sequence, routeType, status, deliveryId, UUID.randomUUID(), UUID.randomUUID());
     }
 }

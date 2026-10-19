@@ -22,7 +22,7 @@
 | D-04 | `POST /api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | MASTER | 구현 |  |
 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 현재 배송담당자인 그 구간 담당자, MASTER | 구현 | 지정 해제 후 배정 ID만 같아도 403. `status`에 `WAITING`·`CANCELED`를 보내면 409 `INVALID_STATUS_TRANSITION` |
 | (테스트) | `POST /api/v1/deliveries/load-test` | MASTER, 부하 테스트 전용 | 구현 | SA에 없음. 기본 꺼짐(`delivery.load-test.enabled`), 켜면 I-09와 같은 처리. 다른 서비스는 쓰지 않는다([load-test.md](../../../delivery-service/docs/load-test.md), 결정 로그 24) |
-| I-09 | `POST /internal/deliveries` | order | 구현 | 새로 만들면 201, 같은 orderId면 200 + 기존 값. 응답에 `orderId`도 담는다(SA는 deliveryId, status) |
+| I-09 | `POST /internal/deliveries` | order | 구현 | 새로 만들면 201, 같은 orderId면 200 + 기존 값. 응답에 `orderId`도 담는다(SA는 deliveryId, status). 구간 담당자는 생성 뒤 비동기로 배정하므로 응답 직후에는 비어 있고, 후보 0명이어도 404가 아니다(2026-10-19, 결정 로그 27) |
 | I-10 | `GET /internal/deliveries/{deliveryId}` | order | 구현 |  |
 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order | 구현 | 응답 `deliveryId, orderId, status`. 이미 취소면 200 |
 | I-12 | `POST /internal/deliveries/{deliveryId}/cancel-revert` | order | 구현 | 응답 `deliveryId, orderId, status`. 취소 상태가 아니면 no-op 200 |
@@ -40,7 +40,7 @@ I-09~I-13 구현 전 [주문 연동 실패 계약](../order/integration-contract
 |---|---|---|---|
 | I-01 `GET /internal/users/{userId}` | user | I-09 수령인 Slack ID(404나 user 장애면 NULL로 진행), D-04 재배정 대상 확인 | 연결 실패만 1번(`ConnectFailureRetryConfig`). read 2초, 벌크헤드·서킷 브레이커(결정 로그 26) |
 | I-03 `GET /internal/hub-routes?departureHubId=&arrivalHubId=` | hub | 허브 이동 구간 예상 거리·시간. 같은 허브면 부르지 않는다 | 연결 실패만 1번(`ConnectFailureRetryConfig`). read 2초 |
-| I-14 `GET /internal/users/delivery-managers?hubId=` | user | 담당자 자동 배정 후보. 구간 담당 허브마다 1번. user 장애면 503 | 연결 실패만 1번(`ConnectFailureRetryConfig`). read 2초, 벌크헤드·서킷 브레이커(결정 로그 26) |
+| I-14 `GET /internal/users/delivery-managers?hubId=` | user | 허브별 배정 작업의 후보. 배정 작업 한 번에 허브마다 1번. user 장애·후보 0명이면 구간이 대기로 남고 30초 주기 작업이 다시 시도 | 연결 실패만 1번(`ConnectFailureRetryConfig`). read 2초, 벌크헤드·서킷 브레이커(결정 로그 26) |
 
 delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 dev `df419a4`에는 user I-14·hub I-02가 반영됐고 hub I-03 Controller는 아직 없다. 실제 호출 검증은 허브 구현·데이터 준비 후 확인한다.
 
@@ -54,6 +54,7 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 - [x] 종료된 주문 생성 시도의 지연된 I-09 차단(종료 표시·orderId advisory lock)과 I-17 결과 조회, 실제 PostgreSQL 회귀 테스트 4개(이슈 #14, DELIVERY-002)
 - [x] 배송 변경 명령의 동시 실행 보호: 배송 행 비관적 잠금, 실제 PostgreSQL 회귀 테스트 5개(이슈 #11, DELIVERY-004)
 - [x] user 장애 격리: 내부 호출 타임아웃 2초, 연결 실패만 재시도, user 호출 벌크헤드·서킷 브레이커, 수령인 Slack ID 부분 저하(2026-10-19, 결정 로그 26)
+- [x] 구간 담당자 배정을 배송 생성에서 분리: 허브별 비동기 배치 배정(신호 합치기, try-lock, 30초 주기 작업), 담당자 없는 구간 출발 금지(2026-10-19, 결정 로그 27, T08). 마이그레이션 V3(구간 담당자 NULL 허용, `managing_hub_id`, `assigned_at`, 배정 대기 부분 인덱스)
 - [ ] Gateway 경유 호출 확인(user I-14, hub I-03 구현 후)
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.

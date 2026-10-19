@@ -66,7 +66,7 @@ flowchart LR
 | 400 | `MANAGER_HUB_MISMATCH` | 재배정 대상 소속 허브 ≠ 구간 담당 허브 |
 | 403 | `FORBIDDEN` | 담당 구간이 아님, MASTER 전용 |
 | 404 | `DELIVERY_NOT_FOUND` · `DELIVERY_ROUTE_NOT_FOUND` | 없음 / 다른 배송의 구간 |
-| 404 | `DELIVERY_MANAGER_NOT_FOUND` | 구간 담당 허브에 배송담당자 0명, 재배정 대상이 없거나 배송담당자 아님 |
+| 404 | `DELIVERY_MANAGER_NOT_FOUND` | 재배정 대상이 없거나 배송담당자 아님(D-04). I-09는 더 이상 쓰지 않는다(결정 로그 27) |
 | 409 | `INVALID_STATUS_TRANSITION` | 앞 구간 도착 전 출발, 도착·취소된 구간, 집하 시작 후 취소, 업체 배송 출발 후 배송지 수정 |
 | 503 | `SERVICE_UNAVAILABLE` | hub·user 호출 실패·타임아웃, user 서킷 브레이커·벌크헤드 거절 |
 
@@ -86,7 +86,7 @@ D-02·D-03·D-04·D-05가 돌려주는 객체. D-01은 `routes`를 뺀 것.
 | routes[].departureHubId · arrivalHubId | UUID | 집하는 출발 null, 업체 배송은 도착 null |
 | routes[].expectedDistanceKm · expectedDurationMinutes | Decimal · Integer | 허브 이동만 |
 | routes[].actualDistanceKm · actualDurationMinutes | Decimal · Integer | 도착 시 입력 |
-| routes[].status · managerId | String · UUID | `WAITING` `MOVING` `ARRIVED` `CANCELED` · 구간 담당자 |
+| routes[].status · managerId | String · UUID | `WAITING` `MOVING` `ARRIVED` `CANCELED` · 구간 담당자. **null이면 배정 대기**(배송 생성 직후 또는 후보 없음, 결정 로그 27) |
 | createdAt · updatedAt | DateTime | |
 
 ---
@@ -230,7 +230,7 @@ Content-Type: application/json
 | `LAST_MILE` | `OUT_FOR_DELIVERY` | `DELIVERED` |
 
 Response `200 OK`: 수정된 `DeliveryResponse` (구간 포함)
-Error: 400 `VALIDATION_ERROR` (허브 이동 도착 시 실제 값 누락) · 403 `FORBIDDEN` · 404 `DELIVERY_ROUTE_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (`status`에 `WAITING`·`CANCELED`를 보낸 경우 포함)
+Error: 400 `VALIDATION_ERROR` (허브 이동 도착 시 실제 값 누락) · 403 `FORBIDDEN` · 404 `DELIVERY_ROUTE_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (`status`에 `WAITING`·`CANCELED`를 보낸 경우, 담당자가 아직 없는 구간을 출발시킨 경우 포함)
 
 ---
 
@@ -238,7 +238,7 @@ Error: 400 `VALIDATION_ERROR` (허브 이동 도착 시 실제 값 누락) · 40
 
 `/internal/**`은 Gateway에 라우트가 없어 외부에서 부를 수 없다. SA 6.3에는 필드 목록만 있어 JSON 형식은 [제안].
 
-### I-09. 배송 생성 + 구간 담당자 자동 배정
+### I-09. 배송 생성 (구간 담당자는 생성 뒤 비동기 배정)
 `POST /internal/deliveries` · 호출: order (주문 생성 Saga ②) · 멱등키 `orderId`
 
 | Body | 타입 | 필수 | 설명 |
@@ -266,7 +266,9 @@ Response `201 Created`, 같은 `orderId` 재요청·동시 요청이면 `200 OK`
 ```json
 { "deliveryId": "f9c8a7b6-5e4d-4c3b-9b0a-0f9e8d7c6b54", "orderId": "e8b7f6a5-4d3c-4b2a-8a9f-9e8d7c6b5a43", "status": "PICKUP_WAITING" }
 ```
-Error: 404 `DELIVERY_MANAGER_NOT_FOUND` (저장 전 확인 → 남는 데이터 없음, order는 그대로 404) · 400 `VALIDATION_ERROR` · 503 `SERVICE_UNAVAILABLE` (I-03·I-14 실패 → order가 I-13 보상)
+Error: 400 `VALIDATION_ERROR` · 503 `SERVICE_UNAVAILABLE` (I-03 실패 → order가 I-13 보상)
+
+구간은 담당자 없이(`managerId` null) 저장되고, 저장이 커밋되면 구간 담당 허브의 배정 작업이 비동기로 담당자를 채운다(보통 1초 안, 늦어도 30초 주기 작업). 배송담당자 후보(I-14)는 I-09에서 부르지 않으므로 후보가 0명이어도 주문은 성공하고 구간은 배정 대기로 남는다. 예전 404 `DELIVERY_MANAGER_NOT_FOUND`는 없다(결정 로그 27).
 
 ### I-10. 배송 조회
 `GET /internal/deliveries/{deliveryId}` · 호출: order
@@ -321,7 +323,7 @@ I-09 Error에 409 `DELIVERY_CREATION_CLOSED`가 추가됐다.
 
 `GET /internal/deliveries/{deliveryId}/notification-recipients`, 호출자 order. [ADR 0016](../../../docs/decisions/0016-delivery-manager-slack-dm.md).
 
-Response `200 OK` — 감싸지 않은 `{deliveryId, orderId, status, managerIds: [UUID]}`다. WAITING·MOVING 구간의 담당자만 중복 제거해 제공한다. 완료·취소 배송이면 managerIds는 빈 배열이고, 없음·논리 삭제는 404 `DELIVERY_NOT_FOUND`다.
+Response `200 OK` — 감싸지 않은 `{deliveryId, orderId, status, managerIds: [UUID]}`다. WAITING·MOVING 구간의 담당자만 중복 제거해 제공한다. 배정 대기 구간(담당자 없음)은 빠진다. 완료·취소 배송이면 managerIds는 빈 배열이고, 없음·논리 삭제는 404 `DELIVERY_NOT_FOUND`다.
 I-10, 상태 전이, 담당자 배정 규칙은 유지한다. 알림용 이메일은 user I-16에서 조회하고 Slack 호출은 order가 맡는다. 조회 이후 재배정·취소까지 원자적으로 묶는 API는 아니다.
 
 ## 4. 사용 — 다른 서비스 API
@@ -382,12 +384,12 @@ Response `200 OK` — 배열 그대로 (래퍼 없음)
 ]
 ```
 - 조건(user 쪽): `is_delivery_manager = true AND hub_id = :hubId AND deleted_at IS NULL`
-- 없으면 **빈 배열** `[]` (404 아님) → 배송이 404 `DELIVERY_MANAGER_NOT_FOUND`로 바꿔 던진다
+- 없으면 **빈 배열** `[]` (404 아님) → 배정 작업이 구간을 대기로 두고 30초 주기 작업에서 다시 시도한다(MASTER D-04 수동 배정 가능)
 - [미정] 응답에 `name`이 없다 — 화면에 담당자 이름이 필요하면 추가 요청
 
 | 배송에서 쓰는 곳 | 처리 |
 |---|---|
-| I-09 구간별 후보 | 후보마다 담당 건수(`WAITING`·`MOVING` 구간 수)를 세고 최소인 사람, 동점이면 userId 순 |
+| 허브별 배정 작업 | 허브마다 한 번 부르고, 대기 구간을 모아 후보 담당 건수(`WAITING`·`MOVING` 구간 수)를 센 뒤 최소인 사람, 동점이면 userId 순으로 차례로 배정 |
 
 > 10/15 기준 user 미구현 → **user 담당**. delivery는 이 계약대로 `UserClient`를 만들어 두었다
 
@@ -399,17 +401,20 @@ Response `200 OK` — 배열 그대로 (래퍼 없음)
 order ──I-09──▶ delivery
                  1. orderId로 기존 배송 조회 → 있으면 바로 반환 (멱등)
                  2. 같은 허브?  아니면  I-03 (공급업체 허브 → 요청업체 허브)   ─▶ hub
-                 3. 구간 담당 허브 목록 = {공급업체 허브, 요청업체 허브} (같으면 1개)
-                    허브마다       I-14 (후보 목록)                         ─▶ user
-                    후보 0명인 허브가 하나라도 → 404 DELIVERY_MANAGER_NOT_FOUND
-                 4. I-01 (receiverManagerId → 수령인 Slack ID, user 장애면 NULL) ─▶ user
-                 5. 구간별 담당자 선택 (담당 건수 최소, 동점 userId)
-                 6. 배송 + 구간 2~3개 저장 (한 로컬 트랜잭션)
-                 7. 201 { deliveryId, status: PICKUP_WAITING }
+                 3. I-01 (receiverManagerId → 수령인 Slack ID, user 장애면 NULL) ─▶ user
+                 4. 배송 + 구간 2~3개 저장, 구간 담당자는 비어 있음 (한 로컬 트랜잭션)
+                 5. 201 { deliveryId, status: PICKUP_WAITING }
+                 6. 커밋 뒤 구간 담당 허브의 배정 작업을 깨움 (비동기, 응답을 기다리지 않음)
+
+배정 작업 (허브마다 한 번에 하나, 결정 로그 27)
+                 a. I-14 (허브의 배송담당자 후보)                            ─▶ user
+                    후보 0명 → 대기로 둠. 30초 주기 작업이 다시 시도, MASTER D-04 수동 배정 가능
+                 b. 허브 잠금 시도(기다리지 않음). 못 잡으면 다른 작업이 처리 중 → 끝
+                 c. 대기 구간이 있는 배송을 오래된 순으로 잠금(SKIP LOCKED) → 담당 건수 한 번 → 차례로 배정 → 커밋
 ```
 | 단계 | 실패 | 배송이 돌려주는 것 | order가 하는 것 (SA 7.1) |
 |---|---|---|---|
-| 2 · 3 | 5xx·타임아웃·서킷/벌크헤드 거절 | 503 `SERVICE_UNAVAILABLE` | I-13 보상 후 503 |
-| 4 | user 장애 | 실패하지 않는다. Slack ID 없이 저장 | 없음 |
-| 3 | 후보 0명 | 404 `DELIVERY_MANAGER_NOT_FOUND` | 보상 없이 404 (저장된 것 없음) |
-| 6 | DB 오류 | 500 | I-13 보상 후 503 |
+| 2 | 5xx·타임아웃·서킷/벌크헤드 거절 | 503 `SERVICE_UNAVAILABLE` | I-13 보상 후 503 |
+| 3 | user 장애 | 실패하지 않는다. Slack ID 없이 저장 | 없음 |
+| 4 | DB 오류 | 500 | I-13 보상 후 503 |
+| a | user 장애 | 배송은 이미 성공. 구간이 대기로 남고 주기 작업이 다시 시도 | 없음 |

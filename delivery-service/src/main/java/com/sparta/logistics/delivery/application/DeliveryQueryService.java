@@ -15,6 +15,7 @@ import com.sparta.logistics.delivery.application.dto.DeliverySummaryResult;
 import com.sparta.logistics.delivery.domain.DeliveryCreationClosureRepository;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -72,7 +73,8 @@ public class DeliveryQueryService {
                 ? List.of()
                 : deliveryQueryRepository.findRoutes(deliveryId).stream()
                     .filter(route -> route.status() == RouteStatus.WAITING || route.status() == RouteStatus.MOVING)
-                    .map(DeliveryRouteResult::managerId).distinct().toList();
+                    // 배정 대기 구간(담당자 없음)은 알릴 사람이 없다(결정 로그 27)
+                    .map(DeliveryRouteResult::managerId).filter(Objects::nonNull).distinct().toList();
         return new DeliveryNotificationRecipientsResult(status.deliveryId(), status.orderId(), status.status(), managers);
     }
 
