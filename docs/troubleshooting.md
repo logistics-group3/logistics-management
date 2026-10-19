@@ -200,3 +200,19 @@
 - 추가 영향: 기존 개발 Webhook이 앱 목록에서 사라지고 404 no_service를 반환했다. 폐기 직전 상태를 확인하지 않아 정확한 무효화 시점은 미확인이다. 사용자 승인 후 같은 채널의 새 URL 한 줄만 `.env`에 반영하고 기존 이미지의 주문 컨테이너만 재생성했다. 나머지 8개 컨테이너·DB는 유지했다.
 - 확인: 새 Bot 인증·조회 정상, 새 Webhook은 메시지 없는 GET에 400 invalid_payload, 두 주문 서버 health UP. 추가 메시지는 보내지 않았다. 증거와 제한은 [검증 기록](reviews/slack-dm.md)에 있다.
 - 배운 점: 자격 증명이 보이는 페이지는 일부 영역이라도 캡처하지 않는다. 비밀값이 없는 별도 화면에서만 캡처하고 실제 이미지의 범위를 확인한 뒤 공유한다.
+
+### TS-022 지정 해제된 배송담당자가 기존 배송을 변경함
+
+- 서비스·작성: delivery / Junhyun An 작업 / 2026-10-19
+- 문제: deliveryManager=false이고 기존 managerId와 ID가 같은 USER의 D-03·D-05 요청이 허용됐다. 거절 회귀 테스트는 단위·HTTP 4건, 프런트 2건이 실패했다.
+- 원인: 현재 자격을 검사하지 않고 배정 ID 일치 또는 MASTER만 확인했다.
+- 해결: DeliveryService.validateAssignedManager가 MASTER 또는 현재 배송담당자인 해당 구간 담당자만 허용한다. 프런트 nextRouteAction도 같은 조건으로 맞췄다.
+- 확인: 배송 61개·프런트 단위 48개 통과. 거절 후 값 보존과 MASTER false 허용을 검증했다. 실제 Gateway·기존 JWT·캐시 만료 뒤 403·MASTER 재배정 회귀도 단독 실행 통과했다. 상세 범위는 [T07](../delivery-service/docs/tasks/T07.md)이다.
+
+### TS-023 /users/me로 Gateway 권한 캐시 만료를 잘못 판단함
+
+- 서비스·작성: frontend E2E / Junhyun An 작업 / 2026-10-19
+- 문제: 해제 후 /users/me가 false여서 곧바로 배송 API의 403을 기대했으나 200이었다. 첫 전체 E2E는 기존 18개 통과·신규 1개 실패였다.
+- 원인: /users/me는 user-service의 최신 DB 값을 응답한다. Gateway의 로컬 캐시가 주입하는 자격은 아직 true일 수 있다.
+- 해결: 실제 배송 상태 API에 금지된 WAITING 전이를 보낸다. 배정과 자격이 유효하면 상태 검사에서 409, 해제가 Gateway에 반영되면 인가에서 403이다. 데이터를 바꾸지 않고 실제 60초 TTL 반영을 기다린다. 원상 복구도 같은 방식으로 확인한다. UI 버튼 부재는 구간 데이터 로딩 후 검사한다.
+- 확인: 수정한 Gateway 회귀 단독 실행 1개 통과(약 2.1분). 제품 TTL·캐시 검사는 변경하지 않았다.

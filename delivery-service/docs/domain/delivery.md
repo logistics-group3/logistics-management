@@ -287,7 +287,7 @@ sequenceDiagram
 
     M->>G: PATCH /api/v1/deliveries/{id}/routes/{routeId}/status {ARRIVED, 실제 거리·시간}
     G->>D: + X-User-Id / X-User-Role / X-Delivery-Manager
-    D->>D: 구간 담당자 본인 또는 MASTER인가 (아니면 403)
+    D->>D: 현재 배송담당자이면서 구간 담당자 본인 또는 MASTER인가 (아니면 403)
     D->>D: delivery.arriveRoute(routeId, actual) — 순번·전이 검사 (아니면 409), 배송 상태 재계산
     D-->>M: 200 DeliveryResponse (배송 DEST_HUB_ARRIVED, 구간 ARRIVED)
 ```
@@ -320,9 +320,9 @@ sequenceDiagram
 |---|---|---|---|
 | 제공·외부 | D-01 | `GET /api/v1/deliveries` | 로그인 (배송담당자는 본인 담당만) |
 | 제공·외부 | D-02 | `GET /api/v1/deliveries/{deliveryId}` | 〃 |
-| 제공·외부 | D-03 | `PATCH /api/v1/deliveries/{deliveryId}` (배송지·수령인) | 업체 배송 구간 담당자, MASTER |
+| 제공·외부 | D-03 | `PATCH /api/v1/deliveries/{deliveryId}` (배송지·수령인) | 현재 배송담당자인 업체 배송 구간 담당자, MASTER |
 | 제공·외부 | D-04 | `POST /api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | MASTER |
-| 제공·외부 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 구간 담당자, MASTER |
+| 제공·외부 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 현재 배송담당자인 구간 담당자, MASTER |
 | 제공·내부 | I-09 | `POST /internal/deliveries` | order |
 | 제공·내부 | I-10 | `GET /internal/deliveries/{deliveryId}` | order |
 | 제공·내부 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order |
@@ -404,7 +404,7 @@ erDiagram
 
 ## 8. 권한 정리 [SA] (SA 8.4)
 
-배송담당자 여부는 `X-Delivery-Manager` 헤더(`UserContext.isDeliveryManager()`), **어느 구간의 담당인지**는 `p_delivery_routes.manager_id`로 판단한다.
+배송담당자 여부는 `X-Delivery-Manager` 헤더(`UserContext.deliveryManager()`), **어느 구간의 담당인지**는 `p_delivery_routes.manager_id`로 판단한다.
 
 | 행위 | MASTER | 배송담당자 | 일반 USER | order (내부) |
 |---|---|---|---|---|
@@ -414,7 +414,9 @@ erDiagram
 | 구간 상태 변경 (D-05) | 가능 | 그 구간 담당자 본인 | - | - |
 | 생성·조회·취소·원복·삭제 (I-09~13) | - | - | - | 가능 |
 
-구현: MASTER 전용은 `@RequireRole`, "본인 구간인가"는 application에서 `route.managerId == user.userId || user.isMaster()`.
+구현: MASTER 전용은 `@RequireRole`, D-03·D-05는 application에서 `user.isMaster() || (user.deliveryManager() && user.isSelf(managerId))`를 확인한다. D-03의 managerId는 마지막 구간, D-05는 요청한 구간이다.
+
+지정 해제 후 배정 ID가 남아도 현재 자격이 false면 403이다. 현재 자격은 Gateway의 60초 캐시를 거치므로 해제 직후 즉시 차단을 보장하지 않는다. 남은 구간은 MASTER가 D-04로 현재 배송담당자에게 수동 인계한다. 상세 범위는 [DELIVERY-007](../../../docs/services/delivery/README.md#delivery-007-배송담당자-지정-해제-시-진행-중-구간-처리)을 따른다.
 
 ---
 

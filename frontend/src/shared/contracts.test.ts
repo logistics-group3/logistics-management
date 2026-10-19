@@ -61,7 +61,7 @@ describe('미완료 주문 보존', () => {
     expect(creationFailure(new ApiError(400, 'VALIDATION_ERROR', ''))).toBe('edit'))
 })
 describe('배송 구간 액션', () => {
-  const user = { userId: 'driver', role: 'USER' } as User
+  const user = { userId: 'driver', role: 'USER', isDeliveryManager: true } as User
   const first = {
     sequence: 1,
     status: 'WAITING',
@@ -84,10 +84,22 @@ describe('배송 구간 액션', () => {
   })
   it('담당자 외 USER에게 변경 액션을 주지 않는다', () =>
     expect(nextRouteAction(delivery, first, { ...user, userId: 'other' })).toBeNull())
+  it.each(['WAITING', 'MOVING'] as const)(
+    '지정 해제된 담당자에게 %s 구간의 출발·도착 액션을 주지 않는다',
+    (status) =>
+      expect(
+        nextRouteAction(delivery, { ...first, status }, { ...user, isDeliveryManager: false }),
+      ).toBeNull(),
+  )
   it('MASTER는 담당자가 아니어도 처리할 수 있다', () =>
-    expect(nextRouteAction(delivery, first, { ...user, role: 'MASTER', userId: 'admin' })).toBe(
-      'MOVING',
-    ))
+    expect(
+      nextRouteAction(delivery, first, {
+        ...user,
+        role: 'MASTER',
+        userId: 'admin',
+        isDeliveryManager: false,
+      }),
+    ).toBe('MOVING'))
   it('취소된 배송과 완료된 배송은 변경할 수 없다', () => {
     expect(nextRouteAction({ ...delivery, status: 'CANCELED' }, first, user)).toBeNull()
     expect(nextRouteAction({ ...delivery, status: 'DELIVERED' }, first, user)).toBeNull()

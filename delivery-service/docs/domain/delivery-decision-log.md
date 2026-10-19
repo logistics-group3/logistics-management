@@ -28,6 +28,7 @@
 | 17 | 조회와 명령 저장소 분리 | 조회는 QueryDSL `@QueryProjection` DTO를 바로 반환(Result로 다시 감싸지 않음), 명령은 JPA로 Entity. 조회 DTO가 application에 있어 팀 레이어 규칙과 다름 |
 | 18 | 1:1 복사 Response 없애기 | Result 하나면 그대로 응답, 여러 Result를 합칠 때만 `Response`(`DeliveryResponse`). delivery만의 코드 규칙으로 `delivery-service/AGENTS.md`에 둠 |
 | 19 | 주문 DM용 수신자 조회 | I-15로 활성 구간 담당자만 제공. 로컬 구현·담당자 리뷰 대기(ADR 0016) |
+| 20 | 배송담당자 지정 해제 후 변경 권한 | D-03·D-05는 현재 자격과 구간 배정을 함께 검사한다. #13 사용자 확인 범위의 로컬 수정이다. |
 
 ---
 
@@ -245,6 +246,14 @@ SA에 같은 용도의 내부 API가 이미 있으면 그 이름을 따른다.
 **어떻게** — 기존 I-10에 필드를 섞는 대신 I-15를 추가했다. 기존 상태·구간 조회를 재사용해 WAITING·MOVING 담당자 ID를 중복 제거한다. 완료·취소 배송은 빈 배열, 없음·삭제는 404다. 이메일과 Slack 호출은 user·order가 맡는다.
 
 **결론** — [ADR 0016](../../../docs/decisions/0016-delivery-manager-slack-dm.md)의 로컬 확장으로 구현했다. 39개 delivery 테스트와 같은 허브 실제 주문의 DM 1건을 확인했다. DELIVERY-003은 담당자 리뷰 대기이며, 발송 직전 재배정·취소와의 원자성을 추가한 것은 아니다. 작업은 [T06](../tasks/T06.md)에 있다.
+
+## 20. 배송담당자 지정 해제 후 변경 권한 (2026-10-19)
+
+**왜** — 현재 자격이 false여도 배정 ID만 일치하면 출발·도착·수령 정보 수정이 허용됐다. 단위·PostgreSQL HTTP 회귀 테스트에서 이 요청들이 거절되지 않는 것을 먼저 확인했다.
+
+**어떻게** — 사용자가 #13 상세 계획을 읽고 구현을 요청했다. DeliveryService의 두 변경 경로가 `validateAssignedManager`를 사용하고, MASTER 또는 현재 배송담당자인 해당 구간 담당자만 허용한다. 프런트 nextRouteAction도 같은 조건을 사용한다. UserContext에 값이 있으므로 원격 호출·스키마 변경은 추가하지 않는다.
+
+**결론** — 이 사용자 확인 범위로 로컬 구현한다. Gateway 60초 캐시 지연과 MASTER 수동 인계를 유지한다. 자동 재배정·해제 자체 차단·일반 USER 조회 제한은 별도 정책이다. 팀 전체 승인·병합 완료를 뜻하지 않는다. 기록은 [T07](../tasks/T07.md)이다.
 
 ## 남은 일
 
