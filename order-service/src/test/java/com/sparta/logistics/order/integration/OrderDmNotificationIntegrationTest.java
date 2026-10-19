@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.common.support.PostgresIntegrationTest;
@@ -15,6 +16,7 @@ import com.sparta.logistics.order.application.dto.CompanyResult;
 import com.sparta.logistics.order.application.dto.ProductResult;
 import com.sparta.logistics.order.application.event.OrderCreatedEvent;
 import com.sparta.logistics.order.application.notification.NotificationDirectory;
+import com.sparta.logistics.order.support.DirectCreationExecutorConfig;
 import com.sparta.logistics.order.support.HttpStubServer;
 import com.sparta.logistics.order.support.HttpStubServer.Reply;
 import java.time.Duration;
@@ -33,6 +35,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -50,6 +53,7 @@ import org.springframework.transaction.support.TransactionTemplate;
         "slack.dm.enabled=true", "slack.dm.bot-token=ui-test-dm-secret", "slack.dm.workspace-id=TTEST", "slack.webhook-url="
 })
 @ExtendWith(OutputCaptureExtension.class)
+@Import(DirectCreationExecutorConfig.class)
 class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
     private static final HttpStubServer SLACK = new HttpStubServer();
     @DynamicPropertySource static void properties(DynamicPropertyRegistry registry) { registry.add("slack.dm.api-base-url", SLACK::url); }
@@ -86,7 +90,7 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
     }
     @AfterEach void finish() { awaitIdle(); }
 
-    @Test @DisplayName("DM은 DB 커밋 후 별도 스레드에서 실행되며 발송 응답 전에도 주문 201을 돌려준다")
+    @Test @DisplayName("DM은 DB 커밋 후 별도 스레드에서 실행되며 발송 응답 전에도 주문 접수 202를 돌려준다")
     void sendsAfterCommitWithoutBlocking() throws Exception {
         CountDownLatch entered = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
@@ -112,7 +116,9 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
     void replayDoesNotNotifyAgain() throws Exception {
         String key = UUID.randomUUID().toString();
         UUID first = created(create(key));
-        assertThat(created(create(key))).isEqualTo(first);
+        ResponseEntity<String> replay = create(key);
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(mapper.readTree(replay.getBody()).path("data").path("orderId").asText()).isEqualTo(first.toString());
         awaitIdle();
         assertThat(SLACK.requests("POST", "/chat.postMessage")).hasSize(1);
         verify(directory, times(1)).findTargets(deliveryId);
@@ -146,8 +152,17 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
         return http.postForEntity("/api/v1/orders", new HttpEntity<>(Map.of("supplierCompanyId", supplier.companyId(), "receiverCompanyId", receiver.companyId(), "productId", product.productId(), "quantity", 1, "requestNote", "<!channel> 테스트"), headers), String.class);
     }
     private UUID created(ResponseEntity<String> response) throws Exception {
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(mapper.readTree(response.getBody()).path("data").path("status").asText()).isEqualTo("PROCESSING");
         UUID id = UUID.fromString(mapper.readTree(response.getBody()).path("data").path("orderId").asText());
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(UserHeaders.USER_ID, userId.toString()); headers.set(UserHeaders.USERNAME, "dmuser");
+        headers.set(UserHeaders.ROLE, "USER"); headers.set(UserHeaders.DELIVERY_MANAGER, "false");
+        ResponseEntity<String> progress = http.exchange("/api/v1/orders/creations/" + id, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+        assertThat(progress.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode result = mapper.readTree(progress.getBody()).path("data");
+        assertThat(result.path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(result.path("order").path("orderId").asText()).isEqualTo(id.toString());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id=?", Integer.class, id)).isEqualTo(1);
         return id;
     }

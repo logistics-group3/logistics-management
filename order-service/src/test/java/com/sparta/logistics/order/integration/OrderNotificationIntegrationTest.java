@@ -15,6 +15,7 @@ import com.sparta.logistics.order.application.CompanyReader;
 import com.sparta.logistics.order.application.DeliveryGateway;
 import com.sparta.logistics.order.application.dto.CompanyResult;
 import com.sparta.logistics.order.application.dto.ProductResult;
+import com.sparta.logistics.order.support.DirectCreationExecutorConfig;
 import com.sparta.logistics.order.support.HttpStubServer;
 import com.sparta.logistics.order.support.HttpStubServer.Reply;
 import java.time.Duration;
@@ -37,8 +38,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -60,6 +63,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
         "slack.connect-timeout=1s", "slack.read-timeout=2s"
 })
 @ExtendWith(OutputCaptureExtension.class)
+@Import(DirectCreationExecutorConfig.class)
 class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
 
     private static final HttpStubServer SLACK = new HttpStubServer();
@@ -114,7 +118,7 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @DisplayName("별도 연결에서 커밋된 주문을 확인하고 Slack 응답 전에도 주문은 201을 반환한다")
+    @DisplayName("별도 연결에서 커밋된 주문을 확인하고 Slack 응답 전에도 주문 접수는 202를 반환하고 진행 조회는 완료로 답한다")
     void sendsCommittedSnapshotWithoutBlockingResponse() throws Exception {
         CountDownLatch webhookEntered = new CountDownLatch(1);
         CountDownLatch releaseWebhook = new CountDownLatch(1);
@@ -134,7 +138,7 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
         });
 
         try {
-            UUID orderId = assertCreated(create());
+            UUID orderId = assertAccepted(create());
             assertThat(webhookEntered.await(3, TimeUnit.SECONDS)).isTrue();
             assertThat(committedRows.get()).isEqualTo(1);
             // Slack 응답을 아직 열지 않았고 작업 스레드는 전송 중인데, 주문 HTTP 응답은 이미 받았다.
@@ -160,11 +164,11 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(ints = {400, 429, 500})
-    @DisplayName("Slack 오류는 주문 201을 유지하고 재시도·배송 보상 없이 비밀값을 제외해 기록한다")
+    @DisplayName("Slack 오류에도 주문 완료를 유지하고 재시도·배송 보상 없이 비밀값을 제외해 기록한다")
     void keepsOrderWhenWebhookFails(int status, CapturedOutput output) throws Exception {
         SLACK.reset(request -> Reply.json(status, "error: " + SLACK.url() + WEBHOOK_PATH));
 
-        UUID orderId = assertCreated(create());
+        UUID orderId = assertAccepted(create());
         awaitIdle();
 
         assertThat(SLACK.requests("POST", WEBHOOK_PATH)).hasSize(1);
@@ -173,11 +177,11 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @DisplayName("Slack 타임아웃에도 주문은 성공하고 Webhook URL을 로그에 남기거나 재시도하지 않는다")
+    @DisplayName("Slack 타임아웃에도 주문은 완료되고 Webhook URL을 로그에 남기거나 재시도하지 않는다")
     void keepsOrderWhenWebhookTimesOut(CapturedOutput output) throws Exception {
         SLACK.reset(request -> Reply.json(200, "ok").delayed(3000));
 
-        UUID orderId = assertCreated(create());
+        UUID orderId = assertAccepted(create());
         awaitIdle();
 
         assertThat(SLACK.requests("POST", WEBHOOK_PATH)).hasSize(1);
@@ -186,7 +190,7 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @DisplayName("알림 스레드와 큐가 포화되어도 주문은 커밋되고 201을 반환하며 배송을 보상하지 않는다")
+    @DisplayName("알림 스레드와 큐가 포화되어도 주문은 커밋되어 접수 202와 완료 조회를 유지하며 배송을 보상하지 않는다")
     void keepsOrderWhenExecutorRejectsNotification(CapturedOutput output) throws Exception {
         CountDownLatch workersStarted = new CountDownLatch(executor.getMaxPoolSize());
         CountDownLatch releaseWorkers = new CountDownLatch(1);
@@ -207,7 +211,7 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
                 executor.execute(() -> { });
             }
 
-            UUID orderId = assertCreated(create());
+            UUID orderId = assertAccepted(create());
 
             assertThat(SLACK.requests("POST", WEBHOOK_PATH)).isEmpty();
             assertThat(output.getAll()).contains(orderId.toString(), "status=NOTIFICATION_SUBMISSION_FAILED",
@@ -230,9 +234,23 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
                 "productId", product.productId(), "quantity", 50, "requestNote", "<!channel> 오전 도착 희망"), headers), String.class);
     }
 
-    private UUID assertCreated(ResponseEntity<String> response) throws Exception {
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        UUID orderId = UUID.fromString(mapper.readTree(response.getBody()).path("data").path("orderId").asText());
+    private UUID assertAccepted(ResponseEntity<String> response) throws Exception {
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        JsonNode data = mapper.readTree(response.getBody()).path("data");
+        assertThat(data.path("status").asText()).isEqualTo("PROCESSING");
+        UUID orderId = UUID.fromString(data.path("orderId").asText());
+        // 처리 단계가 요청 스레드에서 끝나므로 접수 응답 시점에 진행 조회는 COMPLETED여야 한다.
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(UserHeaders.USER_ID, userId.toString());
+        headers.set(UserHeaders.USERNAME, "junhyun");
+        headers.set(UserHeaders.ROLE, "USER");
+        headers.set(UserHeaders.DELIVERY_MANAGER, "false");
+        ResponseEntity<String> progress = http.exchange("/api/v1/orders/creations/" + orderId, HttpMethod.GET,
+                new HttpEntity<>(headers), String.class);
+        assertThat(progress.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode result = mapper.readTree(progress.getBody()).path("data");
+        assertThat(result.path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(result.path("order").path("orderId").asText()).isEqualTo(orderId.toString());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id = ?",
                 Integer.class, orderId)).isEqualTo(1);
         verify(deliveryGateway, never()).deleteByOrderId(any());
