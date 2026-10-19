@@ -52,11 +52,10 @@ I-09·I-13은 orderId 기준, I-11·I-12는 deliveryId 기준이다. 재시도�
 ### 생성에서 주의할 순서 역전
 
 `I-09 처리 중 → 주문에서 타임아웃 → I-13이 없음으로 204 → 지연된 I-09 생성 완료` 순서가 가능하다.
-따라서 주문은 SA 7.1의 I-13 보상을 시도하되, I-09 결과가 불확실하면 삭제 성공 후에도 RECOVERY_REQUIRED를 유지한다.
-I-13의 204만으로 지연 I-09가 끝났다고 판단하지 않는다.
+따라서 주문은 SA 7.1의 I-13 보상을 시도한다. I-13의 204만으로는 지연 I-09가 끝났다고 판단하지 않고, 아래 I-17이 `CLOSED`로 확인될 때만 시도를 닫는다. 확인하지 못하면 RECOVERY_REQUIRED를 유지한다.
 
 delivery는 이슈 #14로 이 순서 역전을 막는다. I-13이 대상이 없어도 같은 orderId의 **종료 표시**를 남기고, 이후 I-09는 409 `DELIVERY_CREATION_CLOSED`로 거절된다. 주문은 이 4xx를 다른 4xx와 같게 처리한다(ABORTED, 보상 없음). order는 시도마다 orderId를 새로 만들므로 orderId가 시도 식별자이고 별도 토큰은 없다.
-배송 ID를 받지 못한 시도의 결과는 I-17(`GET /internal/deliveries/orders/{orderId}`)로 확인한다. `CLOSED`면 더는 생성되지 않는다고 판단할 수 있고, `NONE`이면 원래 I-09가 실행 중일 수 있어 종료로 단정하지 않는다. 주문의 기존 RECOVERY_REQUIRED 처리와 운영 복구 절차는 이번 변경으로 자동화하지 않았다. 계약의 상세는 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 있다. 팀 리뷰가 남아 있다.
+배송 ID를 받지 못한 시도의 결과는 I-17(`GET /internal/deliveries/orders/{orderId}`)로 확인한다. `CLOSED`면 더는 생성되지 않는다고 판단할 수 있고, `NONE`이면 원래 I-09가 실행 중일 수 있어 종료로 단정하지 않는다. order는 I-09 결과를 모르는 시도에서 I-13 보상이 성공하고 I-17이 `CLOSED`이면 시도를 ABORTED(`SERVICE_UNAVAILABLE`)로 닫는다. `ACTIVE`·`NONE`·I-17 실패·보상 실패는 RECOVERY_REQUIRED를 유지한다([ADR 0011](decisions/0011-order-creation-auto-abort-on-closure.md)). 이미 남은 RECOVERY_REQUIRED 기록의 운영 복구 절차는 자동화하지 않았다. 계약의 상세는 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 있다. 팀 리뷰가 남아 있다.
 
 ## 주문이 보관하는 진행 기록
 
