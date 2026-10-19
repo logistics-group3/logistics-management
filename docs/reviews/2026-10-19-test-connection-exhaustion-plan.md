@@ -51,8 +51,10 @@
 
 | 구분 | 최대 연결 | 결과 |
 |---|---|---|
-| 캐시 상한 없음(풀 상한도 없음) | 91 (idle) | BUILD FAILED (`too many clients already`) |
-| 캐시 상한 8 | 72 (idle) | BUILD SUCCESSFUL, order 463개 통과 |
+| 캐시 상한 없음(풀 상한도 없음) | 91, 96 (idle, 2회) | BUILD FAILED (`too many clients already`) |
+| 캐시 상한 8 | 72, 80 (idle, 2회) | BUILD SUCCESSFUL, order 463개 통과 |
+
+실행마다 컨텍스트 생성 시점이 달라 최대치가 조금씩 다르다. 도구는 연결이 바뀔 때마다 막대그래프 한 줄(막대 1칸 = 연결 2개, `|` = 일반 연결 한도 97)을 출력한다.
 
 연결은 컨텍스트가 새로 생길 때마다 약 10개씩 idle로 늘었다(10 → 20 → … → 70). 이것이 "컨텍스트마다 풀이 연결을 쥔다"는 직접 증거다.
 
