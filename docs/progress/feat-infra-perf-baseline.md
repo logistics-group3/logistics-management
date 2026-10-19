@@ -22,14 +22,20 @@
 - [x] ADR 0019(Redis 캐시를 기본 꺼짐으로 넣고 측정으로 채택을 정한다) 제안
 - [x] 기준선 A1(S1), BC0(S2·S3) 각 3회(예열 회차 추가 절차, 2026-10-20). A1 p95 4.8~5.3ms·권한 반영 약 60.2초, BC0-S2 p95 14.9~18.4ms, BC0-S3 p95 4.0~4.1ms
 - [ ] 기준선 A0(S1) 3회: 메모리 부족으로 측정 묶음이 중단돼 r1만 있다(`.local/perf/a0-incomplete/`). 다시 재야 한다
-- [ ] 개발·측정: A2 → B1-local·B1-redis → C1 (기능 코드는 `git stash`의 `cache-features`에 보관 중)
+- [x] 개발 커밋(2026-10-20): A2 `f3397e6`(gateway·user·common-core), B1 `3a5af81`(hub), C1 `a58e3f1`(company). 모듈 테스트 common-core 2·gateway 31·user 91·hub 66·company 54 통과, `./gradlew build` 성공(2분 49초)
+- [ ] 측정: A0 재측정, A2, B1-local·B1-redis, C1. 메모리 부족(남은 메모리 약 1GB / 15.8GB)으로 측정 묶음이 중단돼 멈췄다. 메모리 압박 중 측정은 스왑이 섞여 비교 자료가 되지 않는다
 - [ ] 기준선 측정: A0, A1(S1), BC0(S2, S3) 각 3회
 - 면접 포인트: 성능 개선을 어떻게 증명했나(기준선, 하나씩 변경, 3회 중앙값과 편차), 왜 고정 도착률로 부하를 줬나
 
 ## 다음 단계
-1. 가이드의 "목표 RPS 정하기" 절차로 S1, S2, S3의 RATE를 정하고 `docs/reviews/performance/README.md`에 적는다
-2. 기준선을 3회씩 측정한다: A0(`PERF_AUTH_CACHE_TTL=0s`), A1(60s)은 S1, BC0은 S2·S3. 조건마다 `down` 후 `up`, S2는 회차마다 `clean`
-3. Redis 도입 ADR 초안과 `docker-compose.yml` 변경안을 팀 리뷰에 올린다
+1. 다른 프로그램(IDE, 브라우저, 개발용 `redis-stack-compose` 등)을 끄고 남은 메모리를 확보한다
+2. 측정 묶음 스크립트 `.local/perf/batch-measure.sh`(Git 제외)로 남은 조건을 잰다. 조건마다 down→up→예열 3분(버림)→5분×3회
+   - A0: `PERF_AUTH_CACHE_TTL=0s`, S1 150/s (`.local/perf/batch-redo-a0.sh`는 앞 묶음 PID를 기다리는 형태라 인자 없이 쓰려면 고쳐야 한다)
+   - A2: `.local/perf/batch-measure.sh a2` (PERF_AUTH_CACHE=redis)
+   - B1: `.local/perf/batch-measure.sh b1` (local과 redis 각각 S2 60/s, S3 200/s)
+   - C1: `B1_CHOICE=<local|redis> .local/perf/batch-measure.sh c1` (B1에서 나은 쪽을 켠 상태)
+3. 조건별 측정이 끝날 때마다 `docs/reviews/performance/` 결과를 측정 커밋으로 남긴다
+4. ADR 0019 "후속 결정"에 항목별 채택·기각을 적고, 채택 항목은 `docker-compose.yml`·`.env.example` 변경안을 팀 리뷰에 올린다
 
 ## 직접 해보기
 1. `script/perf.sh up` 실행. 확인: 마지막 줄에 `준비 완료: http://127.0.0.1:28080`
