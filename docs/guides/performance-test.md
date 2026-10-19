@@ -44,6 +44,9 @@ script/perf.sh seed    # .local/perf/data.json 저장. 다시 실행해도 있�
 # 조건에 맞게 띄운다. TTL을 바꾸면 up을 다시 실행해야 반영된다. JIT 상태를 맞추려면 down 후 up 한다
 script/perf.sh down && PERF_AUTH_CACHE_TTL=60s script/perf.sh up
 
+# 예열 회차(버림). 새로 띄운 직후 첫 회차는 JIT·커넥션 풀 준비 비용 때문에 크게 나빠 비교에서 뺀다
+RATE=60 DURATION=3m WARMUP=30s PUBLISH=0 PROBE_ROUNDS=0 script/perf.sh run s2 warm-BC0-s2
+
 # S2는 주문·배송이 쌓이므로 회차마다 비운다(사용자·업체·상품은 남는다)
 script/perf.sh clean
 
@@ -59,6 +62,7 @@ RATE=10 DURATION=5m WARMUP=1m script/perf.sh run s2 BC0-s2-r1
 3. 한계의 50~70%를 그 시나리오의 RATE로 고정한다. 같은 시나리오의 모든 조건을 이 RATE로 잰다.
 
 ## 주의
+- 측정 환경 전체가 메모리를 많이 쓴다(컨테이너 합계 약 3GB, Docker Desktop VM 8GB). 2026-10-20 16GB PC에서 다른 프로그램과 함께 돌리다 메모리 부족으로 측정이 중단됐다.
 - 측정 중에는 다른 프로그램을 끈다. k6도 같은 PC의 CPU를 쓰므로 1 CPU로 제한해 실행한다.
 - Prometheus 수집 주기는 15초다. 호출 횟수는 근사값이고, 본 측정은 5분 이상 돌린다.
 - S1 권한 변경 측정은 측정용 사용자(`pp00~pp02`)의 role을 MASTER로 바꿨다가 USER로 되돌린다. 부하 대상 사용자와 섞이지 않는다. 본 측정 시작 1분 뒤에 시작하고 본 측정이 끝나기 전에 마친다. 그래서 `DURATION`이 3m보다 짧으면 측정하지 않는다(5m이면 TTL 60s에서 2회).
