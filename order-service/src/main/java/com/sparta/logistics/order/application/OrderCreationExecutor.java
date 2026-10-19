@@ -25,11 +25,14 @@ public class OrderCreationExecutor {
 
     private final Executor executor;
     private final ThreadPoolExecutor pool;
+    private final boolean shedBeforeAccept;
 
     @Autowired
     public OrderCreationExecutor(
             @Value("${order.creation.executor.threads:4}") int threads,
-            @Value("${order.creation.executor.queue-capacity:50}") int queueCapacity) {
+            @Value("${order.creation.executor.queue-capacity:50}") int queueCapacity,
+            @Value("${order.creation.executor.shed-before-accept:true}") boolean shedBeforeAccept) {
+        this.shedBeforeAccept = shedBeforeAccept;
         AtomicInteger sequence = new AtomicInteger();
         ThreadFactory factory = runnable -> {
             Thread thread = new Thread(runnable, "order-creation-" + sequence.incrementAndGet());
@@ -44,11 +47,20 @@ public class OrderCreationExecutor {
     private OrderCreationExecutor(Executor executor) {
         this.executor = executor;
         this.pool = null;
+        this.shedBeforeAccept = false;
     }
 
     /** 테스트용. 제출한 스레드에서 바로 실행해 결과를 결정적으로 만든다. */
     public static OrderCreationExecutor direct() {
         return new OrderCreationExecutor(Runnable::run);
+    }
+
+    /**
+     * 지금 제출하면 받아 줄 여유가 있는지 본다(스레드가 놀거나 대기열이 비어 있음). 접수 단계가 비싼 조회·기록 전에 과부하를 걸러 내는 용도다.
+     * Note: 확인과 제출 사이에 다른 요청이 끼어들 수 있어 보장은 아니다. 그 경우는 submit의 거절이 마지막 방어선이다.
+     */
+    public boolean hasCapacity() {
+        return pool == null || !shedBeforeAccept || pool.getActiveCount() < pool.getMaximumPoolSize() || pool.getQueue().remainingCapacity() > 0;
     }
 
     /** 가득 차면 RejectedExecutionException. 호출자가 접수 실패로 처리한다. */

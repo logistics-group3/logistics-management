@@ -92,6 +92,12 @@ public class OrderService {
         OrderRequestIdentity identity = command.identity(idempotencyKey);
         Optional<OrderCreationOutcome> replay = findReplay(user, identity, asyncAcceptance);
         if (replay.isPresent()) return Started.replayed(replay.get());
+        // Note: 실행기가 가득 찼으면 업체·상품 조회 3건과 진행 기록 쓰기를 하기 전에 바로 거절한다(부하 시 낭비 차단, ADR 0012).
+        // 기록을 남기지 않으므로 같은 키로 다시 시도할 수 있다.
+        if (asyncAcceptance && !creationExecutor.hasCapacity()) {
+            log.warn("주문 생성 실행기에 여유가 없어 접수 전에 거절한다");
+            throw new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE);
+        }
         Deadline deadline = new Deadline(ACCEPT_BUDGET);
         OrderCreationAttempt attempt = new OrderCreationAttempt(UUID.randomUUID(), UUID.randomUUID(), user.userId());
         UUID orderId = attempt.orderId();

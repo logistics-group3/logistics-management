@@ -134,3 +134,5 @@ script/db-check.sh                              # 서비스 계정 권한 확인
 `seed`는 공개 API로 테스트 계정·업체·상품·주문과 멘토 가이드 시나리오 데이터(발제 예시 경기·부산 업체, 배송담당자가 없는 대전 허브의 롤백용 업체)를 준비한다. 다시 실행해도 중복되지 않는다. 멘토는 http://127.0.0.1:5174/guide 에서 시작한다([멘토·튜터 테스트 안내](mentor-test.md)). `frontend`는 http://127.0.0.1:5174 에서 실행하고 Gateway는 18080번, Zipkin은 19411번, Grafana는 13000번, Prometheus는 19090번이다.
 실제 DM이 켜져 있으면 `seed`와 브라우저 E2E는 주문 생성 전에 중단한다. 최초 DM 배포는 config-server·user·delivery·order를 빌드하고 user Flyway V2·V3를 적용한다. [Slack DM 설정·실패 처리](slack-dm.md)를 따른다.
 종료는 프런트 실행 터미널의 Ctrl+C와 `script/ui-test.sh down`이다. 테스트 DB 볼륨은 유지한다.
+
+부하 측정처럼 설정을 덧붙일 때는 `UI_TEST_COMPOSE_OVERLAY=docker-compose.perf.yml script/ui-test.sh compose up -d order-service`처럼 `compose` 하위 명령에 docker compose 인자를 그대로 넘긴다. 절차와 결과는 [주문 부하 측정 보고서](../reviews/2026-10-19-order-load-test.md)에 있다.

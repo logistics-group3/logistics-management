@@ -1,0 +1,9 @@
+# 부하 측정용 덧붙임 설정. order-service의 처리 실행기 크기를 환경 변수로 바꿔 같은 이미지로 비교한다.
+# 사용: UI_TEST_COMPOSE_OVERLAY=docker-compose.perf.yml ORDER_CREATION_EXECUTOR_THREADS=16 script/ui-test.sh compose up -d order-service
+# 값을 주지 않으면 코드 기본값(스레드 4, 대기열 50)과 같다. 설명은 docs/reviews/2026-10-19-order-load-test.md.
+services:
+  order-service:
+    environment:
+      ORDER_CREATION_EXECUTOR_THREADS: ${ORDER_CREATION_EXECUTOR_THREADS:-4}
+      ORDER_CREATION_EXECUTOR_QUEUE_CAPACITY: ${ORDER_CREATION_EXECUTOR_QUEUE_CAPACITY:-50}
+      ORDER_CREATION_EXECUTOR_SHED_BEFORE_ACCEPT: ${ORDER_CREATION_EXECUTOR_SHED_BEFORE_ACCEPT:-true}

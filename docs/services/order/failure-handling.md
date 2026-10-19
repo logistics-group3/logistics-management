@@ -52,7 +52,7 @@ Controller마다 try/catch를 반복하지 않는다. application에서는 **보
 접수(요청 스레드): `사용자·키 조회 → 새 키이면 업체·상품·권한 확인 → PROCESSING 커밋 → 작업 제출 → 202`.
 처리(별도 스레드): `I-09 → 주문·COMPLETED·최초 응답 커밋`. 진행 기록 시작을 커밋하지 못하면 I-09를 호출하지 않는다.
 접수 전 단계의 실패는 아래 표대로 요청 응답이 된다. **처리 단계의 실패는 요청 응답으로 돌아오지 않고** 진행 조회 O-07의 `ABORTED`(`failureCode`·`failureMessage`)·`RECOVERY_REQUIRED`로 확인한다. 표의 "응답" 열 중 처리 단계 항목은 해당 상태와 코드를 뜻한다.
-같은 키·본문 재요청은 처리 중이면 202(같은 orderId), 완료면 201이며 `ORDER_CREATION_IN_PROGRESS`는 HTTP로 보내지 않는다. 실행기(스레드 4개·대기열 50개)가 가득 차면 원격 호출 없이 시도를 ABORTED(`SERVICE_UNAVAILABLE`)로 닫고 503이다.
+같은 키·본문 재요청은 처리 중이면 202(같은 orderId), 완료면 201이며 `ORDER_CREATION_IN_PROGRESS`는 HTTP로 보내지 않는다. 실행기(스레드 4개·대기열 50개)에 여유가 없으면 업체·상품 조회와 진행 기록 전에 503이다. 기록을 남기지 않으므로 같은 키로 다시 시도할 수 있다([ADR 0012](decisions/0012-order-shed-load-before-accept.md)). 확인과 제출 사이에 가득 차면 기존대로 시도를 ABORTED(`SERVICE_UNAVAILABLE`)로 닫고 503이다.
 
 | 실패 지점 | 응답 | 현재 처리 |
 |---|---|---|

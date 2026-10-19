@@ -38,7 +38,9 @@ if values.get('SLACK_DM_ENABLED', 'false').strip().lower() in ('true', '1', 'yes
 # Note: 포트 값이 없던 기존 .env.ui-test도 기본 개발 스택(9411·9090·3000)과 겹치지 않게 1로 시작하는 포트를 기본으로 쓴다.
 ports = {'ZIPKIN_PORT': '19411', 'PROMETHEUS_PORT': '19090', 'GRAFANA_PORT': '13000'}
 environment = {**os.environ, **dm_defaults, **ports, **values, 'SLACK_WEBHOOK_URL': ''}
-result = subprocess.run(['docker', 'compose', '-p', 'logistics-ui-test', '--env-file', '.env.ui-test', '-f', 'docker-compose.yml', *sys.argv[1:]], env=environment)
+# 부하 측정처럼 설정을 덧붙여야 할 때 UI_TEST_COMPOSE_OVERLAY에 파일을 ':'로 이어 준다(예: docker-compose.perf.yml).
+overlays = [item for name in os.environ.get('UI_TEST_COMPOSE_OVERLAY', '').split(':') if name for item in ('-f', name)]
+result = subprocess.run(['docker', 'compose', '-p', 'logistics-ui-test', '--env-file', '.env.ui-test', '-f', 'docker-compose.yml', *overlays, *sys.argv[1:]], env=environment)
 sys.exit(result.returncode)
 PYCOMPOSE
 }
@@ -48,6 +50,7 @@ case "${1:-status}" in
   down) prepare; compose down ;;
   status) prepare; compose ps --format 'table {{.Name}}\t{{.State}}\t{{.Ports}}' ;;
   seed) prepare; python3 script/ui-test-seed.py ;;
+  compose) prepare; shift; compose "$@" ;;
   frontend) exec npm --prefix frontend run dev -- --host 127.0.0.1 --port 5174 --strictPort ;;
-  *) echo '사용법: script/ui-test.sh {up|down|status|seed|frontend}' >&2; exit 2 ;;
+  *) echo '사용법: script/ui-test.sh {up|down|status|seed|frontend|compose <docker compose 인자>}' >&2; exit 2 ;;
 esac

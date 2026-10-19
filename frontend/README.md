@@ -117,6 +117,7 @@ E2E는 실행 중인 UI·테스트 서버와 시드가 필요하며 로컬 Googl
 script/ui-test.sh status
 script/ui-test.sh down     # 테스트 컨테이너만 중지·제거, DB 볼륨 유지
 script/ui-test.sh up       # 같은 DB로 다시 실행
+script/ui-test.sh compose <docker compose 인자>   # 덧붙일 설정은 UI_TEST_COMPOSE_OVERLAY(부하 측정용 docker-compose.perf.yml)
 ```
 
 프런트는 실행 터미널에서 Ctrl+C로 중지한다. 소스 변경은 Vite가 반영하고, 백엔드 변경은 테스트 스택의 `up`으로 다시 빌드한다. `.env.ui-test`는 최초 한 번 별도 DB/JWT 비밀값을 생성한다. 기존 개발 환경의 `.env`, `logistics-management` 프로젝트와 DB 볼륨은 사용하지 않는다. 테스트 스택에서는 Slack Webhook을 항상 비운다.

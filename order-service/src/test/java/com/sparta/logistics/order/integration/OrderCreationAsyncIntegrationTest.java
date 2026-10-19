@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -145,7 +146,7 @@ class OrderCreationAsyncIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @DisplayName("실행기가 가득 차면 원격 호출 없이 시도를 ABORTED로 닫고 503을 돌려준다")
+    @DisplayName("실행기가 가득 차면 업체 조회·기록 전에 503으로 거절하고 같은 키 재시도는 여유가 생기면 접수된다")
     void saturatedExecutorRejectsWithoutRemoteCalls() throws Exception {
         stubCompanies();
         CountDownLatch entered = new CountDownLatch(1);
@@ -161,22 +162,25 @@ class OrderCreationAsyncIntegrationTest extends PostgresIntegrationTest {
         assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
         OrderCreationOutcome queued = service.accept(user, "queued-key", command);
 
+        int companyLookups = Mockito.mockingDetails(companyReader).getInvocations().size();
         assertThatThrownBy(() -> service.accept(user, "rejected-key", command))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(CommonErrorCode.SERVICE_UNAVAILABLE);
-        UUID rejectedOrderId = jdbcTemplate.queryForObject(
-                "SELECT order_id FROM order_schema.p_order_creations WHERE idempotency_key = 'rejected-key'", UUID.class);
-        assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id = ?",
-                String.class, rejectedOrderId)).isEqualTo("ABORTED");
-        assertThat(progress(rejectedOrderId).failureCode()).isEqualTo("SERVICE_UNAVAILABLE");
+        // 접수 전에 걸러 냈으므로 업체·상품 조회도, 진행 기록도 없다.
+        assertThat(Mockito.mockingDetails(companyReader).getInvocations()).hasSize(companyLookups);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM order_schema.p_order_creations WHERE idempotency_key = 'rejected-key'", Integer.class)).isZero();
 
         release.countDown();
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             assertThat(progress(running.orderId()).status()).isEqualTo(OrderCreationStatus.COMPLETED);
             assertThat(progress(queued.orderId()).status()).isEqualTo(OrderCreationStatus.COMPLETED);
         });
-        assertThat(deliveryOrderIds).containsExactlyInAnyOrder(running.orderId(), queued.orderId())
-                .doesNotContain(rejectedOrderId);
+        // 여유가 생기면 같은 키로 다시 접수된다.
+        OrderCreationOutcome retried = service.accept(user, "rejected-key", command);
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(
+                () -> assertThat(progress(retried.orderId()).status()).isEqualTo(OrderCreationStatus.COMPLETED));
+        assertThat(deliveryOrderIds).containsExactlyInAnyOrder(running.orderId(), queued.orderId(), retried.orderId());
     }
 
     @Test

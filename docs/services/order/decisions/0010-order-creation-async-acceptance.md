@@ -17,7 +17,7 @@ O-01은 요청 스레드 하나가 업체·상품 조회 → 진행 기록 → I
 2. **진행 조회 O-07**: `GET /api/v1/orders/creations/{orderId}`(주문자 본인·MASTER). `status`는 PROCESSING·COMPLETED·ABORTED·RECOVERY_REQUIRED이고, COMPLETED는 최초 응답 스냅샷의 `order`를, ABORTED는 `failureCode`·`failureMessage`를 담는다. RECOVERY_REQUIRED의 `failureCode`는 `CreationFailureReason`이다.
    요청 응답으로 돌려주던 실패 원인(예: 배송담당자 없음 404)은 이제 접수 뒤에 생기므로 이 조회가 보여 준다. 이를 위해 `p_order_creations`에 `failure_code`·`failure_message`를 추가했다(V6).
 3. **같은 키 재요청**: 처리 중이면 `202`와 같은 orderId, 완료면 `201`과 최초 응답, ABORTED·RECOVERY_REQUIRED는 기존 409다. HTTP 응답으로는 `ORDER_CREATION_IN_PROGRESS`가 더 이상 오지 않는다(동기 실행 `OrderService.create`는 기존대로 409다).
-4. **유한한 실행기**: `OrderCreationExecutor`가 스레드 4개·대기열 50개로 처리 단계를 실행한다(`order.creation.executor.*`). 가득 차면 원격 호출 전이므로 시도를 ABORTED(`SERVICE_UNAVAILABLE`)로 닫고 503이다. 종료 시 최대 30초 기다린다.
+4. **유한한 실행기**: `OrderCreationExecutor`가 스레드 4개·대기열 50개로 처리 단계를 실행한다(`order.creation.executor.*`). 가득 차면 원격 호출 전이므로 시도를 ABORTED(`SERVICE_UNAVAILABLE`)로 닫고 503이다(접수 전 조기 거절로 보완: [ADR 0012](0012-order-shed-load-before-accept.md)). 종료 시 최대 30초 기다린다.
 5. **시간 예산**(order-service 로컬 설정만 바꾼다. 공통 Feign 설정·Gateway·프런트 타임아웃은 그대로다):
 
 | 단계 | 호출 | 연결·읽기 | 재시도 | 호출 1건 최악 | 단계 최악 |
