@@ -71,5 +71,6 @@
 - 단일 모듈 실행: `./gradlew :eureka-server:bootRun` (서비스는 config-server를 먼저 띄운다)
 - 전체 실행: `script/run.sh` (`.env`가 없으면 만든다), 완료 기준 확인까지: `script/run.sh --check`
 - 에러 코드 중복·문서 누락: `script/error-codes-check.sh`, 문서 동기화: `script/docs-check.sh`
+- 통합 테스트 중 DB 연결 수 측정(로컬 도구): `script/test-db-connections.sh :order-service:test` ([TS-025](docs/troubleshooting.md))
 - Claude Code 스킬·규칙 연결: `script/setup-agents.sh` (clone 후, pull로 스킬·규칙이 바뀌었을 때)
 - 셸 기본 JDK가 21이어도 Gradle toolchain이 17로 컴파일·실행한다. JAVA_HOME을 바꾸지 않는다.

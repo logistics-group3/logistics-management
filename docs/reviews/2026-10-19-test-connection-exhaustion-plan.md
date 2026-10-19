@@ -1,6 +1,6 @@
 # 통합 테스트 연결 고갈 정식 해결 작업 계획
 
-- 상태: 계획. 사용자가 확인하기 전에는 `common`·다른 서비스 코드를 바꾸지 않는다.
+- 상태: 2단계 대책 D(캐시 컨텍스트 상한) 적용(사용자 선택 2026-10-19, 별도 브랜치 `feat/test-connection-limits`). 3~4단계 진행 중. 선택하지 않은 안(B, C, E)은 필요해지면 다시 검토한다.
 - 배경: [STAR 기록](2026-10-19-test-connection-exhaustion.md), [TS-025](../troubleshooting.md). order-service는 테스트 전용 풀 상한으로 임시 방어했다(463개 통과).
 - 목표: 한 테스트 JVM이 쥐는 DB 연결 총량이 컨테이너 한계 안에 머물고, 컨텍스트가 늘어도 같은 실패가 재발하지 않게 한다.
 
@@ -21,6 +21,43 @@
 2. 컨테이너의 실제 `max_connections`를 조회하는 임시 검증(테스트 한 개 또는 `docker exec ... psql -c 'show max_connections'`)으로 100 가정을 확인한다.
 3. order에서 임시 방어 설정을 잠시 빼고(로컬에서만) 컨텍스트 수와 실패 지점을 재현해, 이번 변경이 몇 개를 더했는지 확인한다.
 4. 산출물: 모듈별 컨텍스트 수·연결 사용 추정 표. 이 표로 2단계 선택지의 필요 여부를 정한다.
+
+#### 1단계 측정 결과 (2026-10-19, PR #18 병합 뒤 dev `d4b767a`)
+
+| 항목 | 값 | 방법 |
+|---|---|---|
+| 컨테이너 `max_connections` | 100 (예약 3 → 일반 연결 97) | 같은 `postgres:16` 이미지를 기본 설정으로 띄워 `show max_connections` 조회 |
+| 모듈별 DB 컨텍스트(Hikari 풀) 수 | order 12, user 4, delivery 3, hub 2, company 1 | 전체 빌드 결과 XML의 `HikariPool-N` 최대 번호 |
+| 이번 PR 이전 order(dev `7a7bbf8`) | 컨텍스트 11, 기본 풀로 451개 통과 | 같은 명령을 dev에서 실행 |
+| 이번 PR 이후 order, 풀 상한 없음 | 463개 중 2회 연속 실패(18개, 36개). 실패 클래스가 매번 다름 | 임시 방어 파일을 치우고 같은 명령 2회 |
+| 이번 PR 이후 order, 풀 상한(4) | 463개 통과 | 임시 방어 적용(PR #18) |
+
+해석: 기본 풀(연결 10개)로 컨텍스트 11개까지는 통과했고 12개가 되자 실패했다. 이번 PR의 비동기 통합 테스트가 11 → 12로 늘린 것이 한계를 넘긴 계기다. 연결을 못 얻는 클래스가 실행 때마다 달라 "무관한 테스트가 실패"처럼 보인다. order 외 모듈은 컨텍스트가 1~4개라 당장 여유가 있다.
+
+실험(코드 커밋 없음): 풀 상한을 빼고 `spring.test.context.cache.maxSize=8`만 둔 order 테스트가 2회 모두 463개 통과했고 시간은 약 33초로 풀 상한 적용 때(약 34초)와 같았다. 캐시 컨텍스트 상한(D)이 단독으로 효과가 있고 이 모듈에서는 시간 비용이 보이지 않는다.
+
+#### 연결 수를 보는 방법
+
+| 대상 | 방법 | 비고 |
+|---|---|---|
+| 테스트 중 PostgreSQL | `script/test-db-connections.sh :order-service:test --rerun-tasks` | Testcontainers 컨테이너의 `pg_stat_activity`를 1초마다 조회해 연결 수 변화와 최대치를 출력한다. 한 번에 한 모듈만 잰다 |
+| 테스트 중 Grafana | `PUSHGATEWAY_URL=http://127.0.0.1:29091 SCENARIO=이름 script/test-db-connections.sh :order-service:test` | 측정 도구가 1초마다 연결 수를 Pushgateway로 보내고 Prometheus(1초 수집)·Grafana가 그린다. 이번에는 개발 스택과 분리한 임시 Prometheus·Pushgateway·Grafana를 따로 띄워 확인했고 그 구성은 저장소에 넣지 않았다(필요하면 추가) |
+| 테스트 중 수동 확인 | `docker exec <컨테이너> psql -U test -d test -c "select state, count(*) from pg_stat_activity group by 1"` | 컨테이너는 `docker ps --filter label=org.testcontainers=true`로 찾는다 |
+| Hikari 풀 로그 | 로깅 레벨 `com.zaxxer.hikari`를 DEBUG로 두면 풀별 총·활성·유휴 수가 주기적으로 찍힌다 | 이번에는 쓰지 않았다(미사용, 미확인) |
+| 실행 중인 서비스 | Grafana `logistics-overview` 대시보드의 `DB 커넥션 풀 (HikariCP)` 패널 | Prometheus·Grafana(PR #10)에 이미 있다. 서비스 런타임용이다. **`사용 중`(active)과 `대기`(pending)만 그리므로 풀 크기와 idle 연결은 보이지 않는다.** 이번 문제의 연결은 idle이라 서비스에서 같은 일이 생겨도 이 패널은 0으로 보인다. 테스트 DB도 수집 대상이 아니다(2026-10-19 캡처로 확인, 패널 전부 0) |
+
+#### 2단계 적용 결과 (D)
+
+`common/src/testFixtures/resources/spring.properties`에 `spring.test.context.cache.maxSize=8` 한 줄을 추가하고 order 로컬 풀 상한을 제거했다. 같은 코드·같은 명령으로 비교했다.
+
+| 구분 | 최대 연결 | 결과 |
+|---|---|---|
+| 캐시 상한 없음(풀 상한도 없음) | 91, 96, 91 (idle, 3회) | BUILD FAILED (`too many clients already`) |
+| 캐시 상한 8 | 72, 80, 80 (idle, 3회) | BUILD SUCCESSFUL, order 463개 통과 |
+
+실행마다 컨텍스트 생성 시점이 달라 최대치가 조금씩 다르다. 도구는 연결이 바뀔 때마다 막대그래프 한 줄(막대 1칸 = 연결 2개, `|` = 일반 연결 한도 97)을 출력한다.
+
+연결은 컨텍스트가 새로 생길 때마다 약 10개씩 idle로 늘었다(10 → 20 → … → 70). 이것이 "컨텍스트마다 풀이 연결을 쥔다"는 직접 증거다.
 
 ### 2단계 근본 대책 (선택지와 권장)
 
