@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { createOrderViaApi } from './order-creation'
 import type { DeliveryDetail, Order, User } from '../src/shared/types'
 
 const fixture = JSON.parse(readFileSync('../.local/ui-test-data.json', 'utf8'))
@@ -41,18 +42,17 @@ test('담당자 해제 반영 후 기존 토큰·UI 변경 차단, MASTER 재배
   let order: Order | undefined
   let released = false
   try {
-    const response = await request.post('/api/v1/orders', {
-      headers: { Authorization: `Bearer ${master}`, 'Idempotency-Key': crypto.randomUUID() },
-      data: {
+    order = await createOrderViaApi(
+      request,
+      { Authorization: `Bearer ${master}` },
+      {
         supplierCompanyId: fixture.supplierCompanyId,
         receiverCompanyId: fixture.receiverCompanyId,
         productId: fixture.products[0].productId,
         quantity: 1,
         requestNote: 'E2E #13 담당자 해제·인계 검증',
       },
-    })
-    expect(response.status()).toBe(201)
-    order = (await response.json()).data
+    )
     const deliveryId = order!.deliveryId
     const before = await call<DeliveryDetail>('GET', `/deliveries/${deliveryId}`, master)
     expect(before.routes.every((route) => route.managerId === original.userId)).toBe(true)

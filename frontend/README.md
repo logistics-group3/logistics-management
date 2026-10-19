@@ -129,13 +129,13 @@ script/ui-test.sh up       # 같은 DB로 다시 실행
 | `src/features/` | 주문, 배송, 대시보드, 기준 정보, 멘토 테스트 가이드(`TestGuide.tsx`) 화면 |
 | `src/shared/test-guide.ts` | 가이드의 실행 주소·테스트 계정·시나리오(기대 결과는 실제 서버 동작 기준) |
 | `src/shared/api.ts` | Gateway 호출, 오류, 401 처리, 손실 없는 금액 파싱 |
-| `src/shared/order-request.ts` | 사용자별 미완료 주문 보존과 실패 분류 |
+| `src/shared/order-request.ts` | 사용자별 미완료 주문 보존, 실패 분류, 접수(202)·완료(201) 구분과 폴링 종료 판정 |
 | `src/shared/delivery-rules.ts` | 담당자·구간 순서에 맞는 다음 액션 표시 |
 | `src/shared/catalog-rules.ts` | 업체·담당자 요청 범위와 정확한 원화 가격 검증 |
 | `src/components/ui/` | 공통 버튼과 키보드 초점이 유지되는 Radix 다이얼로그 |
 
 - 조회 상태는 TanStack Query로 관리한다. 변경 후 주문·배송 캐시를 함께 갱신해 상세와 목록의 상태를 맞춘다. 쓰기 요청은 자동 재시도하지 않는다.
-- 주문 생성 전에 원문·키를 저장한다. 응답을 못 받았다는 이유만으로 새 키를 만들면 서버에서 이미 만든 주문이 중복될 수 있다. 같은 키 재확인은 최초 응답을 반환하므로 이후 화면은 GET으로 현재 상태를 읽는다.
+- 주문 생성 전에 원문·키를 저장한다. 응답을 못 받았다는 이유만으로 새 키를 만들면 서버에서 이미 만든 주문이 중복될 수 있다. 주문 생성은 202로 접수되고(이미 완료된 같은 키는 201), 화면은 `GET /orders/creations/{orderId}`를 1초 간격으로 최대 60초 조회한다. COMPLETED면 상세로 이동하고, ABORTED면 사유를 보이고 다음 제출에 새 키를 쓴다. RECOVERY_REQUIRED·시간 초과는 같은 키를 유지하고 새 키 재주문을 막는다.
 - Java long 원화 값은 `lossless-json`으로 문자열을 유지하고 BigInt로 표시·미리 계산한다. 상품 등록 요청도 BigInt를 정확한 JSON 정수로 직렬화한다. JavaScript Number를 거치며 마지막 자릿수가 바뀌는 것을 막는다.
 - API는 기존 `/api/v1/**`만 사용한다. 브라우저에서 내부 API나 각 서비스 포트로 직접 접근하지 않는다.
 - 기술 선택과 대안은 [ADR 0015](../docs/decisions/0015-logistics-test-ui.md)에 있다.

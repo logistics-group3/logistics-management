@@ -82,7 +82,7 @@ test('주문 생성 → 요청사항 수정 → 취소 → MASTER 삭제', async
   await login(page)
   await createOrder(page, 'E2E 생성·취소 테스트')
   const detail = page.getByRole('dialog', { name: '주문 상세' })
-  await expect(detail).toBeVisible()
+  await expect(detail).toBeVisible({ timeout: 70000 })
   await expect(detail.getByText('55,500원', { exact: true })).toBeVisible()
   await detail.getByLabel('배송 요청사항', { exact: true }).fill('입고 전 10분 전에 연락 바랍니다.')
   await detail.getByRole('button', { name: '요청사항 저장' }).click()
@@ -101,7 +101,7 @@ test('배송 2구간 출발·도착, 집하 후 취소 거절, 완료 후 삭제
   await page.goto('/orders')
   await login(page)
   await createOrder(page, 'E2E 배송 완료 테스트')
-  await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible({ timeout: 70000 })
   const orderUrl = page.url()
   await page.getByRole('link', { name: '배송 상세', exact: true }).click()
   await expect(page.locator('.route-step')).toHaveCount(2)
@@ -141,7 +141,7 @@ test('생성 응답 유실 → 새로고침·재로그인 → 동일 키로 재�
     if (!interrupted) {
       interrupted = true
       const response = await route.fetch()
-      expect(response.status()).toBe(201)
+      expect([201, 202]).toContain(response.status())
       orderId = (await response.json()).data.orderId
       return route.abort('failed')
     }
@@ -153,7 +153,7 @@ test('생성 응답 유실 → 새로고침·재로그인 → 동일 키로 재�
   await login(page)
   await expect(page.getByRole('dialog').getByLabel('주문 수량', { exact: true })).toBeDisabled()
   await page.getByRole('button', { name: '같은 요청 결과 확인' }).click()
-  await expect(page).toHaveURL(new RegExp(`/orders/${orderId}$`))
+  await expect(page).toHaveURL(new RegExp(`/orders/${orderId}$`), { timeout: 70000 })
   expect(requests).toHaveLength(2)
   expect(requests[0]).toEqual(requests[1])
   expect(requests[0].key).toBeTruthy()
