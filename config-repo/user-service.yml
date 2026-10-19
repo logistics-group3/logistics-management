@@ -2,6 +2,10 @@ server:
   port: 8081
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/logistics?currentSchema=user_schema
     username: user_app
@@ -23,3 +27,14 @@ jwt:
   # 서명 키는 저장소에 두지 않는다. compose는 .env의 JWT_SECRET을 넘기고, 로컬 실행은 환경 변수로 지정한다.
   secret: ${JWT_SECRET}
   expiration-seconds: 3600
+
+user:
+  auth-cache:
+    # Gateway의 auth.user-cache와 같은 값을 준다. redis면 권한 변경(U-07)·탈퇴(U-08) 커밋 뒤 Gateway 캐시 키를 지운다.
+    type: ${AUTH_USER_CACHE:local}
+
+# Redis는 user.auth-cache.type=redis일 때만 쓴다. 기본(local)에서 Redis가 없다고 health가 DOWN이 되지 않게 끈다.
+management:
+  health:
+    redis:
+      enabled: false

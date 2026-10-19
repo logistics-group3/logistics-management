@@ -64,3 +64,9 @@ ADR 0016의 로컬 확장: U-01은 필수 `slackEmail`(이메일 형식, 최대 
 - 내용: 사용자의 이메일 DM 구현 요청에 따라 slackEmail·U-01/U-06·I-16을 추가한다. 신규 가입은 이메일만 필수로 받고 ID를 받지 않도록 10/16 후속 요청을 반영했다. 기존 I-01·I-14의 필드 구성은 유지하며 이메일은 새 연락처 조회로만 내부 제공한다.
 - 관련: [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md). 팀 전체 승인·제공 담당자의 검토 완료를 뜻하지 않는다.
 - 구현·검증: 2026-10-16 로컬 구현과 user 테스트 88개 통과. `.env`에 이메일을 넣는 대신 사용자 데이터의 선택 연락처로 저장한다. V2/V3 적용·U-01 필수 이메일·I-01/I-14의 nullable slackId·연락처 노출 범위를 제공 담당자가 리뷰한다. [실행 안내](../../guides/slack-dm.md)
+
+### USER-003 권한 변경·탈퇴 시 Gateway Redis 권한 캐시 키 삭제
+- 상태: OPEN (성능 측정용 로컬 구현, 제공 담당자 리뷰 대기)
+- 작성: kmh / 2026-10-19
+- 내용: U-07(권한·배송담당 변경)과 U-08(탈퇴)이 `UserAuthChangedEvent`를 내고, 커밋 뒤 `user.auth-cache.type=redis`일 때만 `auth:user:{userId}` 키를 지운다. 기본 `local`에서는 아무것도 하지 않는다. 삭제 실패는 로그만 남기고 Gateway TTL(60초)로 반영된다.
+- 관련: [ADR 0019](../../decisions/0019-redis-cache-measured-adoption.md), GATEWAY-001.

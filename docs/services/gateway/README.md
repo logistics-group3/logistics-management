@@ -32,10 +32,15 @@
 
 - [x] 완료 기준 6개(E2E PASS 18/0)
 - [x] 권한 재확인 60초 캐시와 만료 후 재조회
+- [ ] 권한 재확인 캐시 저장소 선택(`auth.user-cache`: local 기본, redis 선택). 로컬 구현, 리뷰·측정 대기(GATEWAY-001, ADR 0019)
 - [x] actuator를 관리 포트 8090으로 분리하고 Prometheus 수집 허용, 화이트리스트에서 `/actuator/health` 제거(2026-10-16)
 
 ## 5. 협업 로그
 
 작성 규칙은 [서비스 협업 창구](../README.md#협업-로그-규칙)를 따른다. 다른 서비스에 요청할 때는 **그 서비스의** 협업 로그에 쓴다.
 
-아직 기록이 없다.
+### GATEWAY-001 권한 재확인 캐시 저장소 선택(auth.user-cache)
+- 상태: OPEN (성능 측정용 로컬 구현, 제공 담당자 리뷰 대기)
+- 작성: kmh / 2026-10-19
+- 내용: `auth.user-cache`(`AUTH_USER_CACHE`)를 추가했다. 기본 `local`은 지금과 같은 Caffeine 60초 캐시다. `redis`면 `RedisUserLookup`이 I-01 결과를 `auth:user:{userId}`(common-core `UserAuthCacheKeys`)에 TTL과 함께 저장하고, Redis 장애 때는 I-01을 직접 부른다. Redis health 검사는 끈다.
+- 관련: [ADR 0019](../../decisions/0019-redis-cache-measured-adoption.md), [측정 기록](../../reviews/performance/README.md) A2 조건. user-service USER-003(키 삭제)과 함께 동작한다.

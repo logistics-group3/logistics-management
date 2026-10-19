@@ -16,6 +16,7 @@ import com.sparta.logistics.user.application.dto.ChangeRoleCommand;
 import com.sparta.logistics.user.application.dto.HubInfo;
 import com.sparta.logistics.user.application.dto.UpdateUserCommand;
 import com.sparta.logistics.user.application.dto.UserResult;
+import com.sparta.logistics.user.application.event.UserAuthChangedEvent;
 import com.sparta.logistics.user.domain.AffiliationType;
 import com.sparta.logistics.user.domain.User;
 import com.sparta.logistics.user.domain.UserErrorCode;
@@ -28,12 +29,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private ApplicationEventPublisher events;
     @InjectMocks
     private UserService userService;
 
@@ -109,6 +113,17 @@ class UserServiceTest {
         assertThat(result.isDeliveryManager()).isFalse();
         assertThat(result.hubId()).isNull();
         assertThat(result.role()).isEqualTo(Role.MASTER);
+        verify(events).publishEvent(new UserAuthChangedEvent(hong.getId()));
+    }
+
+    @Test
+    @DisplayName("거절된 권한 변경은 Gateway 권한 캐시 삭제 이벤트를 내지 않는다")
+    void rejectedRoleChangeDoesNotPublish() {
+        given(userRepository.findById(hong.getId())).willReturn(Optional.of(hong));
+
+        assertThatThrownBy(() -> userService.applyRoleChange(hong.getId(), new ChangeRoleCommand(null, null, seoul.hubId()), seoul))
+                .isInstanceOf(BusinessException.class);
+        verify(events, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -120,6 +135,7 @@ class UserServiceTest {
 
         assertThat(hong.isDeleted()).isTrue();
         assertThat(hong.getDeletedBy()).isEqualTo("master");
+        verify(events).publishEvent(new UserAuthChangedEvent(hong.getId()));
     }
 
     @Test
