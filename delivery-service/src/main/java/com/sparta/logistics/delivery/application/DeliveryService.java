@@ -9,6 +9,7 @@ import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
 import com.sparta.logistics.delivery.application.dto.UpdateRecipientCommand;
 import com.sparta.logistics.delivery.domain.Delivery;
+import com.sparta.logistics.delivery.domain.DeliveryCreationClosureRepository;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryManager;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
@@ -31,6 +32,7 @@ import org.springframework.transaction.support.TransactionOperations;
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
+    private final DeliveryCreationClosureRepository closureRepository;
     private final DeliveryManagerReader deliveryManagerReader;
     /** I-13 삭제자. 내부 호출은 order가 전달한 X-Username, 헤더가 없으면(스케줄러 보상 등) SYSTEM이다. */
     private final AuditorAware<String> auditorAware;
@@ -88,10 +90,17 @@ public class DeliveryService {
         return DeliveryStatusResult.from(delivery);
     }
 
-    /** I-13 배송 삭제(주문 삭제·생성 보상). 배송과 구간을 논리 삭제한다. 없거나 이미 삭제됐으면 아무것도 하지 않는다(멱등) */
+    /**
+     * I-13 배송 삭제(주문 삭제·생성 보상). 배송과 구간을 논리 삭제하고, 대상이 없어도 종료 표시를 남겨 이후 지연된 I-09가
+     * 활성 배송을 만들지 못하게 한다(이슈 #14). 없거나 이미 삭제됐어도 204이며 같은 호출을 반복해도 결과가 같다(멱등).
+     * Note: I-09 저장과 같은 orderId 잠금을 먼저 잡는다. 그래야 I-09의 "종료 표시 확인 → 저장" 사이에 이 삭제가 끼어들어
+     * 표도 배송도 못 보고 지나가는 순서가 생기지 않는다.
+     */
     @Transactional
     public void deleteByOrderId(UUID orderId) {
         String username = auditorAware.getCurrentAuditor().orElse(HeaderAuditorAware.SYSTEM);
+        closureRepository.lockOrder(orderId);
+        closureRepository.close(orderId, username);
         deliveryRepository.findByOrderIdForUpdate(orderId).ifPresent(delivery -> delivery.softDelete(username));
     }
 

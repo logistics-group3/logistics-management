@@ -118,6 +118,14 @@ public class DeliveryQueryRepositoryImpl implements DeliveryQueryRepository {
                 .fetchOne());
     }
 
+    @Override
+    public Optional<DeliveryStatusResult> findStatusByOrderId(UUID orderId) {
+        return Optional.ofNullable(queryFactory.select(new QDeliveryStatusResult(delivery.id, delivery.orderId, delivery.status))
+                .from(delivery)
+                .where(delivery.orderId.eq(orderId))
+                .fetchOne());
+    }
+
     /**
      * Note: 후보 전원의 건수를 GROUP BY 한 번으로 센다. 후보마다 count 쿼리를 보내면 후보 수만큼 왕복한다.
      * manager_id 인덱스(V1)를 탄다. 실행계획 확인 후 부분 인덱스로 바꿀 후보다(결정 로그 13).

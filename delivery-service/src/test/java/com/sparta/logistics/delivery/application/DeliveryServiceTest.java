@@ -17,6 +17,7 @@ import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
 import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.application.dto.UpdateRecipientCommand;
 import com.sparta.logistics.delivery.domain.Delivery;
+import com.sparta.logistics.delivery.domain.DeliveryCreationClosureRepository;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryManager;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
@@ -44,6 +45,8 @@ class DeliveryServiceTest {
     @Mock
     private DeliveryRepository deliveryRepository;
     @Mock
+    private DeliveryCreationClosureRepository closureRepository;
+    @Mock
     private DeliveryManagerReader deliveryManagerReader;
     @Mock
     private AuditorAware<String> auditorAware;
@@ -53,7 +56,7 @@ class DeliveryServiceTest {
 
     @BeforeEach
     void setUp() {
-        deliveryService = new DeliveryService(deliveryRepository, deliveryManagerReader, auditorAware,
+        deliveryService = new DeliveryService(deliveryRepository, closureRepository, deliveryManagerReader, auditorAware,
                 TransactionOperations.withoutTransaction());
         delivery = DeliveryFixture.threeRoutes();
         // 담당자 조회가 먼저 실패하는 D-04 테스트에서는 배송을 읽지 않으므로 lenient

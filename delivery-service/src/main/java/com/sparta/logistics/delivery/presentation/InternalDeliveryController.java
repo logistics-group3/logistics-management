@@ -5,6 +5,7 @@ import com.sparta.logistics.delivery.application.DeliveryQueryService;
 import com.sparta.logistics.delivery.application.DeliveryService;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
 import com.sparta.logistics.delivery.presentation.dto.CreateDeliveryRequest;
+import com.sparta.logistics.delivery.application.dto.DeliveryOrderResult;
 import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
 import com.sparta.logistics.delivery.application.dto.DeliveryNotificationRecipientsResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * order 전용 내부 API(I-09~I-13, I-15). Gateway에 라우트가 없어 외부에서 부를 수 없다.
+ * order 전용 내부 API(I-09~I-13, I-15, I-17). Gateway에 라우트가 없어 외부에서 부를 수 없다.
  * DTO를 감싸지 않고 반환한다(ADR 0010). I-09·I-11·I-12·I-13은 같은 요청을 다시 보내도 결과가 같다(SA 7.3).
  */
 @RestController
@@ -56,6 +57,13 @@ public class InternalDeliveryController {
     @GetMapping("/{deliveryId}/notification-recipients")
     public DeliveryNotificationRecipientsResult getNotificationRecipients(@PathVariable UUID deliveryId) {
         return deliveryQueryService.getNotificationRecipients(deliveryId);
+    }
+
+    /** I-17 주문 생성 시도(orderId)의 배송 결과 확인. 배송 ID를 받지 못한 요청의 결과를 확인한다(이슈 #14). */
+    @Operation(summary = "I-17 orderId로 배송 결과 조회")
+    @GetMapping("/orders/{orderId}")
+    public DeliveryOrderResult getByOrderId(@PathVariable UUID orderId) {
+        return deliveryQueryService.getOrderResult(orderId);
     }
 
     /** I-11 배송 취소 */
