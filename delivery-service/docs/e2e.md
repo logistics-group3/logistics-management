@@ -11,7 +11,7 @@
 
 ## 1. 동시성 통합 테스트
 
-`DeliveryConcurrencyIntegrationTest`는 같은 배송을 바꾸는 요청이 겹칠 때 서로의 변경을 덮어쓰지 않는지 확인한다. 배송 행 잠금을 둔 이유는 [결정 로그 19](domain/delivery-decision-log.md)에 있다.
+`DeliveryConcurrencyIntegrationTest`는 같은 배송을 바꾸는 요청이 겹칠 때 서로의 변경을 덮어쓰지 않는지 확인한다. 배송 행 잠금을 둔 이유는 [결정 로그 21](domain/delivery-decision-log.md)에 있다.
 
 | 겹치는 요청 | 확인하는 것 |
 |---|---|

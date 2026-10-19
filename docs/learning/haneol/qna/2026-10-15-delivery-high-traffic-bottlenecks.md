@@ -64,7 +64,7 @@ tags: [performance, feign, timeout, circuit-breaker, cache, index, hikari, postg
 - 원격 호출 사슬: `delivery-service/.../application/DeliveryCreationService.java`, 타임아웃 `config-repo/application.yml`(`spring.cloud.openfeign`), 재시도 `common/.../feign/IdempotentRetryConfig.java`
 - 담당 건수 쿼리: `DeliveryQueryRepositoryImpl.countActiveRoutes`, 인덱스 `V1__create_delivery_tables.sql`
 - 동시 배정 쏠림 근거: `ManagerAssigner` 클래스 주석, 결정 로그 16
-- 잠금: `DeliveryJpaRepository.findByIdForUpdate`(결정 로그 19)
+- 잠금: `DeliveryJpaRepository.findByIdForUpdate`(결정 로그 21)
 - 추천 순서: 1(캐시·타임아웃·서킷 브레이커) → 2(부분 인덱스) → 3(lock_timeout, 풀 크기) → 4(측정 후 인덱스). 1의 타임아웃과 Resilience4j는 `config-repo/application.yml`, `common`을 건드리면 팀 리뷰 대상이고, 캐시와 delivery 전용 Feign 설정은 delivery 안에서 할 수 있다.
 
 ## 면접 포인트

@@ -16,6 +16,7 @@ import com.sparta.logistics.delivery.application.HubRouteReader;
 import com.sparta.logistics.delivery.application.RecipientReader;
 import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryCommand;
+import com.sparta.logistics.delivery.application.dto.UpdateRecipientCommand;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryManager;
 import com.sparta.logistics.delivery.domain.RouteInfo;
@@ -151,6 +152,40 @@ class DeliveryConcurrencyIntegrationTest extends PostgresIntegrationTest {
                 .isEqualTo(DeliveryErrorCode.DELIVERY_NOT_FOUND.code());
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT deleted_at IS NOT NULL FROM p_deliveries WHERE delivery_id = ?", Boolean.class, delivery.id())).isTrue();
+    }
+
+    @Test
+    @DisplayName("수령인 수정과 집하 출발이 겹쳐도 바뀐 수령인과 PICKING_UP 상태가 함께 남는다")
+    void updateRecipientAndStartAreBothKept() throws Exception {
+        Delivery delivery = createDelivery();
+
+        Race race = race(
+                () -> deliveryService.updateRecipient(master(), delivery.id(), new UpdateRecipientCommand(null, "변경된 수령인")),
+                () -> deliveryService.changeRouteStatus(master(), delivery.id(), delivery.routeId(1), MOVING));
+
+        // 잠금이 없으면 수정이 읽은 PICKUP_WAITING으로 배송 행 전체를 덮어써 출발 결과가 사라진다
+        assertThat(race.first()).isNull();
+        assertThat(race.second()).isNull();
+        assertThat(deliveryStatus(delivery.id())).isEqualTo("PICKING_UP");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT recipient_name FROM p_deliveries WHERE delivery_id = ?", String.class, delivery.id()))
+                .isEqualTo("변경된 수령인");
+    }
+
+    @Test
+    @DisplayName("같은 구간 출발이 두 번 겹치면 한 번만 성공하고 두 번째는 INVALID_STATUS_TRANSITION")
+    void duplicateStartIsRejected() throws Exception {
+        Delivery delivery = createDelivery();
+
+        Race race = race(
+                () -> deliveryService.changeRouteStatus(master(), delivery.id(), delivery.routeId(1), MOVING),
+                () -> deliveryService.changeRouteStatus(master(), delivery.id(), delivery.routeId(1), MOVING));
+
+        assertThat(race.first()).isNull();
+        assertThat(race.second()).isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode().code())
+                .isEqualTo(CommonErrorCode.INVALID_STATUS_TRANSITION.code());
+        assertThat(routeStatuses(delivery.id())).containsExactly("MOVING", "WAITING");
     }
 
     @Test
