@@ -14,6 +14,7 @@ import com.sparta.logistics.common.auth.UserHeaders;
 import com.sparta.logistics.order.application.OrderQueryService;
 import com.sparta.logistics.order.application.OrderService;
 import com.sparta.logistics.order.application.OrderCancellationService;
+import com.sparta.logistics.order.application.OrderCreationQueryService;
 import com.sparta.logistics.order.application.dto.OrderResult;
 import com.sparta.logistics.order.application.dto.UpdateOrderCommand;
 import com.sparta.logistics.order.domain.Order;
@@ -43,6 +44,8 @@ class OrderUpdateControllerWebMvcTest {
     private OrderQueryService orderQueryService;
     @MockitoBean
     private OrderCancellationService orderCancellationService;
+    @MockitoBean
+    private OrderCreationQueryService orderCreationQueryService;
 
     private final UUID userId = UUID.randomUUID();
     private final UUID orderId = UUID.randomUUID();

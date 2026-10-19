@@ -55,8 +55,8 @@ I-09·I-13은 orderId 기준, I-11·I-12는 deliveryId 기준이다. 재시도�
 따라서 주문은 SA 7.1의 I-13 보상을 시도하되, I-09 결과가 불확실하면 삭제 성공 후에도 RECOVERY_REQUIRED를 유지한다.
 I-13의 204만으로 지연 I-09가 끝났다고 판단하지 않는다.
 
-같은 orderId의 늦은 생성·재시도를 종료 표시로 차단할지, 시도 토큰으로 처리할지는 **미확정**이다. 기존 API가 이 보장까지 제공한다고 가정하지 않는다.
-삭제 이력을 포함한 멱등키 수명과 요청 순서 역전 정책은 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 질문으로 남겼다.
+delivery는 이슈 #14로 이 순서 역전을 막는다. I-13이 대상이 없어도 같은 orderId의 **종료 표시**를 남기고, 이후 I-09는 409 `DELIVERY_CREATION_CLOSED`로 거절된다. 주문은 이 4xx를 다른 4xx와 같게 처리한다(ABORTED, 보상 없음). order는 시도마다 orderId를 새로 만들므로 orderId가 시도 식별자이고 별도 토큰은 없다.
+배송 ID를 받지 못한 시도의 결과는 I-17(`GET /internal/deliveries/orders/{orderId}`)로 확인한다. `CLOSED`면 더는 생성되지 않는다고 판단할 수 있고, `NONE`이면 원래 I-09가 실행 중일 수 있어 종료로 단정하지 않는다. 주문의 기존 RECOVERY_REQUIRED 처리와 운영 복구 절차는 이번 변경으로 자동화하지 않았다. 계약의 상세는 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 있다. 팀 리뷰가 남아 있다.
 
 ## 주문이 보관하는 진행 기록
 
@@ -82,13 +82,14 @@ Gateway는 헤더를 주문 서비스까지 그대로 전달한다. 키 범위�
 |---|---|
 | 응답 유실·통신 오류 | 같은 키·같은 본문으로 결과를 재확인. HTTP 재시도마다 키를 만들지 않음 |
 | 같은 키·본문, COMPLETED | 201과 최초 생성 응답. 회사·배송 재호출 및 주문·알림 재생성 없음 |
+| 새 요청 접수 | 202 `{orderId, status: PROCESSING}`. 처리 결과는 O-07 진행 조회(`GET /api/v1/orders/creations/{orderId}`)로 확인. 접수 뒤 실패 사유(예: DELIVERY_MANAGER_NOT_FOUND)는 응답이 아니라 ABORTED의 failureCode로 전달 |
 | 같은 키, 다른 유효한 본문 | 409 ORDER_IDEMPOTENCY_KEY_CONFLICT. 이미 사용한 키를 수정 주문에 재사용하지 않음 |
-| PROCESSING | 409 ORDER_CREATION_IN_PROGRESS. 간격을 두고 같은 키로 확인, 새 키로 우회하지 않음 |
+| PROCESSING | 202와 같은 orderId. 간격을 두고 같은 키로 재확인하거나 O-07로 조회, 새 키로 우회하지 않음 |
 | ABORTED | 409 ORDER_CREATION_ABORTED. 원인 해결 후 별도 새 주문을 시도할 때만 새 키 사용 |
 | RECOVERY_REQUIRED·기록 논리 삭제 | 409 ORDER_CREATION_RECOVERY_REQUIRED. 주문 담당자가 기존 결과를 확인, 새 키로 우회하지 않음 |
 
 헤더·본문 검증은 재요청에도 적용한다. 키가 없던 최초 요청의 업체·상품·권한 검증 실패는 키를 소비하지 않지만, 생성 기록을 커밋한 키는 실패 종료돼도 재사용하지 않는다.
-키에는 자동 만료가 없다. 주문 수정·취소·논리 삭제 뒤에도 완료 응답은 원래 생성 스냅샷이다. 현재 주문은 O-03에서 조회한다. 생성 기록 조회·자동 복구 API는 후속 범위다.
+키에는 자동 만료가 없다. 주문 수정·취소·논리 삭제 뒤에도 완료 응답은 원래 생성 스냅샷이다. 현재 주문은 O-03에서 조회한다. 생성 기록 조회는 O-07이고 자동 복구 API는 후속 범위다.
 판단 근거와 동시 요청 처리는 [ADR 0008](decisions/0008-order-idempotency-key.md), 실패 분류는 [예외 설계](failure-handling.md)를 따른다.
 
 ## O-06 삭제 재요청과 delivery의 보장

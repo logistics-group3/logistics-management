@@ -12,6 +12,7 @@ import com.sparta.logistics.common.support.PostgresIntegrationTest;
 import com.sparta.logistics.order.application.OrderWriter;
 import com.sparta.logistics.order.application.dto.CreateOrderCommand;
 import com.sparta.logistics.order.application.dto.OrderCreationAttempt;
+import com.sparta.logistics.order.support.DirectCreationExecutorConfig;
 import com.sparta.logistics.order.support.HttpStubServer;
 import com.sparta.logistics.order.support.HttpStubServer.RecordedRequest;
 import com.sparta.logistics.order.support.HttpStubServer.Reply;
@@ -35,8 +36,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -52,6 +55,7 @@ import org.springframework.test.context.TestPropertySource;
         "eureka.client.enabled=false",
         "spring.jpa.hibernate.ddl-auto=validate"
 })
+@Import(DirectCreationExecutorConfig.class)
 @TestPropertySource(properties = {
         "spring.flyway.schemas=order_schema",
         "spring.jpa.open-in-view=false",
@@ -121,10 +125,10 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     @Test
     @DisplayName("실제 HTTP 생성 요청이 Feign 계약·사용자 헤더·배송 정보·주문 DB 저장까지 연결된다")
     void createsThroughHttpAndFeign() throws Exception {
-        ResponseEntity<String> response = create();
+        JsonNode progress = acceptAndGetProgress();
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        JsonNode result = mapper.readTree(response.getBody()).path("data");
+        assertThat(progress.path("status").asText()).isEqualTo("COMPLETED");
+        JsonNode result = progress.path("order");
         UUID orderId = UUID.fromString(result.path("orderId").asText());
         assertThat(result.path("ordererId").asText()).isEqualTo(userId.toString());
         assertThat(result.path("unitPrice").asLong()).isEqualTo(12_000L);
@@ -198,7 +202,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void preservesDeliveryRejectionWithoutCompensation() throws Exception {
         STUB.reset(request -> request.method().equals("POST") ? failure(404, "DELIVERY_MANAGER_NOT_FOUND") : normalReply(request));
 
-        assertError(create(), HttpStatus.NOT_FOUND, "DELIVERY_MANAGER_NOT_FOUND");
+        assertFailedProgress(acceptAndGetProgress(), "ABORTED", "DELIVERY_MANAGER_NOT_FOUND");
         assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/")).isEmpty();
         assertCreationRecord(createdOrderId(), "ABORTED", null);
     }
@@ -208,7 +212,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void compensatesDeliveryServerError() throws Exception {
         STUB.reset(request -> request.method().equals("POST") ? failure(500, "INTERNAL_SERVER_ERROR") : normalReply(request));
 
-        assertError(create(), HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+        assertFailedProgress(acceptAndGetProgress(), "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
         assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
         assertCompensated(1);
     }
@@ -218,7 +222,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void retriesCreateWithSameOrderId() throws Exception {
         STUB.reset(request -> request.method().equals("POST") ? normalReply(request).delayed(800) : normalReply(request));
 
-        assertError(create(), HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+        assertFailedProgress(acceptAndGetProgress(), "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
         List<RecordedRequest> creates = STUB.requests("POST", "/internal/deliveries");
         assertThat(creates).hasSize(3);
         assertThat(creates).extracting(RecordedRequest::body).containsOnly(creates.get(0).body());
@@ -232,7 +236,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         STUB.reset(request -> request.method().equals("POST") && attempts.incrementAndGet() == 1
                 ? normalReply(request).delayed(800) : normalReply(request));
 
-        assertThat(create().getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(acceptAndGetProgress().path("status").asText()).isEqualTo("COMPLETED");
         List<RecordedRequest> creates = STUB.requests("POST", "/internal/deliveries");
         assertThat(creates).hasSize(2);
         assertThat(creates).extracting(RecordedRequest::body).containsOnly(creates.get(0).body());
@@ -253,7 +257,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
             return request.method().equals("DELETE") ? normalReply(request).delayed(800) : normalReply(request);
         });
 
-        assertError(create(), HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+        assertFailedProgress(acceptAndGetProgress(), "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
         assertCompensated(3);
     }
 
@@ -262,7 +266,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void compensatesMalformedDeliveryResponse() throws Exception {
         STUB.reset(request -> request.method().equals("POST") ? Reply.json(201, "{}") : normalReply(request));
 
-        assertError(create(), HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+        assertFailedProgress(acceptAndGetProgress(), "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
         assertCompensated(1);
     }
 
@@ -283,7 +287,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void rollsBackWhenCompletionRecordFails() throws Exception {
         failCompletionRecord();
 
-        assertError(create(), HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR");
+        assertFailedProgress(acceptAndGetProgress(), "ABORTED", "INTERNAL_SERVER_ERROR");
 
         UUID orderId = createdOrderId();
         assertCreationRecord(orderId, "ABORTED", null);
@@ -297,7 +301,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         failCompletionRecord();
         STUB.reset(request -> request.method().equals("DELETE") ? failure(500, "INTERNAL_SERVER_ERROR") : normalReply(request));
 
-        assertError(create(), HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR");
+        assertFailedProgress(acceptAndGetProgress(), "RECOVERY_REQUIRED", "DELIVERY_DELETE_FAILED");
 
         UUID orderId = createdOrderId();
         assertCreationRecord(orderId, "RECOVERY_REQUIRED", "DELIVERY_DELETE_FAILED");
@@ -320,7 +324,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
             return normalReply(request);
         });
         try {
-            assertError(create(), HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+            assertFailedProgress(acceptAndGetProgress(), "RECOVERY_REQUIRED", "DELIVERY_RESULT_UNKNOWN");
             assertCompensated(1);
             assertThat(finished.get()).isZero();
             finishCreation.countDown();
@@ -351,16 +355,16 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void replaysOriginalResponseThroughHttp() throws Exception {
         AtomicBoolean failReads = new AtomicBoolean();
         STUB.reset(request -> failReads.get() && request.method().equals("GET") ? failure(503, "SERVICE_UNAVAILABLE") : normalReply(request));
-        ResponseEntity<String> first = create("replay-key", defaultBody());
-        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        UUID id = UUID.fromString(mapper.readTree(first.getBody()).path("data").path("orderId").asText());
+        UUID id = accept("replay-key", defaultBody());
+        JsonNode first = progress(id).path("order");
+        assertThat(first.path("orderId").asText()).isEqualTo(id.toString());
         jdbc.update("UPDATE order_schema.p_orders SET request_note='changed', status='CANCELED', updated_at=now() WHERE order_id=?", id);
         failReads.set(true);
 
         ResponseEntity<String> replay = create("replay-key", defaultBody());
 
         assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(mapper.readTree(replay.getBody())).isEqualTo(mapper.readTree(first.getBody()));
+        assertThat(mapper.readTree(replay.getBody()).path("data")).isEqualTo(first);
         assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
         assertThat(STUB.requests("GET", "/internal/")).hasSize(3);
     }
@@ -370,7 +374,8 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void comparesParsedRequestRatherThanRawJson() throws Exception {
         ObjectNode firstBody = (ObjectNode) mapper.readTree(defaultBody());
         firstBody.remove("requestNote");
-        ResponseEntity<String> first = create("semantic-key", firstBody.toString());
+        UUID id = accept("semantic-key", firstBody.toString());
+        JsonNode first = progress(id).path("order");
         String secondBody = """
                 { "requestNote": null, "quantity": 50, "productId": "%s",
                   "receiverCompanyId": "%s", "supplierCompanyId": "%s" }
@@ -379,14 +384,14 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         ResponseEntity<String> replay = create("semantic-key", secondBody);
 
         assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(mapper.readTree(replay.getBody())).isEqualTo(mapper.readTree(first.getBody()));
+        assertThat(mapper.readTree(replay.getBody()).path("data")).isEqualTo(first);
         assertThat(STUB.requests("POST", "/internal/deliveries")).hasSize(1);
     }
 
     @Test
     @DisplayName("같은 키로 수량을 바꾸면 409이고 회사·배송을 다시 호출하지 않는다")
     void rejectsChangedBodyThroughHttp() throws Exception {
-        assertThat(create("conflict-key", defaultBody()).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        accept("conflict-key", defaultBody());
         ObjectNode changed = (ObjectNode) mapper.readTree(defaultBody());
         changed.put("quantity", 51);
 
@@ -401,8 +406,9 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     void refusesRetryOfFailedAttempt(boolean uncertain) throws Exception {
         STUB.reset(request -> request.method().equals("POST")
                 ? failure(uncertain ? 500 : 404, uncertain ? "INTERNAL_SERVER_ERROR" : "DELIVERY_MANAGER_NOT_FOUND") : normalReply(request));
-        assertError(create("failed-key", defaultBody()), uncertain ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.NOT_FOUND,
-                uncertain ? "SERVICE_UNAVAILABLE" : "DELIVERY_MANAGER_NOT_FOUND");
+        UUID orderId = accept("failed-key", defaultBody());
+        assertFailedProgress(progress(orderId), uncertain ? "RECOVERY_REQUIRED" : "ABORTED",
+                uncertain ? "DELIVERY_RESULT_UNKNOWN" : "DELIVERY_MANAGER_NOT_FOUND");
 
         assertError(create("failed-key", defaultBody()), HttpStatus.CONFLICT,
                 uncertain ? "ORDER_CREATION_RECOVERY_REQUIRED" : "ORDER_CREATION_ABORTED");
@@ -411,15 +417,40 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @DisplayName("이미 진행 중인 키의 HTTP 재요청은 외부 호출 없이 409다")
-    void rejectsInProgressKey() throws Exception {
+    @DisplayName("처리 중인 키의 HTTP 재요청은 외부 호출 없이 202와 같은 orderId를 돌려준다")
+    void returnsAcceptedForInProgressKey() throws Exception {
         OrderCreationAttempt attempt = new OrderCreationAttempt(UUID.randomUUID(), UUID.randomUUID(), userId);
         directFixtureIds.add(attempt.orderId());
         writer.start(attempt, new CreateOrderCommand(supplierId, receiverId, productId, 50, "오전 도착 희망").identity("pending-key"));
 
-        assertError(create("pending-key", defaultBody()), HttpStatus.CONFLICT, "ORDER_CREATION_IN_PROGRESS");
+        ResponseEntity<String> response = create("pending-key", defaultBody());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        JsonNode data = mapper.readTree(response.getBody()).path("data");
+        assertThat(data.path("orderId").asText()).isEqualTo(attempt.orderId().toString());
+        assertThat(data.path("status").asText()).isEqualTo("PROCESSING");
         assertThat(STUB.requests("GET", "/")).isEmpty();
         assertThat(STUB.requests("POST", "/")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("접수 직후 진행 조회는 COMPLETED이고 order가 재요청의 최초 응답과 같다")
+    void progressShowsCompletedOrderMatchingReplay() throws Exception {
+        ResponseEntity<String> accepted = create("progress-key", defaultBody());
+        assertThat(accepted.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        JsonNode acceptedData = mapper.readTree(accepted.getBody()).path("data");
+        assertThat(acceptedData.path("status").asText()).isEqualTo("PROCESSING");
+        UUID orderId = UUID.fromString(acceptedData.path("orderId").asText());
+
+        JsonNode progress = progress(orderId);
+
+        assertThat(progress.path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(progress.path("orderId").asText()).isEqualTo(orderId.toString());
+        assertThat(progress.path("failureCode").isNull()).isTrue();
+        assertThat(progress.path("order").path("orderId").asText()).isEqualTo(orderId.toString());
+        ResponseEntity<String> replay = create("progress-key", defaultBody());
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(mapper.readTree(replay.getBody()).path("data")).isEqualTo(progress.path("order"));
     }
 
     @Test
@@ -434,6 +465,39 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
         assertThat(key.path("schema").path("maxLength").asInt()).isEqualTo(128);
         assertThat(key.path("schema").path("minLength").asInt()).isEqualTo(1);
         assertThat(key.path("schema").path("pattern").asText()).isEqualTo("[A-Za-z0-9._:-]+");
+    }
+
+    /** 접수(202) 뒤 주문 ID를 꺼낸다. 접수 전 단계 실패는 이 단언에서 드러난다. */
+    private UUID accept(String key, String body) throws Exception {
+        ResponseEntity<String> response = create(key, body);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        JsonNode data = mapper.readTree(response.getBody()).path("data");
+        assertThat(data.path("status").asText()).isEqualTo("PROCESSING");
+        return UUID.fromString(data.path("orderId").asText());
+    }
+
+    /** 새 키로 접수하고 진행 조회 결과(data)를 돌려준다. 테스트 실행기가 요청 스레드에서 처리하므로 접수 시점에 처리가 끝나 있다. */
+    private JsonNode acceptAndGetProgress() throws Exception {
+        return progress(accept(UUID.randomUUID().toString(), defaultBody()));
+    }
+
+    private JsonNode progress(UUID orderId) throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(UserHeaders.USER_ID, userId.toString());
+        headers.set(UserHeaders.USERNAME, "junhyun");
+        headers.set(UserHeaders.ROLE, "USER");
+        headers.set(UserHeaders.DELIVERY_MANAGER, "false");
+        ResponseEntity<String> response = http.exchange("/api/v1/orders/creations/" + orderId, HttpMethod.GET,
+                new HttpEntity<>(headers), String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return mapper.readTree(response.getBody()).path("data");
+    }
+
+    private void assertFailedProgress(JsonNode progress, String status, String failureCode) {
+        assertThat(progress.path("status").asText()).isEqualTo(status);
+        assertThat(progress.path("failureCode").asText()).isEqualTo(failureCode);
+        assertThat(progress.path("failureMessage").asText()).isNotBlank();
+        assertThat(progress.path("order").isNull()).isTrue();
     }
 
     private ResponseEntity<String> create() {

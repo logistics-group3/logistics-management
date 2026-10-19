@@ -3,6 +3,7 @@ package com.sparta.logistics.delivery.application;
 import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
+import com.sparta.logistics.delivery.application.dto.DeliveryOrderResult;
 import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.application.dto.DeliveryNotificationRecipientsResult;
 import com.sparta.logistics.delivery.domain.RouteStatus;
@@ -11,6 +12,7 @@ import com.sparta.logistics.delivery.application.dto.DeliveryRouteResult;
 import com.sparta.logistics.delivery.application.dto.DeliverySearchCondition;
 import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
 import com.sparta.logistics.delivery.application.dto.DeliverySummaryResult;
+import com.sparta.logistics.delivery.domain.DeliveryCreationClosureRepository;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeliveryQueryService {
 
     private final DeliveryQueryRepository deliveryQueryRepository;
+    private final DeliveryCreationClosureRepository closureRepository;
 
     /** D-01 배송 검색. 배송담당자는 조회 범위를 조건에 넣어 DB에서 거른다(가져온 뒤 거르면 페이지·count가 틀어진다) */
     public Page<DeliverySummaryResult> search(UserContext user, DeliverySearchCondition condition, Pageable pageable) {
@@ -51,6 +54,15 @@ public class DeliveryQueryService {
     public DeliveryStatusResult getDeliveryStatus(UUID deliveryId) {
         return deliveryQueryRepository.findStatus(deliveryId)
                 .orElseThrow(() -> new BusinessException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+    }
+
+    /** I-17 주문 생성 시도의 배송 결과. 활성 배송 → 종료 표시 → 없음 순으로 판정한다. 결과 의미는 DeliveryOrderResult. */
+    public DeliveryOrderResult getOrderResult(UUID orderId) {
+        return deliveryQueryRepository.findStatusByOrderId(orderId)
+                .map(DeliveryOrderResult::active)
+                .orElseGet(() -> closureRepository.existsById(orderId)
+                        ? DeliveryOrderResult.closed(orderId)
+                        : DeliveryOrderResult.none(orderId));
     }
 
     /** I-15 미완료 구간의 현재 담당자. 같은 사람이 여러 구간을 맡아도 ID는 한 번 반환한다. */

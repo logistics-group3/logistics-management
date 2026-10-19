@@ -224,3 +224,12 @@
 - 원인: C-05는 보이는 상품만 조회해 삭제하고 P-01은 일반 조회 후 저장했다. 두 경로가 같은 업체의 활성 상태와 커밋 순서를 보호하지 않았다. FK는 물리 업체 행이 남아 있어 통과한다.
 - 해결: 두 서비스의 기존 트랜잭션이 CompanyRepository.findByIdForUpdate·PESSIMISTIC_WRITE를 공유한다. 잠금 획득 후 권한을 검사하고 커밋까지 유지한다.
 - 확인: company 50개 통과. 실제 pg_blocking_pids와 최종 DB 값으로 두 실행 순서·다른 업체 독립 진행을 확인했다. 상세는 [#15 검증](reviews/2026-10-19-issue-15-verification.md)이다.
+
+### TS-025 통합 테스트 컨텍스트가 늘자 PostgreSQL 연결이 고갈돼 무관한 테스트 18개가 실패함
+
+- 서비스·작성: order(테스트) / Junhyun An 작업 / 2026-10-19
+- 문제: 비동기 접수(#16) 구현 뒤 `./gradlew :order-service:test --rerun-tasks`가 463개 중 18개 실패했다. 18개가 모두 `OrderRepositoryIntegrationTest`였고 이 변경과 무관한 클래스다. 핵심 원인 줄은 `ApplicationContext` 로드 실패 아래의 `FlywaySqlException: Unable to obtain connection from database: FATAL: sorry, too many clients already`였다.
+- 원인: 통합 테스트는 Testcontainers PostgreSQL 한 개를 모든 Spring 컨텍스트가 공유하고, Spring은 프로퍼티·테스트 설정이 다른 컨텍스트를 캐시해 둔다. 캐시된 컨텍스트마다 Hikari 풀이 열려 있고 기본값(`maximumPoolSize` 10, `minimumIdle`은 `maximumPoolSize`와 같음)이라 컨텍스트 하나가 연결 10개를 계속 쥔다. 컨텍스트가 늘면 PostgreSQL 기본 `max_connections`(100, 공식 문서 기본값)에 닿는다. 수정 후 실행에서 한 JVM에 풀 12개(`HikariPool-12`)가 만들어졌다. 새 비동기 통합 테스트가 컨텍스트 1개를 더 만든 것이 한계를 넘긴 계기라고 추정한다(변경 전 컨텍스트 수는 측정하지 않았다).
+- 해결: order 테스트 전용 `order-service/src/test/resources/application.properties`에 `spring.datasource.hikari.maximum-pool-size=4`, `minimum-idle=1`을 두었다. 공통 `PostgresIntegrationTest`는 팀 공용이라 바꾸지 않았다.
+- 확인: 설정만 바꾼 같은 코드에서 `./gradlew :order-service:test --rerun-tasks` 463개 통과(18개 실패 → 0). 컨테이너의 실제 `max_connections` 값과 모듈별 컨텍스트 수는 미확인이다. 정식 대책은 [작업 계획](reviews/2026-10-19-test-connection-exhaustion-plan.md), 배경과 과정은 [STAR 기록](reviews/2026-10-19-test-connection-exhaustion.md)에 있다.
+- 배운 점: 실패한 테스트가 변경과 무관해 보이면 테스트 자체보다 자원 공유를 의심한다. 에이전트 여러 개가 같은 `build` 디렉터리에서 Gradle을 동시에 돌리면 `Could not write XML test results`로 실패하는데, 이는 연결 고갈과 별개의 원인(추정)이므로 병렬 실행을 피한다.

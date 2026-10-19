@@ -5,11 +5,15 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.response.ApiResponse;
 import com.sparta.logistics.common.response.PageResponse;
 import com.sparta.logistics.order.application.OrderCancellationService;
+import com.sparta.logistics.order.application.OrderCreationQueryService;
 import com.sparta.logistics.order.application.OrderQueryService;
 import com.sparta.logistics.order.application.OrderService;
+import com.sparta.logistics.order.application.dto.OrderCreationOutcome;
 import com.sparta.logistics.order.domain.OrderRequestIdentity;
 import com.sparta.logistics.order.presentation.dto.CancelOrderResponse;
 import com.sparta.logistics.order.presentation.dto.CreateOrderRequest;
+import com.sparta.logistics.order.presentation.dto.OrderAcceptedResponse;
+import com.sparta.logistics.order.presentation.dto.OrderCreationProgressResponse;
 import com.sparta.logistics.order.presentation.dto.OrderResponse;
 import com.sparta.logistics.order.presentation.dto.OrderSearchRequest;
 import com.sparta.logistics.order.presentation.dto.UpdateOrderRequest;
@@ -27,6 +31,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -47,17 +52,33 @@ public class OrderController {
     private final OrderService orderService;
     private final OrderQueryService orderQueryService;
     private final OrderCancellationService orderCancellationService;
+    private final OrderCreationQueryService orderCreationQueryService;
 
-    @Operation(summary = "O-01 주문 생성", description = "요청업체 관리자 본인 또는 MASTER가 주문한다.")
+    @Operation(summary = "O-01 주문 생성(비동기 접수)",
+            description = "요청업체 관리자 본인 또는 MASTER가 주문한다. 접수하면 202와 orderId를 돌려주고 배송 생성·저장은 뒤에서 처리한다. "
+                    + "결과는 O-07로 확인한다. 같은 키·본문으로 재요청하면 처리 중이면 202, 완료면 최초 응답 201이다.")
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<OrderResponse> create(@CurrentUser UserContext user,
+    public ResponseEntity<ApiResponse<?>> create(@CurrentUser UserContext user,
             @Parameter(description = "새 주문마다 새 키, 재시도는 같은 키와 본문. UUID 권장", example = "8f2d6f94-a287-4b6d-82c9-4828a2a72ef3")
             @RequestHeader("Idempotency-Key") @NotBlank(message = "Idempotency-Key는 필수입니다.")
             @Size(min = 1, max = OrderRequestIdentity.MAX_KEY_LENGTH, message = "멱등키는 1~128자여야 합니다.")
             @Pattern(regexp = OrderRequestIdentity.KEY_PATTERN, message = "멱등키는 영문·숫자와 . _ : - 만 사용할 수 있습니다.") String idempotencyKey,
             @Valid @RequestBody CreateOrderRequest request) {
-        return ApiResponse.created("주문이 생성되었습니다.", OrderResponse.from(orderService.create(user, idempotencyKey, request.toCommand())));
+        OrderCreationOutcome outcome = orderService.accept(user, idempotencyKey, request.toCommand());
+        if (outcome.order() != null) {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.created("주문이 생성되었습니다.", OrderResponse.from(outcome.order())));
+        }
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(new ApiResponse<>(HttpStatus.ACCEPTED.value(), "주문이 접수되었습니다. 처리 결과는 진행 조회로 확인하세요.",
+                        OrderAcceptedResponse.from(outcome)));
+    }
+
+    @Operation(summary = "O-07 주문 생성 진행 조회",
+            description = "O-01로 접수한 생성의 처리 상태(PROCESSING·COMPLETED·ABORTED·RECOVERY_REQUIRED)와 결과를 조회한다. 주문자 본인 또는 MASTER만 가능하다.")
+    @GetMapping("/creations/{orderId}")
+    public ApiResponse<OrderCreationProgressResponse> getCreationProgress(@CurrentUser UserContext user, @PathVariable UUID orderId) {
+        return ApiResponse.ok(OrderCreationProgressResponse.from(orderCreationQueryService.getProgress(user, orderId)));
     }
 
     @Operation(summary = "O-02 주문 검색", description = "USER는 본인 주문만, MASTER는 전체 주문을 검색한다. 정렬은 createdAt·quantity를 허용한다.")

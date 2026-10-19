@@ -6,6 +6,7 @@ import static com.sparta.logistics.delivery.DeliveryFixture.SUPPLIER_MANAGER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 
 import com.sparta.logistics.common.auth.Role;
 import com.sparta.logistics.common.auth.UserContext;
@@ -16,6 +17,7 @@ import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
 import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.application.dto.UpdateRecipientCommand;
 import com.sparta.logistics.delivery.domain.Delivery;
+import com.sparta.logistics.delivery.domain.DeliveryCreationClosureRepository;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryManager;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
@@ -30,10 +32,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.AuditorAware;
+import org.springframework.transaction.support.TransactionOperations;
 
 @ExtendWith(MockitoExtension.class)
 class DeliveryServiceTest {
@@ -43,18 +45,22 @@ class DeliveryServiceTest {
     @Mock
     private DeliveryRepository deliveryRepository;
     @Mock
+    private DeliveryCreationClosureRepository closureRepository;
+    @Mock
     private DeliveryManagerReader deliveryManagerReader;
     @Mock
     private AuditorAware<String> auditorAware;
-    @InjectMocks
     private DeliveryService deliveryService;
 
     private Delivery delivery;
 
     @BeforeEach
     void setUp() {
+        deliveryService = new DeliveryService(deliveryRepository, closureRepository, deliveryManagerReader, auditorAware,
+                TransactionOperations.withoutTransaction());
         delivery = DeliveryFixture.threeRoutes();
-        given(deliveryRepository.findById(delivery.getId())).willReturn(Optional.of(delivery));
+        // 담당자 조회가 먼저 실패하는 D-04 테스트에서는 배송을 읽지 않으므로 lenient
+        lenient().when(deliveryRepository.findByIdForUpdate(delivery.getId())).thenReturn(Optional.of(delivery));
     }
 
     @Test

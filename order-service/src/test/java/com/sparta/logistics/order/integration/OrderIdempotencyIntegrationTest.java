@@ -174,7 +174,7 @@ class OrderIdempotencyIntegrationTest extends PostgresIntegrationTest {
     void refusesAutomaticReexecution(String state) {
         OrderCreationAttempt attempt = start("same-key");
         OrderErrorCode code = switch (state) {
-            case "ABORTED" -> { writer.abort(attempt, null); yield OrderErrorCode.ORDER_CREATION_ABORTED; }
+            case "ABORTED" -> { writer.abort(attempt, null, null, null); yield OrderErrorCode.ORDER_CREATION_ABORTED; }
             case "RECOVERY_REQUIRED" -> {
                 writer.requireRecovery(attempt, null, CreationFailureReason.DELIVERY_RESULT_UNKNOWN);
                 yield OrderErrorCode.ORDER_CREATION_RECOVERY_REQUIRED;

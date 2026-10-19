@@ -71,7 +71,7 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(companyReader, deliveryGateway, orderWriter, orderRepository);
+        service = new OrderService(companyReader, deliveryGateway, orderWriter, orderRepository, OrderCreationExecutor.direct());
     }
 
     @Test

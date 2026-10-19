@@ -82,14 +82,14 @@ class OrderCreationTest {
         UUID deliveryId = UUID.randomUUID();
         switch (status) {
             case COMPLETED -> creation.complete(deliveryId);
-            case ABORTED -> creation.abort(deliveryId);
+            case ABORTED -> creation.abort(deliveryId, null, null);
             case RECOVERY_REQUIRED -> creation.requireRecovery(deliveryId, CreationFailureReason.ORDER_COMMIT_UNKNOWN);
             default -> throw new AssertionError(status);
         }
 
         assertThat(creation.getStatus()).isEqualTo(status);
         assertThatThrownBy(() -> creation.complete(deliveryId)).extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_STATUS_TRANSITION);
-        assertThatThrownBy(() -> creation.abort(deliveryId)).extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        assertThatThrownBy(() -> creation.abort(deliveryId, null, null)).extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_STATUS_TRANSITION);
         assertThatThrownBy(() -> creation.requireRecovery(deliveryId, CreationFailureReason.DELIVERY_DELETE_FAILED))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_STATUS_TRANSITION);
     }

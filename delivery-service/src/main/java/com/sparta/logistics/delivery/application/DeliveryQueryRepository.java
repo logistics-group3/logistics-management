@@ -30,6 +30,9 @@ public interface DeliveryQueryRepository {
     /** I-10 order용 배송 상태 */
     Optional<DeliveryStatusResult> findStatus(UUID deliveryId);
 
+    /** orderId로 읽는 배송 상태(I-17). 논리 삭제된 배송은 없는 것으로 본다. */
+    Optional<DeliveryStatusResult> findStatusByOrderId(UUID orderId);
+
     /** 자동 배정 후보별 담당 건수(WAITING·MOVING 구간 수, 논리 삭제 제외). 담당 구간이 없는 후보는 결과에 없다. */
     List<ActiveRouteCount> countActiveRoutes(Collection<UUID> managerIds);
 }

@@ -15,3 +15,4 @@ order-service 안의 되돌리기 어려운 결정이다. 여러 서비스에 �
 | 0007 | [주문 생성 진행 기록과 커밋 결과 재확인](0007-order-creation-progress.md) | 채택 (주문 담당자) | Junhyun An O-01 보강 구현 요청 |
 | 0008 | [주문 생성 멱등키와 최초 응답 재사용](0008-order-idempotency-key.md) | 채택 (주문 담당자) | Junhyun An 중복 주문 방지 요청 |
 | 0009 | [주문 삭제 가능 여부와 진행 기록 보존](0009-order-deletion-progress.md) | 채택 (주문 담당자) | Junhyun An 삭제 기록 포함 구현·검증·커밋 승인 |
+| 0010 | [주문 생성의 비동기 접수와 처리 시간 예산](0010-order-creation-async-acceptance.md) | 채택 (주문 담당자) | Junhyun An 운영 리뷰 #16 비동기 접수 구현 선택 |

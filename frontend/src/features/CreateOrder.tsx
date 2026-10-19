@@ -1,14 +1,23 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Check, Package, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../app/auth'
-import { api } from '../shared/api'
+import { ApiError, api } from '../shared/api'
 import { money } from '../shared/format'
 import { allPages, useDirectory } from '../shared/queries'
-import { clearPending, creationFailure, loadPending, savePending } from '../shared/order-request'
+import {
+  CREATION_POLL_INTERVAL_MS,
+  CREATION_POLL_LIMIT_MS,
+  classifyCreation,
+  clearPending,
+  creationFailure,
+  creationStep,
+  loadPending,
+  savePending,
+} from '../shared/order-request'
 import type { PendingOrder } from '../shared/order-request'
-import type { Order, OrderInput, Product } from '../shared/types'
+import type { Order, OrderAccepted, OrderCreation, OrderInput, Product } from '../shared/types'
 import { ErrorNotice, Field } from '../shared/ui'
 import { Button } from '../components/ui/button'
 export function CreateOrder() {
@@ -34,7 +43,15 @@ export function CreateOrder() {
   const [error, setError] = useState<unknown>(saved.error)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
+  const [phase, setPhase] = useState<'' | 'polling' | 'timeout' | 'recovery'>('')
+  const [help, setHelp] = useState<string>()
   const inFlight = useRef(false)
+  const abort = useRef(new AbortController())
+  // 언마운트·닫기 시 폴링을 멈춘다. StrictMode 재마운트에 대비해 새 컨트롤러를 만든다.
+  useEffect(() => {
+    abort.current = new AbortController()
+    return () => abort.current.abort()
+  }, [])
   const directory = useDirectory()
   const navigate = useNavigate()
   const cache = useQueryClient()
@@ -60,6 +77,39 @@ export function CreateOrder() {
       c.companyId === form.supplierCompanyId ||
       c.companyId === form.receiverCompanyId,
   )
+  async function finish(orderId: string) {
+    clearPending(user!.userId)
+    setPending(null)
+    setPhase('')
+    await Promise.all([
+      cache.invalidateQueries({ queryKey: ['orders'] }),
+      cache.invalidateQueries({ queryKey: ['deliveries'] }),
+    ])
+    notify('주문이 접수되었습니다. 배송과 구간 담당자가 연결되었습니다.')
+    navigate(`/orders/${orderId}`)
+  }
+  // 1초 간격으로 진행을 조회한다. 일시적 네트워크·서버 오류는 한도 안에서 계속 조회한다.
+  async function watch(orderId: string) {
+    const signal = abort.current.signal
+    const started = Date.now()
+    for (;;) {
+      let progress: OrderCreation | undefined
+      try {
+        progress = await api<OrderCreation>(`/orders/creations/${orderId}`, { signal })
+      } catch (value) {
+        if (signal.aborted) throw value
+        if (!(value instanceof ApiError) || value.status === 0 || value.status >= 500) {
+          if (Date.now() - started >= CREATION_POLL_LIMIT_MS) return { kind: 'timeout' as const }
+        } else throw value
+      }
+      if (progress) {
+        const step = creationStep(progress, Date.now() - started)
+        if (step !== 'continue') return { kind: step, progress }
+      }
+      await new Promise((resolve) => setTimeout(resolve, CREATION_POLL_INTERVAL_MS))
+      if (signal.aborted) throw new DOMException('aborted', 'AbortError')
+    }
+  }
   async function submit() {
     if (inFlight.current || saved.error) return
     if (
@@ -68,8 +118,11 @@ export function CreateOrder() {
     )
       return
     inFlight.current = true
+    let polling = false
     setBusy(true)
     setError(undefined)
+    setHelp(undefined)
+    setFailure('')
     try {
       const request = pending ?? {
         key: crypto.randomUUID(),
@@ -79,24 +132,47 @@ export function CreateOrder() {
       // Note: HTTP 호출 전에 원문과 키를 보관한다. 응답 유실·재로그인 후에도 동일 요청만 재전송한다.
       savePending(user!.userId, request)
       setPending(request)
-      const result = await api<Order>('/orders', {
-        method: 'POST',
-        body: request.body,
-        key: request.key,
-      })
-      if (!result?.orderId)
-        throw new Error('주문 결과를 확인할 수 없습니다. 같은 요청으로 다시 확인해 주세요.')
-      clearPending(user!.userId)
-      setPending(null)
-      await Promise.all([
-        cache.invalidateQueries({ queryKey: ['orders'] }),
-        cache.invalidateQueries({ queryKey: ['deliveries'] }),
-      ])
-      notify('주문이 접수되었습니다. 배송과 구간 담당자가 연결되었습니다.')
-      navigate(`/orders/${result.orderId}`)
+      let orderId = request.orderId
+      if (!orderId) {
+        const result = await api<Order | OrderAccepted>('/orders', {
+          method: 'POST',
+          body: request.body,
+          key: request.key,
+        })
+        const accepted = classifyCreation(result)
+        if (accepted.kind === 'unknown')
+          throw new Error('주문 결과를 확인할 수 없습니다. 같은 요청으로 다시 확인해 주세요.')
+        if (accepted.kind === 'created') return await finish(accepted.order.orderId)
+        orderId = accepted.orderId
+        // Note: 접수된 주문 번호를 저장해 새로고침 뒤에는 POST 없이 같은 건의 진행만 조회한다.
+        savePending(user!.userId, { ...request, orderId })
+        setPending({ ...request, orderId })
+      }
+      setPhase('polling')
+      polling = true
+      const step = await watch(orderId)
+      polling = false
+      if (step.kind === 'completed') return await finish(orderId)
+      if (step.kind === 'aborted') {
+        clearPending(user!.userId)
+        setPending(null)
+        setPhase('')
+        setFailure('')
+        setError(new Error(step.progress.failureMessage ?? '주문 생성이 종료되었습니다.'))
+        setHelp(
+          '주문은 만들어지지 않았습니다. 원인을 해결한 뒤 다시 주문하면 새 요청으로 처리됩니다.',
+        )
+      } else if (step.kind === 'recovery') {
+        setPhase('recovery')
+        setFailure('blocked')
+      } else if (step.kind === 'timeout') setPhase('timeout')
     } catch (value) {
+      if (abort.current.signal.aborted) return
+      setPhase('')
+      setHelp(undefined)
       setError(value)
-      const next = creationFailure(value)
+      // 진행 조회 자체가 거절되면 결과를 알 수 없으므로 같은 키를 유지한 채 막는다.
+      const next = polling && value instanceof ApiError ? 'blocked' : creationFailure(value)
       setFailure(next)
       if (next === 'edit') {
         clearPending(user!.userId)
@@ -131,7 +207,30 @@ export function CreateOrder() {
           </details>
         </div>
       )}
-      <ErrorNotice error={error} />
+      {phase === 'polling' && (
+        <div className="notice" role="status">
+          주문을 처리하고 있습니다. 배송과 구간 담당자를 연결하는 중이며 이 화면을 닫지 마세요.
+        </div>
+      )}
+      {phase === 'timeout' && (
+        <div className="notice warning" role="status">
+          <strong>처리가 길어지고 있습니다.</strong>
+          <p>
+            새 주문을 만들지 말고 아래 버튼으로 같은 요청의 결과를 다시 확인해 주세요. 요청 번호가
+            같아 중복 주문은 생기지 않습니다.
+          </p>
+        </div>
+      )}
+      {phase === 'recovery' && (
+        <div className="notice warning" role="status">
+          <strong>결과 확인이 필요합니다.</strong>
+          <p>
+            같은 요청을 다시 보내지 말고 주문 목록에서 확인하세요. 요청 번호를 관리자에게 전달할 수
+            있습니다.
+          </p>
+        </div>
+      )}
+      <ErrorNotice error={error} help={help} />
       <ErrorNotice
         error={directory.companies.error}
         retry={() => void directory.companies.refetch()}
@@ -300,7 +399,7 @@ export function CreateOrder() {
             (!pending && (!product || !receiver || !supplier || overflow))
           }
         >
-          {busy ? '주문 결과 확인 중…' : pending ? '같은 요청 결과 확인' : '주문 등록'}
+          {busy ? '주문을 처리하고 있습니다…' : pending ? '같은 요청 결과 확인' : '주문 등록'}
           <ArrowRight size={16} />
         </Button>
       </div>

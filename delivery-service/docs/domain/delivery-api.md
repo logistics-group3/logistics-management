@@ -199,7 +199,8 @@ Content-Type: application/json
 
 { "managerId": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f" }
 ```
-처리: I-01 조회 → 배송담당자인가 → 소속 허브 = 구간 담당 허브인가 → 구간이 `WAITING`·`MOVING`인가 → `manager_id` 변경
+처리: I-01 조회(트랜잭션·잠금 밖) → 배송 행 잠금 → 배송담당자인가 → 소속 허브 = 구간 담당 허브인가 → 구간이 `WAITING`·`MOVING`인가 → `manager_id` 변경
+같은 배송의 다른 변경과 겹치면 나중 요청이 기다렸다가 먼저 끝난 상태로 판단한다(도착·취소 뒤면 409). I-01 조회가 먼저라 없는 구간·배송이어도 `DELIVERY_MANAGER_NOT_FOUND`가 먼저 나올 수 있다.
 Response `200 OK`: 수정된 `DeliveryResponse` (구간 포함)
 Error: 400 `MANAGER_HUB_MISMATCH` · 403 `FORBIDDEN` · 404 `DELIVERY_NOT_FOUND` · `DELIVERY_ROUTE_NOT_FOUND` · `DELIVERY_MANAGER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (도착·취소된 구간)
 
@@ -295,8 +296,24 @@ Error: 404 `DELIVERY_NOT_FOUND`
 
 ### I-13. 배송 삭제 (주문 삭제·생성 보상)
 `DELETE /internal/deliveries/orders/{orderId}` · 호출: order · 멱등키 `orderId`
-배송·구간 논리 삭제. 대상이 없거나 이미 삭제여도 성공.
+배송·구간 논리 삭제. 대상이 없거나 이미 삭제여도 성공. 어느 경우든 같은 orderId의 **종료 표시**를 남겨, 이후 같은 orderId의 I-09는 배송을 만들지 않고 409 `DELIVERY_CREATION_CLOSED`로 거절한다(이슈 #14). 반복 호출해도 표는 한 번만 남는다.
 Response `204 No Content`
+
+### I-17. 주문 생성 시도의 배송 결과 조회 (이슈 #14)
+`GET /internal/deliveries/orders/{orderId}` · 호출: order
+
+배송 ID를 받지 못한 생성 시도의 결과를 orderId로 확인한다.
+Response `200 OK`
+```json
+{ "orderId": "e8b7f6a5-…", "state": "ACTIVE", "deliveryId": "f9c8a7b6-…", "status": "PICKUP_WAITING" }
+```
+| state | 의미 |
+|---|---|
+| `ACTIVE` | 배송이 있다. `deliveryId`, `status`가 채워진다 |
+| `CLOSED` | 시도가 종료됐다(I-13). 이후 I-09는 거절되므로 활성 배송이 생기지 않는다고 단정할 수 있다. `deliveryId`, `status`는 null |
+| `NONE` | 배송도 종료 표시도 없다. 원래 I-09가 실행 중이거나 아직 도착하지 않았을 수 있어 종료로 단정할 수 없다 |
+
+I-09 Error에 409 `DELIVERY_CREATION_CLOSED`가 추가됐다.
 
 ---
 

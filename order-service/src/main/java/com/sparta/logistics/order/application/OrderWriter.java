@@ -4,6 +4,7 @@ import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.order.application.dto.OrderCreationAttempt;
 import com.sparta.logistics.order.application.dto.OrderCreationCommitResult;
+import com.sparta.logistics.order.application.dto.OrderCreationOutcome;
 import com.sparta.logistics.order.application.dto.OrderResult;
 import com.sparta.logistics.order.application.event.OrderCreatedEvent;
 import com.sparta.logistics.order.domain.CreationFailureReason;
@@ -43,6 +44,21 @@ public class OrderWriter {
     }
 
     /**
+     * O-01 비동기 접수의 같은 키 재요청 판정. 처리 중이면 접수 결과(202)를, 완료면 최초 스냅샷(201)을 돌려준다.
+     * 키·요청 충돌, 실패 종료, 복구 필요, 삭제된 기록은 동기 실행과 같은 409 예외다.
+     */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public Optional<OrderCreationOutcome> findAcceptance(UUID userId, OrderRequestIdentity identity) {
+        return creationRepository.findByKeyIncludingDeleted(userId, identity.key()).map(creation -> {
+            creation.validateReplayOf(identity);
+            if (creation.getStatus() == OrderCreationStatus.PROCESSING) {
+                return OrderCreationOutcome.accepted(creation.getOrderId());
+            }
+            return OrderCreationOutcome.completed(OrderResult.from(creation.replay(identity)));
+        });
+    }
+
+    /**
      * O-01 주문의 로컬 저장. 원격 호출을 포함하지 않는다.
      * Note: 별도 빈의 트랜잭션 프록시가 커밋까지 끝낸 뒤 반환하므로 호출자가 커밋 예외를 잡고 실제 결과를 다시 확인할 수 있다.
      */
@@ -79,8 +95,8 @@ public class OrderWriter {
 
     /** O-01. 명확한 거절·확인된 배송 정리 후에만 생성 시도를 종료한다. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void abort(OrderCreationAttempt attempt, UUID deliveryId) {
-        findCreation(attempt).abort(deliveryId);
+    public void abort(OrderCreationAttempt attempt, UUID deliveryId, String failureCode, String failureMessage) {
+        findCreation(attempt).abort(deliveryId, failureCode, failureMessage);
     }
 
     /** O-01. 미확정 결과나 삭제 보상 실패는 주문이 없어도 추적할 수 있게 남긴다. */

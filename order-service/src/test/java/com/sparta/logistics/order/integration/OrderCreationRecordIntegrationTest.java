@@ -217,7 +217,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
     @DisplayName("종료한 생성 기록도 같은 orderId로 다시 만들 수 없다")
     void keepsOrderIdentityUniqueAfterAbort() {
         OrderCreationAttempt attempt = start();
-        writer.abort(attempt, null);
+        writer.abort(attempt, null, null, null);
 
         assertThatThrownBy(() -> writer.start(new OrderCreationAttempt(UUID.randomUUID(), attempt.orderId(), user.userId()), command.identity("different-key")))
                 .isInstanceOf(DataIntegrityViolationException.class).hasMessageContaining("uk_p_order_creations_order_id");
@@ -249,7 +249,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
     void rejectsMismatchedAttempt() {
         OrderCreationAttempt attempt = start();
 
-        assertThatThrownBy(() -> writer.abort(new OrderCreationAttempt(UUID.randomUUID(), attempt.orderId(), user.userId()), null))
+        assertThatThrownBy(() -> writer.abort(new OrderCreationAttempt(UUID.randomUUID(), attempt.orderId(), user.userId()), null, null, null))
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
         assertThat(recordStatus(attempt.orderId())).isEqualTo("PROCESSING");
     }

@@ -303,7 +303,7 @@ export const scenarios: Scenario[] = [
       '주문 관리 목록과 Grafana의 "주문 생성 응답"을 확인한다.',
     ],
     expected:
-      '대전 허브에는 배송담당자가 없어 배송 생성이 실패하고, 주문 등록은 404 DELIVERY_MANAGER_NOT_FOUND로 끝난다. 주문 목록에 새 주문이 없고 Grafana에 404가 1 늘어난다. 주문 서비스가 Saga로 주문 기록을 ABORTED로 정리한다.',
+      '대전 허브에는 배송담당자가 없어 배송 생성이 실패하고, 주문 등록은 202로 접수된 뒤 진행 조회에서 ABORTED(DELIVERY_MANAGER_NOT_FOUND)로 끝나고 화면에 실패 사유가 보인다. 주문 목록에 새 주문이 없다. 주문 서비스가 Saga로 주문 기록을 ABORTED로 정리한다.',
   },
   {
     id: 'cross-hub',

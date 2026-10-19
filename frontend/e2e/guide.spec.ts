@@ -106,7 +106,7 @@ test('발제 예시: 경기 → 부산 허브 간 주문, 출발 허브 담당�
     .selectOption(scenario.products['마른오징어 가공품'])
   await form.getByLabel('주문 수량', { exact: true }).fill('50')
   await form.getByRole('button', { name: '주문 등록', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible({ timeout: 70000 })
   const orderUrl = page.url()
   await page.getByRole('link', { name: '배송 상세', exact: true }).click()
   await expect(page.locator('.route-step')).toHaveCount(3)
