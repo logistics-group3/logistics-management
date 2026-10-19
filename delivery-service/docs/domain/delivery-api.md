@@ -199,7 +199,8 @@ Content-Type: application/json
 
 { "managerId": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f" }
 ```
-처리: I-01 조회 → 배송담당자인가 → 소속 허브 = 구간 담당 허브인가 → 구간이 `WAITING`·`MOVING`인가 → `manager_id` 변경
+처리: I-01 조회(트랜잭션·잠금 밖) → 배송 행 잠금 → 배송담당자인가 → 소속 허브 = 구간 담당 허브인가 → 구간이 `WAITING`·`MOVING`인가 → `manager_id` 변경
+같은 배송의 다른 변경과 겹치면 나중 요청이 기다렸다가 먼저 끝난 상태로 판단한다(도착·취소 뒤면 409). I-01 조회가 먼저라 없는 구간·배송이어도 `DELIVERY_MANAGER_NOT_FOUND`가 먼저 나올 수 있다.
 Response `200 OK`: 수정된 `DeliveryResponse` (구간 포함)
 Error: 400 `MANAGER_HUB_MISMATCH` · 403 `FORBIDDEN` · 404 `DELIVERY_NOT_FOUND` · `DELIVERY_ROUTE_NOT_FOUND` · `DELIVERY_MANAGER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (도착·취소된 구간)
 

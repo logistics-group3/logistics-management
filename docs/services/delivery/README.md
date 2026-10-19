@@ -49,6 +49,7 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 - [x] I-09 배송 생성과 담당자 자동 배정, orderId 멱등(동시 요청 포함)
 - [x] D-01~D-05, I-10~I-13
 - [x] I-15 알림 수신자 조회. delivery 테스트 39개와 실제 주문→I-15→DM 1건 확인(2026-10-16). [T06](../../../delivery-service/docs/tasks/T06.md)
+- [x] 배송 변경 명령의 동시 실행 보호: 배송 행 비관적 잠금, 실제 PostgreSQL 회귀 테스트 5개(이슈 #11, DELIVERY-004)
 - [ ] Gateway 경유 호출 확인(user I-14, hub I-03 구현 후)
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
@@ -91,13 +92,13 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 
 ### DELIVERY-004 배송·구간 동시 변경 보호(낙관적 잠금) 검토
 
-- 상태: OPEN
+- 상태: 구현 완료(이슈 #11, 2026-10-19). 팀 리뷰 대기. 결정은 아래 "결정"과 결정 로그 21
 - 작성: 공통 인프라(멘토 가이드 검증) / Junhyun An 작업 / 2026-10-16
 - 관련: D-04·D-05, I-11, DELIVERY-001의 "행 잠금·버전 필드" 확인 항목
 - 내용: `Delivery`·`DeliveryRoute`에 `@Version`이 없고 명령용 조회에도 잠금이 없다(`grep @Version` 0건). DELIVERY-001의 취소(I-11)·집하 출발(D-05) 경쟁 외에 재배정(D-04)·도착(D-05) 경쟁도 있다. 재배정은 도착·취소만 막는다(`changeManager`). Hibernate는 바뀐 Entity의 모든 컬럼을 UPDATE하므로, MOVING을 읽은 재배정이 늦게 커밋하면 이미 ARRIVED된 구간을 MOVING으로 되돌릴 수 있다. 그러면 배송 상태와 구간 상태가 어긋난다.
 - 검토 요청: 두 Entity에 `@Version`을 두고 충돌을 409로 응답하는 방안, 또는 명령용 `findById`에 `PESSIMISTIC_WRITE`를 거는 방안 중 정한다. 구간 변경은 `refreshStatus()`가 배송 행도 바꾸므로 `Delivery` 버전으로 D-05끼리·D-05와 I-11의 충돌은 잡힌다. 배송 행을 바꾸지 않는 D-04는 `DeliveryRoute` 버전이 필요하다.
 - 근거: 코드 정적 확인. 동시 실행 재현은 하지 않았다.
-- 결정:
+- 결정: 비관적 잠금으로 처리했다(`@Version`과 409 충돌 응답은 쓰지 않는다). D-03·D-04·D-05, I-11·I-12·I-13은 `Delivery` 행을 `SELECT ... FOR UPDATE`로 읽고 시작한다. 구간은 `Delivery`를 통해서만 바뀌므로 배송 행 하나로 구간 변경도 보호된다. 겹친 요청은 나중 요청이 기다렸다가 먼저 끝난 결과를 읽고 기존 상태 규칙으로 판단한다. 계약은 바뀌지 않는다: 도착 뒤 재배정·취소 뒤 출발·출발 뒤 취소는 기존 409 `INVALID_STATUS_TRANSITION`, 삭제 뒤 변경은 404 `DELIVERY_NOT_FOUND`다. D-04는 I-01 조회를 잠금 트랜잭션 밖에서 먼저 끝내므로 없는 구간·배송이어도 담당자 404(`DELIVERY_MANAGER_NOT_FOUND`)가 먼저 나올 수 있다. 검증: `DeliveryConcurrencyIntegrationTest`(실제 PostgreSQL 16). 수정 전 코드에서 4개가 실패하는 것을 확인했다.
 
 ### DELIVERY-005 D-05 실제 거리·소요시간 검증과 자동 계산
 
