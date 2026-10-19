@@ -43,7 +43,7 @@
 | 테스트 중 PostgreSQL | `script/test-db-connections.sh :order-service:test --rerun-tasks` | Testcontainers 컨테이너의 `pg_stat_activity`를 1초마다 조회해 연결 수 변화와 최대치를 출력한다. 한 번에 한 모듈만 잰다 |
 | 테스트 중 수동 확인 | `docker exec <컨테이너> psql -U test -d test -c "select state, count(*) from pg_stat_activity group by 1"` | 컨테이너는 `docker ps --filter label=org.testcontainers=true`로 찾는다 |
 | Hikari 풀 로그 | 로깅 레벨 `com.zaxxer.hikari`를 DEBUG로 두면 풀별 총·활성·유휴 수가 주기적으로 찍힌다 | 이번에는 쓰지 않았다(미사용, 미확인) |
-| 실행 중인 서비스 | Grafana `logistics-overview` 대시보드의 `hikaricp_connections_active`·`pending` 패널 | Prometheus·Grafana(PR #10)에 이미 있다. 테스트가 아니라 서비스 런타임용이다 |
+| 실행 중인 서비스 | Grafana `logistics-overview` 대시보드의 `DB 커넥션 풀 (HikariCP)` 패널 | Prometheus·Grafana(PR #10)에 이미 있다. 서비스 런타임용이다. **`사용 중`(active)과 `대기`(pending)만 그리므로 풀 크기와 idle 연결은 보이지 않는다.** 이번 문제의 연결은 idle이라 서비스에서 같은 일이 생겨도 이 패널은 0으로 보인다. 테스트 DB도 수집 대상이 아니다(2026-10-19 캡처로 확인, 패널 전부 0) |
 
 #### 2단계 적용 결과 (D)
 
