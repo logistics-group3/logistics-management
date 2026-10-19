@@ -25,7 +25,8 @@
 | I-10 | `GET /internal/deliveries/{deliveryId}` | order | 구현 |  |
 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order | 구현 | 응답 `deliveryId, orderId, status`. 이미 취소면 200 |
 | I-12 | `POST /internal/deliveries/{deliveryId}/cancel-revert` | order | 구현 | 응답 `deliveryId, orderId, status`. 취소 상태가 아니면 no-op 200 |
-| I-13 | `DELETE /internal/deliveries/orders/{orderId}` | order | 구현 | 204. 대상이 없어도 204 |
+| I-13 | `DELETE /internal/deliveries/orders/{orderId}` | order | 구현 | 204. 대상이 없어도 204, 어느 경우든 종료 표시를 남긴다(이슈 #14) |
+| I-17 | `GET /internal/deliveries/orders/{orderId}` | order | 구현 | `{orderId, state: ACTIVE\|CLOSED\|NONE, deliveryId, status}`. 배송 ID 없이 생성 시도 결과 확인(이슈 #14) |
 | I-15 | `GET /internal/deliveries/{deliveryId}/notification-recipients` | order | 로컬 구현·팀 리뷰 대기 | `{deliveryId, orderId, status, managerIds}`. WAITING·MOVING 담당자 중복 제거, 완료·취소는 빈 목록, 없음·삭제는 404 DELIVERY_NOT_FOUND. [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md) |
 
 배송 생성·삭제는 내부 API로만 제공한다(SA 6.2). 요청·응답 상세는 [`delivery-api.md`](../../../delivery-service/docs/domain/delivery-api.md).
@@ -49,6 +50,7 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 - [x] I-09 배송 생성과 담당자 자동 배정, orderId 멱등(동시 요청 포함)
 - [x] D-01~D-05, I-10~I-13
 - [x] I-15 알림 수신자 조회. delivery 테스트 39개와 실제 주문→I-15→DM 1건 확인(2026-10-16). [T06](../../../delivery-service/docs/tasks/T06.md)
+- [x] 종료된 주문 생성 시도의 지연된 I-09 차단(종료 표시·orderId advisory lock)과 I-17 결과 조회, 실제 PostgreSQL 회귀 테스트 4개(이슈 #14, DELIVERY-002)
 - [x] 배송 변경 명령의 동시 실행 보호: 배송 행 비관적 잠금, 실제 PostgreSQL 회귀 테스트 5개(이슈 #11, DELIVERY-004)
 - [ ] Gateway 경유 호출 확인(user I-14, hub I-03 구현 후)
 
@@ -73,13 +75,13 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 
 ### DELIVERY-002 지연 생성과 삭제의 순서 역전 방지 계약 검토
 
-- 상태: OPEN
+- 상태: 구현 완료(이슈 #14, 2026-10-19). 팀 리뷰 대기
 - 작성: order / Junhyun An 작업 / 2026-10-15
 - 관련: I-09 타임아웃·재시도, I-13 배송 삭제, 생성 실패 복구
 - 내용: I-13이 없음으로 204를 반환한 뒤 지연된 I-09가 생성될 수 있다. 주문은 삭제 보상을 시도하더라도 RECOVERY_REQUIRED를 유지하고, 현재 계약만으로 자동 복구 완료를 선언하지 않는다.
 - 검토 요청: 같은 orderId의 종료 표시 보존, 삭제 이력을 포함한 멱등키 수명, 시도 토큰으로 오래된 실행을 차단하는 방안 중 제공 가능한 보장을 정한다. orderId로 미확정 생성 결과를 확인할 수단도 함께 검토한다. 필요한 요청·응답 변경은 결정 후 합의한다.
 - 현재 영향: 주문의 진행 기록·커밋 재확인 구현은 기존 계약으로 진행한다. 추가 자동 복구와 미확정 기록 종료는 이 정책 확인 전까지 보장하지 않는다.
-- 결정: 미정. 새 토큰 필드나 종료 표시가 이미 구현됐다고 가정하지 않는다.
+- 결정: 종료 표시를 채택했다. 시도 토큰은 두지 않는다. order가 시도마다 `orderId`를 새로 만들므로 `orderId`가 곧 시도 식별자다. I-13은 대상 배송 유무와 상관없이 `p_delivery_creation_closures`에 종료 표시를 남기고, I-09는 표가 있으면 배송을 만들지 않고 409 `DELIVERY_CREATION_CLOSED`로 거절한다(원격 호출 전과 저장 직전 두 번 확인). 저장 직전 확인과 I-13은 같은 `orderId`의 advisory lock으로 직렬화해 "확인 후 저장 사이에 삭제가 끼는" 순서도 막는다. 멱등키 수명: 종료 표시는 만료하지 않는다. 이 변경 이전에 논리 삭제된 배송은 마이그레이션(V2)이 표를 채운다. 결과 확인 수단은 I-17(`orderId` → `ACTIVE`·`CLOSED`·`NONE`)이다. `CLOSED`면 더는 생성되지 않는다고 단정할 수 있고 `NONE`이면 원래 요청이 실행 중일 수 있어 종료로 단정할 수 없다. order의 RECOVERY_REQUIRED 자동 종료·운영 복구 API는 이번 범위가 아니며, order는 기존 동작을 유지한다. 검증: `DeliveryCreationClosureIntegrationTest`(실제 PostgreSQL 16). 결정 로그 23.
 
 ### DELIVERY-003 주문 커밋 후 DM용 배송담당자 읽기 계약
 

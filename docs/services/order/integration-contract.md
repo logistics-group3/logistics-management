@@ -55,8 +55,8 @@ I-09·I-13은 orderId 기준, I-11·I-12는 deliveryId 기준이다. 재시도�
 따라서 주문은 SA 7.1의 I-13 보상을 시도하되, I-09 결과가 불확실하면 삭제 성공 후에도 RECOVERY_REQUIRED를 유지한다.
 I-13의 204만으로 지연 I-09가 끝났다고 판단하지 않는다.
 
-같은 orderId의 늦은 생성·재시도를 종료 표시로 차단할지, 시도 토큰으로 처리할지는 **미확정**이다. 기존 API가 이 보장까지 제공한다고 가정하지 않는다.
-삭제 이력을 포함한 멱등키 수명과 요청 순서 역전 정책은 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 질문으로 남겼다.
+delivery는 이슈 #14로 이 순서 역전을 막는다. I-13이 대상이 없어도 같은 orderId의 **종료 표시**를 남기고, 이후 I-09는 409 `DELIVERY_CREATION_CLOSED`로 거절된다. 주문은 이 4xx를 다른 4xx와 같게 처리한다(ABORTED, 보상 없음). order는 시도마다 orderId를 새로 만들므로 orderId가 시도 식별자이고 별도 토큰은 없다.
+배송 ID를 받지 못한 시도의 결과는 I-17(`GET /internal/deliveries/orders/{orderId}`)로 확인한다. `CLOSED`면 더는 생성되지 않는다고 판단할 수 있고, `NONE`이면 원래 I-09가 실행 중일 수 있어 종료로 단정하지 않는다. 주문의 기존 RECOVERY_REQUIRED 처리와 운영 복구 절차는 이번 변경으로 자동화하지 않았다. 계약의 상세는 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 있다. 팀 리뷰가 남아 있다.
 
 ## 주문이 보관하는 진행 기록
 
