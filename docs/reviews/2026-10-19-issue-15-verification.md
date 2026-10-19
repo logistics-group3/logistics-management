@@ -2,7 +2,7 @@
 
 - 날짜: 2026-10-19.
 - 브랜치: feat/delivery-T07. 사용자가 #13과 같은 브랜치에서 #15 수정과 PR 생성을 요청했다.
-- 상태: 코드·DB 회귀·전체 빌드·최종 E2E 확인, PR 준비 중.
+- 상태: [PR #17](https://github.com/logistics-group3/logistics-management/pull/17) 생성·기능 커밋 CI 확인 완료, 팀 리뷰 대기.
 - 관련: [#15](https://github.com/logistics-group3/logistics-management/issues/15), [사전 확인한 계획](2026-10-19-issue-15-plan.md), [현재 progress](../progress/feat-delivery-T07.md).
 
 ## 구현
@@ -31,7 +31,14 @@ CompanyProductConcurrencyIntegrationTest는 테스트 컨테이너의 PostgreSQL
 - 프런트 build·lint·format:check·단위 test — 성공, 48개 통과.
 - 최종 E2E: 두 수정이 포함된 서비스 이미지를 다시 빌드한 전용 logistics-ui-test에서 19개 통과(2.8분). Slack DM false·Webhook 비활성화와 전용 DB 확인을 유지하고 UI_TEST_BASE_URL=http://127.0.0.1:5175를 사용했다. 업체·상품 생성·삭제와 주문·배송·권한 시나리오를 포함한다.
 - 테스트 후 원래 담당자 자격 복구와 #13 테스트 계정·주문 잔존 0건을 API로 확인했다.
-- 환경 복구: 테스트 스택을 내리고 DB 볼륨은 보존했다. 이번 Vite 5175만 종료했고 기존 개발 스택·life-manager 5174는 유지했다. .env.ui-test는 백업과 SHA256이 일치한다. PR·CI는 생성 후 기록한다.
+- 환경 복구: 테스트 스택을 내리고 DB 볼륨은 보존했다. 이번 Vite 5175만 종료했고 기존 개발 스택·life-manager 5174는 유지했다. .env.ui-test는 백업과 SHA256이 일치한다.
+
+## PR과 CI
+
+- [PR #17](https://github.com/logistics-group3/logistics-management/pull/17): feat/delivery-T07 → dev. OPEN, 충돌 없음 확인.
+- 코드 커밋: #13 91f2227, #15 9607154. 기준 dev a6313ee.
+- 기능 커밋 9607154에서 GitHub docs-check·error-codes-check 모두 SUCCESS를 확인했다. 두 CI는 전체 백엔드·프런트·E2E를 실행하는 작업이 아니며 위 로컬 검증과 구분한다.
+- 이 PR 기록은 후속 문서 커밋에 포함한다. 병합·실제 운영 배포·이슈 수동 종료는 수행하지 않았다.
 
 ## 범위와 비용
 
