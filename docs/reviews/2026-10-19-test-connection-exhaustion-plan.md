@@ -41,6 +41,7 @@
 | 대상 | 방법 | 비고 |
 |---|---|---|
 | 테스트 중 PostgreSQL | `script/test-db-connections.sh :order-service:test --rerun-tasks` | Testcontainers 컨테이너의 `pg_stat_activity`를 1초마다 조회해 연결 수 변화와 최대치를 출력한다. 한 번에 한 모듈만 잰다 |
+| 테스트 중 Grafana | `PUSHGATEWAY_URL=http://127.0.0.1:29091 SCENARIO=이름 script/test-db-connections.sh :order-service:test` | 측정 도구가 1초마다 연결 수를 Pushgateway로 보내고 Prometheus(1초 수집)·Grafana가 그린다. 이번에는 개발 스택과 분리한 임시 Prometheus·Pushgateway·Grafana를 따로 띄워 확인했고 그 구성은 저장소에 넣지 않았다(필요하면 추가) |
 | 테스트 중 수동 확인 | `docker exec <컨테이너> psql -U test -d test -c "select state, count(*) from pg_stat_activity group by 1"` | 컨테이너는 `docker ps --filter label=org.testcontainers=true`로 찾는다 |
 | Hikari 풀 로그 | 로깅 레벨 `com.zaxxer.hikari`를 DEBUG로 두면 풀별 총·활성·유휴 수가 주기적으로 찍힌다 | 이번에는 쓰지 않았다(미사용, 미확인) |
 | 실행 중인 서비스 | Grafana `logistics-overview` 대시보드의 `DB 커넥션 풀 (HikariCP)` 패널 | Prometheus·Grafana(PR #10)에 이미 있다. 서비스 런타임용이다. **`사용 중`(active)과 `대기`(pending)만 그리므로 풀 크기와 idle 연결은 보이지 않는다.** 이번 문제의 연결은 idle이라 서비스에서 같은 일이 생겨도 이 패널은 0으로 보인다. 테스트 DB도 수집 대상이 아니다(2026-10-19 캡처로 확인, 패널 전부 0) |
@@ -51,8 +52,8 @@
 
 | 구분 | 최대 연결 | 결과 |
 |---|---|---|
-| 캐시 상한 없음(풀 상한도 없음) | 91, 96 (idle, 2회) | BUILD FAILED (`too many clients already`) |
-| 캐시 상한 8 | 72, 80 (idle, 2회) | BUILD SUCCESSFUL, order 463개 통과 |
+| 캐시 상한 없음(풀 상한도 없음) | 91, 96, 91 (idle, 3회) | BUILD FAILED (`too many clients already`) |
+| 캐시 상한 8 | 72, 80, 80 (idle, 3회) | BUILD SUCCESSFUL, order 463개 통과 |
 
 실행마다 컨텍스트 생성 시점이 달라 최대치가 조금씩 다르다. 도구는 연결이 바뀔 때마다 막대그래프 한 줄(막대 1칸 = 연결 2개, `|` = 일반 연결 한도 97)을 출력한다.
 
