@@ -26,7 +26,7 @@ public class ProductService {
     /** P-01 상품 생성. 업체 관리자 본인 또는 MASTER. 다른 서비스는 호출하지 않는다. */
     @Transactional
     public ProductResult create(UserContext user, UUID companyId, CreateProductCommand command) {
-        Company company = companyRepository.findById(companyId)
+        Company company = companyRepository.findByIdForUpdate(companyId)
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
         user.validateSelfOrMaster(company.getManagerId());
         Product product = Product.create(company, command.name(), command.description(), command.price());

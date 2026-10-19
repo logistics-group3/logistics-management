@@ -36,6 +36,9 @@ I-07·I-08 구현 전 [주문 연동 실패 계약](../order/integration-contrac
 - [x] 업체·상품 검색(QueryDSL), user·hub FeignClient
 - [x] C-01~C-05, P-01~P-05
 - [x] I-07, I-08 내부 API
+- [x] #15 로컬 보강: P-01·C-05가 같은 업체 행 잠금을 공유해 삭제된 업체 아래 활성 상품이 남는 경쟁을 막는다. PostgreSQL에서 두 실행 순서와 다른 업체 독립 진행을 확인했다. 사용자 확인 범위이며 팀 리뷰·병합 전이다.
+
+P-01·C-05는 업체 잠금 획득 후 활성 상태와 기존 관리자 권한을 검사한다. 생성이 먼저 커밋되면 삭제가 새 상품까지 논리 삭제하고, 삭제가 먼저 커밋되면 생성은 기존 404 COMPANY_NOT_FOUND로 거절된다. 같은 업체의 생성은 직렬화되며 DB 컬럼·DTO·공개 권한은 바꾸지 않는다.
 
 서비스 결정은 [decisions/](decisions/README.md)에 있다.
 
@@ -52,3 +55,12 @@ I-07·I-08 구현 전 [주문 연동 실패 계약](../order/integration-contrac
 - 요청: 제공 API가 준비되면 구현 위치와 실제 연동 결과를 남긴다. 기존 SA 계약의 구현 확인 요청이며 새 응답 필드를 임의로 추가하라는 요청은 아니다.
 - PR 준비 확인: dev `1384a5d`의 InternalCompanyResponse·InternalProductResponse를 대조해 요청 필드와 Long 원화 가격 계약이 일치함을 확인했다. 실제 HTTP 연동·권한·오류 응답 검증은 아직 별도 확인 대상이다.
 - 결정: 담당자 확인 대기. order 작성만으로 DECIDED·DONE 처리하지 않는다.
+
+### COMPANY-002 업체 삭제와 상품 생성 경쟁 보호 (#15)
+
+- 상태: 로컬 구현, 팀 리뷰 대기.
+- 작성: Junhyun An 작업 / 2026-10-19.
+- 관련: C-05·P-01, SA 7.5, GitHub #15.
+- 확인: 삭제된 업체 아래 활성 상품이 남는 상황을 PostgreSQL에서 재현했다. 수정 전 회귀 3건 중 두 순서가 실패했다.
+- 결정: 사용자가 상세 계획을 확인하고 같은 feat/delivery-T07 브랜치에서 수정·PR 생성을 요청했다. CompanyJpaRepository.findByIdForUpdate에 PESSIMISTIC_WRITE를 적용하고 두 서비스의 기존 트랜잭션이 같은 업체 잠금을 공유한다. 일반 검색·상세 조회에는 잠금을 추가하지 않는다.
+- 결과: [#15 구현·검증 기록](../../reviews/2026-10-19-issue-15-verification.md). COMPANY-001의 내부 조회 계약 검토나 다른 수정·삭제 경쟁을 함께 완료한 것은 아니다.
