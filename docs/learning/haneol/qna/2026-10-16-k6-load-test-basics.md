@@ -41,7 +41,7 @@ arrival-rate 실행기(`constant-arrival-rate`, `ramping-arrival-rate`)는 서�
 
 ## 이 프로젝트에서는
 - 1분 시험 실행(2026-10-16, 맥, 장애 없음, 생성·조회 각 초당 20건): 2,402건, checks 100%, 실패 0%, dropped 없음. 배송 생성(부하 테스트 API, user 호출 2번 포함) p95 31ms·p99 61ms, 배송 목록 조회 p95 14ms·p99 33ms. 결과 파일은 `load-test/results/fault-smoke-20261016-214301.json`(저장소에 올리지 않음).
-- 부하 테스트 API는 주문을 거치지 않고 Gateway → delivery로 배송 생성만 잰다(결정 로그 20). 주문 경로 전체는 `TARGET=order`.
+- 부하 테스트 API는 주문을 거치지 않고 Gateway → delivery로 배송 생성만 잰다(결정 로그 24). 주문 경로 전체는 `TARGET=order`.
 - 덧붙임 파일: `docker-compose.loadtest.yml`(부하 테스트 API 켜기), `docker-compose.fault.yml`(Gateway 권한 캐시 10분, Tomcat 스레드 지표). 절차는 `delivery-service/docs/fault-isolation.md`.
 
 ## 면접 포인트
