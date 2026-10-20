@@ -1,6 +1,7 @@
 # 배송담당자 이메일로 Slack DM 보내기
 
-주문 커밋 후 현재 배송 구간 담당자를 조회해 앱과 담당자 사이의 DM으로 알린다. 이메일 발송 기능이 아니라 Slack 가입 이메일로 멤버를 찾는 기능이다.
+배송의 모든 구간에 담당자가 정해지면(delivery 배정 완료 알림 I-20) 현재 배송 구간 담당자를 조회해 앱과 담당자 사이의 DM으로 알린다. 이메일 발송 기능이 아니라 Slack 가입 이메일로 멤버를 찾는 기능이다.
+2026-10-20부터 발송 시점이 "주문 커밋 직후"에서 "배정 완료"로 바뀌었다. delivery는 주문 확정(I-19) 뒤에만 배정하므로 알림이 올 때 주문은 커밋돼 있다(ADR 0016 "갱신: 발송 시점", delivery 결정 로그 29).
 설계는 [ADR 0016](../decisions/0016-delivery-manager-slack-dm.md), 실행 근거는 [검증 기록](../reviews/slack-dm.md)에 있다. user·delivery 확장은 로컬 구현이며 담당자 리뷰를 기다린다.
 
 ## Slack 앱 설정
@@ -54,8 +55,11 @@ sequenceDiagram
     participant D as delivery
     participant U as user
     participant S as Slack
-    O->>O: 주문·생성 COMPLETED·이벤트 커밋
-    O-->>O: AFTER_COMMIT → 비동기 실행기
+    O->>O: 주문·생성 COMPLETED 커밋
+    O->>D: I-19 배송 확정
+    D-)D: 확정 뒤 허브별 배정(비동기)
+    D->>O: I-20 ASSIGNED (배정 커밋 뒤)
+    O-->>D: 202, 주문 ORDERED·배송 일치 확인 → 비동기 실행기
     O->>D: I-15 현재 구간 담당자 조회
     D-->>O: 배송·주문 ID, 상태, 중복 없는 managerIds
     loop 고유 담당자
@@ -72,8 +76,10 @@ sequenceDiagram
 
 | 상황 | 처리·관찰 |
 |---|---|
-| 주문 롤백, 트랜잭션 밖 이벤트 | 발송하지 않는다 |
-| 같은 Idempotency-Key·본문의 완료 재요청 | 최초 응답 재사용, 이벤트 재발행 없음 |
+| 주문 생성 실패·취소·삭제, 다른 배송의 I-20 | 발송하지 않는다 |
+| 같은 Idempotency-Key·본문의 완료 재요청 | 최초 응답 재사용, 배송 확정은 멱등이라 배정·알림이 다시 일어나지 않는다 |
+| 후보 0명이 확정 뒤 60초 초과 | delivery가 수동 지정으로 넘기고 I-20 `MANUAL_REQUIRED`. order가 채널 Webhook으로 MASTER에게 요청. MASTER가 D-04로 채우면 I-20 `ASSIGNED`로 DM |
+| I-20 요청 실패(order 장애) | delivery가 다시 보내지 않는다. DM 유실 |
 | 완료·취소 배송, ARRIVED·CANCELED 구간 | 대상에서 제외 |
 | 삭제 배송·탈퇴 사용자 | 내부 API 404, 발송 실패를 기록하고 주문 유지 |
 | 비담당자·이메일 미설정 | `CONTACT_NOT_CONFIGURED`, 생략 |

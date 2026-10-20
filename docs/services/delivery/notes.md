@@ -135,3 +135,40 @@
 
 ### 메모
 - PostgreSQL에서 두 경쟁 순서·구간 삭제·반복 종료·ID 불일치를 확인했다. 실제 F1/F2 결과는 [전후 보고서](../../reviews/order-creation-recovery/2026-10-20-implementation-results.md)를 따른다.
+
+## T09 주문 확정 뒤 배정과 배정 결과 알림 (I-19, I-20, I-21) (2026-10-20)
+### 처리 과정
+설계는 결정 로그 29, 범위는 [T09](../../../delivery-service/docs/tasks/T09.md). delivery부터 만들고 order를 맞췄다. 계층 순서는 마이그레이션·domain → application → infrastructure → presentation → 테스트 → 문서다.
+
+1. delivery 마이그레이션·domain
+   - V5: `p_deliveries.confirmed_at`(주문 확정 시각), `manual_assignment_requested_at`(수동 지정 요청 시각), 미확정 부분 인덱스 `idx_p_deliveries_unconfirmed`. 기존 행은 `confirmed_at = created_at`.
+   - `Delivery.confirm()`(멱등), `requestManualAssignment()`(대기 구간이 있을 때 한 번), `hubsAwaitingManager()`, `reassignRouteManager()`가 "이번 지정으로 대기 구간이 모두 채워졌나"를 돌려준다.
+   - 배정 대기 잠금 쿼리(`lockDeliveriesAwaitingManager`)에 "확정됐고 수동 지정이 아님" 조건, 수동 지정 대상용 `lockDeliveriesAwaitingManagerConfirmedBefore` 추가.
+2. delivery application
+   - `DeliveryCreationService`(I-09): 저장 뒤 배정 신호를 지웠다. 배송은 미확정으로 남는다.
+   - `DeliveryConfirmationService`: `confirm`(I-19) = 배송 행 잠금 → 확정 → 커밋 뒤 대기 구간 허브의 배정을 깨움. `confirmOverdue` = 만든 지 2~30분 된 미확정 배송을 I-21으로 묻고 커밋된 주문만 확정.
+   - `ManagerAssignmentService`: 후보 0명이면 확정 뒤 60초가 지난 대기 배송을 수동 지정으로 넘긴다. 커밋 뒤 `AssignmentNotifier`로 배정 완료·수동 지정을 알린다.
+   - `DeliveryService.reassignManager`(D-04): 마지막 빈 구간을 채우면 커밋 뒤 배정 완료를 알린다.
+   - 포트: `AssignmentNotifier`(I-20), `OrderCreationReader`(I-21). 정책 값 record: `ManualAssignmentPolicy`, `ConfirmationCheckPolicy`.
+3. delivery infrastructure
+   - `OrderClient`(Feign, 연결 실패만 1번 재시도), `OrderClientAdapter`, `OrderAssignmentNotifier`(전용 실행기 4개·대기열 1000, 실패는 기록만).
+   - `UnconfirmedDeliveryPoller`(1분), `ConfirmationProperties`(`delivery.confirmation.*`), `ManagerAssignmentConfig`에 빈 등록. 테스트 설정은 알림·안전망을 끈다.
+4. delivery presentation: `InternalDeliveryController` I-19, `LoadTestDeliveryController`에 측정용 확정 경로.
+5. order
+   - `OrderService.process`: 주문 저장(또는 커밋 재확인)으로 결과가 나오면 I-19을 부른다. 실패는 기록만 하고 주문은 성공이다. `DeliveryConfirmClient`(멱등 재시도 3회, read 2초).
+   - 주문 커밋 직후 DM 리스너와 비동기 송신기를 지우고, `InternalOrderController` I-20 → `AssignmentNotificationService`(접수만) → `AsyncAssignmentNotificationSender`(알림 실행기) → `AssignmentNotificationHandler`(주문 `ORDERED`·배송 일치 확인 → DM 또는 MASTER 채널 알림).
+   - `OrderCreationQueryService.getCreationResult`(I-21).
+6. 테스트: delivery 115개(단위: 확정·수동 지정·D-04 알림·안전망, 통합: 확정 전 미배정, 60초 초과 수동 전환 뒤 자동 배정 제외·D-04로만 채움), order 471개(I-19 호출·실패 격리, I-20 202·비동기 DM·취소 주문 생략·400, I-21, 수동 지정 Webhook).
+7. 문서: delivery·order README 계약(I-19~I-21), ORDER-003, ADR 0016 갱신, `delivery-api.md`·`delivery.md`, Slack DM 가이드, k6 스크립트 확정 요청.
+
+### 핵심
+- 순서를 고정하면 경쟁이 사라진다. "주문 커밋"과 "배정 완료"가 각자 따로 끝나면 둘 다 끝난 것을 누가 볼지, 두 번 보내지 않을지를 따로 풀어야 한다(DB 표시 같은). 배정을 확정 뒤로 옮기면 배정 완료 알림이 올 때 주문은 반드시 있다.
+- 확정은 한 방향 요청이다. order는 확정 커밋 응답(수 ms)만 기다리고 배정 결과는 나중에 따로 받는다. 그래서 order 처리 스레드가 배정 시간만큼 묶이지 않는다.
+- 다시 보내도 되는 요청(I-19, 멱등)과 다시 보내면 안 되는 요청(I-20, 받는 쪽이 DM을 보냈을 수 있음)을 구분해 재시도를 정했다.
+- 유실을 막는 장치는 상태가 있는 쪽이 갖는다. 미확정 배송은 delivery DB에 남으므로 delivery 주기 작업이 order에 물어 맞춘다(I-21). order에 "확정 전달 여부" 표시를 따로 두지 않았다.
+- 후보 0명과 user 장애를 구분한다. 장애까지 세면 장애 1분 만에 모든 주문이 MASTER에게 넘어간다.
+
+### 확인 질문
+- 배정 완료 알림이 주문 커밋보다 먼저 도착할 수 있었던 이유는? 확정 단계가 이를 어떻게 없애나?
+- I-19은 재시도하고 I-20는 재시도하지 않는 이유는?
+- 확정 유실 안전망이 30분이 지난 미확정 배송을 더 묻지 않는 이유와 그 대가는?
