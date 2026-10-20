@@ -23,7 +23,7 @@ export function DeliveryManagerForm({ target }: { target: User }) {
     <section className="assignment-section">
       <h3>
         <Truck size={18} />
-        배송 담당 연결
+        배송 담당자 설정
       </h3>
       <p className="muted small">
         {target.name} ({target.username}) 사용자의 담당 허브를 설정합니다. 계정 역할은 변경하지
@@ -49,7 +49,7 @@ export function DeliveryManagerForm({ target }: { target: User }) {
             await cache.invalidateQueries({ queryKey: ['users'] })
             notify(
               assigned
-                ? '배송 담당자와 소속 허브가 연결되었습니다.'
+                ? '배송 담당자 지정이 저장되었습니다.'
                 : '배송 담당자 지정이 해제되었습니다.',
             )
           } catch (value) {

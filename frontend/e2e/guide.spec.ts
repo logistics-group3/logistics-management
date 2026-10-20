@@ -100,7 +100,7 @@ test('발제 예시: 경기 → 부산 허브 간 주문, 출발 허브 담당�
   const form = page.getByRole('dialog', { name: '새 주문 등록' })
   await form.getByLabel('공급업체', { exact: true }).selectOption(scenario['경기 건조식품 가공'])
   await form.getByLabel('수령업체', { exact: true }).selectOption(scenario['부산 수산 도매'])
-  await expect(form.getByText(/다른 허브 간 주문입니다/)).toBeVisible()
+  await expect(form.getByText(/배송 경로: 공급업체 집하/)).toBeVisible()
   await form
     .getByLabel('상품', { exact: true })
     .selectOption(scenario.products['마른오징어 가공품'])

@@ -174,7 +174,7 @@ export function DeliverySheet({ id }: { id: string }) {
           if (!busy) setTarget(null)
         }}
         title={`${target ? labels[target.route.routeType] : ''} ${target?.status === 'MOVING' ? '출발' : '도착'} 처리`}
-        description="실제 작업이 완료되었는지 확인한 뒤 상태를 변경하세요."
+        description="선택한 구간의 실제 작업 완료 여부를 확인하세요."
       >
         <form
           onSubmit={async (event) => {
@@ -216,7 +216,7 @@ export function DeliverySheet({ id }: { id: string }) {
               </Field>
             </div>
           )}
-          <p>변경 후에는 이전 단계로 되돌리는 기능이 제공되지 않습니다.</p>
+          <p>변경 후 이전 상태로 되돌릴 수 없습니다.</p>
           <div className="actions align-end">
             <Button
               type="button"

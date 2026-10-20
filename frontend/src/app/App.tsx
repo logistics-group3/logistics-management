@@ -9,10 +9,13 @@ import {
   useLocation,
 } from 'react-router-dom'
 import {
+  ArrowUpRight,
   Boxes,
   Building2,
   ChevronRight,
   ClipboardCheck,
+  Command,
+  Container,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -31,6 +34,7 @@ import { Orders } from '../features/Orders'
 import { Deliveries } from '../features/Deliveries'
 import { Catalog } from '../features/Catalog'
 import { TestGuide } from '../features/TestGuide'
+import { localDate } from '../shared/format'
 const navigation = [
   { path: '/', label: '대시보드', icon: LayoutDashboard },
   { path: '/orders', label: '주문 관리', icon: Package },
@@ -46,7 +50,9 @@ function PublicGuide() {
     <div className="public-guide">
       <header className="public-guide-bar">
         <Link className="brand" to="/">
-          <span className="brand-symbol">S</span>
+          <span className="brand-symbol">
+            <Container size={23} strokeWidth={1.7} />
+          </span>
           <span>
             SPARTA<span>LOGISTICS</span>
           </span>
@@ -89,7 +95,9 @@ function Shell() {
       )}
       <aside className={`sidebar ${menu ? 'sidebar-open' : ''}`}>
         <NavLink className="brand" to="/">
-          <span className="brand-symbol">S</span>
+          <span className="brand-symbol">
+            <Container size={23} strokeWidth={1.7} />
+          </span>
           <span>
             SPARTA<span>LOGISTICS</span>
           </span>
@@ -102,21 +110,23 @@ function Shell() {
           <X size={20} />
         </button>
         <div className="workspace-tag">
-          <span className="workspace-avatar">SL</span>
+          <span className="workspace-avatar">
+            <Command size={16} />
+          </span>
           <div>
-            <strong>물류 운영 워크스페이스</strong>
-            <small>LOCAL WORKSPACE</small>
+            <strong>물류 관리 시스템</strong>
+            <small>테스트 환경</small>
           </div>
         </div>
-        <span className="nav-section-label">WORKSPACE</span>
+        <span className="nav-section-label">운영 관리</span>
         <nav aria-label="주 메뉴">
           {navigation.map(({ path, label, icon: Icon }, i) => (
             <div key={path}>
-              {i === 3 && <span className="nav-section-label secondary-label">MASTER DATA</span>}
+              {i === 3 && <span className="nav-section-label secondary-label">기준 정보</span>}
               <NavLink to={path} end={path === '/'} onClick={() => setMenu(false)}>
                 <Icon size={19} />
                 <span>{label}</span>
-                {path === '/orders' && <span className="nav-indicator" />}
+                <ChevronRight className="nav-chevron" size={14} />
               </NavLink>
             </div>
           ))}
@@ -124,15 +134,14 @@ function Shell() {
         <div className="sidebar-bottom">
           <div className="environment-card">
             <span className="connection-dot" />
-            <strong>테스트 워크스페이스</strong>
-            <p>주문부터 배송까지 직접 확인하세요.</p>
+            <strong>테스트 환경</strong>
           </div>
           <NavLink className="sidebar-help" to="/guide" onClick={() => setMenu(false)}>
             <ClipboardCheck size={18} />
             멘토 테스트 가이드
             <ChevronRight size={15} />
           </NavLink>
-          <span className="sidebar-version">SPARTA LOGISTICS / CONSOLE 1.0</span>
+          <span className="sidebar-version">물류 관리 시스템</span>
         </div>
       </aside>
       <div className="main-shell">
@@ -145,12 +154,16 @@ function Shell() {
             >
               <Menu size={20} />
             </button>
-            <span>워크스페이스</span>
+            <span className="breadcrumb-home">통합 물류 관리</span>
             <ChevronRight size={14} />
             <strong>{currentLabel ?? '화면'}</strong>
           </div>
           <div className="topbar-account">
-            <span className="environment-pill">LOCAL</span>
+            <span className="topbar-date">{localDate().replaceAll('-', '.')}</span>
+            <Link className="topbar-guide" to="/guide">
+              운영 가이드 <ArrowUpRight size={13} />
+            </Link>
+            <span className="environment-pill">TEST</span>
             <div className="account-avatar">{user.name.slice(0, 1)}</div>
             <div className="account-info">
               <strong>{user.name}</strong>
@@ -181,7 +194,9 @@ function Shell() {
         </main>
         <footer className="app-footer">
           <span>SPARTA LOGISTICS</span>
-          <span>물류 운영 콘솔 · 테스트 데이터</span>
+          <span>
+            통합 물류 운영 시스템 <span className="footer-separator">/</span> 전용 테스트 환경
+          </span>
         </footer>
       </div>
     </div>
