@@ -12,6 +12,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // 조회 캐시(company.cache.type). 기본 none이라 Redis 없이 뜨고, local은 Caffeine, redis는 Redis를 쓴다(성능 측정 항목)
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     runtimeOnly 'org.postgresql:postgresql'
 

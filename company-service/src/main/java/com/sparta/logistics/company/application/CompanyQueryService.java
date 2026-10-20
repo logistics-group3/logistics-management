@@ -9,6 +9,7 @@ import com.sparta.logistics.company.domain.CompanyRepository;
 import com.sparta.logistics.company.domain.CompanySearchCondition;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,11 @@ public class CompanyQueryService {
         return CompanyResult.from(loadCompany(companyId));
     }
 
-    /** I-07 업체 조회(order 호출). 삭제된 업체는 @SQLRestriction으로 조회되지 않아 404다. */
+    /**
+     * I-07 업체 조회(order 호출). 삭제된 업체는 @SQLRestriction으로 조회되지 않아 404다.
+     * Note: 주문 생성마다 두 번(공급·수령) 불려 캐시한다(성능 측정 항목 C). 업체 수정·삭제가 키를 지운다. 404는 캐시하지 않는다.
+     */
+    @Cacheable(CompanyCacheNames.INTERNAL_COMPANY)
     public InternalCompanyResult getInternalCompany(UUID companyId) {
         return InternalCompanyResult.from(loadCompany(companyId));
     }

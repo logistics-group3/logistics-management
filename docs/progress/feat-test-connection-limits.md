@@ -22,6 +22,6 @@
 3. 파일을 되돌리고 다시 실행해 최대 70개대에서 통과하는지 확인한다.
 
 ## 메모
-- 측정 도구는 로컬 도구다. `PUSHGATEWAY_URL`·`SCENARIO`를 주면 Prometheus·Grafana로 볼 수 있다(임시 구성은 저장소에 없음, `.local/ts025-monitor`). 한 번에 한 모듈만 잰다. 측정 연결 자체도 DB 연결 1개를 쓴다.
+- 측정 도구는 로컬 도구다. `PUSHGATEWAY_URL`·`SCENARIO`를 주면 Prometheus·Grafana로 볼 수 있다(임시 구성은 `docs/learning/junhyun/blog/assets/2026-10-19-test-db-connections/grafana-monitor/`로 옮겼다). 한 번에 한 모듈만 잰다. 측정 연결 자체도 DB 연결 1개를 쓴다.
 - Hikari 풀 로그(DEBUG)와 Grafana `hikaricp_connections_*` 패널은 이번에 쓰지 않았다(런타임 서비스용).
 - 풀 크기를 줄이는 B는 실험하지 않았다. 한 연결을 쥔 채 다른 연결을 기다리는 테스트가 막힐 수 있는 위험이 있다(미확인).

@@ -5,6 +5,15 @@
 - 학습 범위: [roadmap.md](roadmap.md)
 - 구현 스텝 기록: [steps/](steps/README.md)
 
+## 하루 정리와 기술블로그
+
+| 날짜 | 하루 정리 | 기술블로그 |
+|---|---|---|
+| 2026-10-19 | [작업·학습·검증 근거](daily/2026-10-19.md) | [통합 테스트 DB 연결 고갈 증거 자료(TS-025)](blog/assets/2026-10-19-test-db-connections/README.md): 실제 Grafana 패널 캡처, 전후 비교 그래프, 측정 원문, 임시 Grafana 구성 |
+| 2026-10-16 | [작업·학습·검증 근거](daily/2026-10-16.md) | [TIL 10일차 — MSA 요청 흐름을 추적하고, 모니터링으로 확인하기](blog/2026-10-16-observability-and-cross-hub-order.md) |
+
+## 질문 노트
+
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
 | 2026-10-20 | [물류 서비스를 취업 포트폴리오로 고도화할 때 무엇부터 해야 하나](qna/2026-10-16-backend-portfolio-hardening.md) | 고급 | portfolio, distributed-systems, recovery, idempotency, outbox, performance | Junhyun An |

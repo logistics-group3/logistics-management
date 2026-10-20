@@ -140,6 +140,23 @@ public class DeliveryQueryRepositoryImpl implements DeliveryQueryRepository {
                 .fetch();
     }
 
+    @Override
+    public List<UUID> findHubsAwaitingManager() {
+        return queryFactory.select(deliveryRoute.managingHubId).distinct()
+                .from(deliveryRoute)
+                .where(deliveryRoute.managerId.isNull(), deliveryRoute.status.eq(RouteStatus.WAITING))
+                .fetch();
+    }
+
+    @Override
+    public boolean existsRouteAwaitingManager(UUID hubId) {
+        return queryFactory.selectOne()
+                .from(deliveryRoute)
+                .where(deliveryRoute.managingHubId.eq(hubId), deliveryRoute.managerId.isNull(),
+                        deliveryRoute.status.eq(RouteStatus.WAITING))
+                .fetchFirst() != null;
+    }
+
     private QDeliverySummaryResult summary() {
         return new QDeliverySummaryResult(
                 delivery.id,

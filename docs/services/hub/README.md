@@ -51,3 +51,9 @@
 - 관련: I-03, SA 6.3, delivery I-09 배송 생성
 - 내용: delivery는 배송 생성(I-09) 때 출발 허브와 목적지 허브가 다르면 I-03을 호출해 허브 이동 구간의 예상 거리·시간을 채운다. delivery 쪽 Feign은 `GET /internal/hub-routes?departureHubId=&arrivalHubId=` → `{ hubRouteId, distanceKm, durationMinutes }`(DTO 그대로, ADR 0010)로 구현했다. I-03이 아직 없어 I-09가 실제 연동에서는 실패한다. (1) 구현 일정 (2) 경로가 없을 때 에러 코드 이름(delivery는 받은 에러를 그대로 order에 전달한다)을 알려 달라.
 - 결정:
+
+### HUB-002 허브·경로 단건 조회 캐시(hub.cache.type)
+- 상태: OPEN (성능 측정용 로컬 구현, 제공 담당자 리뷰 대기)
+- 작성: kmh / 2026-10-19
+- 내용: H-02, I-02, H-04, I-03에 `@Cacheable`을 붙였다. `hub.cache.type`(`HUB_CACHE_TYPE`) 기본 `none`은 지금과 같다. `local`은 Caffeine, `redis`는 Redis다. 쓰기 API가 없어 TTL(기본 10분)로만 갱신된다. 404는 캐시하지 않는다. 목록 검색(H-01, H-03)은 캐시하지 않는다.
+- 관련: [ADR 0019](../../decisions/0019-redis-cache-measured-adoption.md), [측정 기록](../../reviews/performance/README.md) B1 조건.

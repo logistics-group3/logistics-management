@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /** 배송 상태 전이(SA 2.5, delivery.md 3-2 전이표). Spring 없이 Entity 메서드만 검증한다. */
 class DeliveryTest {
@@ -229,5 +230,62 @@ class DeliveryTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("배송 생성 직후 구간은 담당자가 없는 배정 대기이고, 허브별 배정은 그 허브가 담당하는 대기 구간만 채운다")
+    void assignPendingRoutesByHub() {
+        Delivery delivery = DeliveryFixture.unassigned(SUPPLIER_HUB, RECEIVER_HUB);
+        assertThat(delivery.getRoutes()).allMatch(DeliveryRoute::isAwaitingManager);
+
+        int assigned = delivery.assignPendingRoutes(SUPPLIER_HUB, DeliveryFixture.assigner());
+
+        // 집하·허브 이동은 공급업체 허브 담당, 업체 배송은 요청업체 허브 담당이라 아직 대기
+        assertThat(assigned).isEqualTo(2);
+        assertThat(delivery.getRoutes()).extracting(DeliveryRoute::getManagerId)
+                .containsExactly(SUPPLIER_MANAGER, SUPPLIER_MANAGER, null);
+        assertThat(delivery.getRoutes().get(0).getAssignedAt()).isNotNull();
+        assertThat(delivery.hasNoRouteAwaitingManager()).isFalse();
+    }
+
+    @Test
+    @DisplayName("이미 배정된 구간은 다시 배정해도 그대로다(배정 작업이 여러 번 불려도 결과가 같다)")
+    void assignIsIdempotent() {
+        Delivery delivery = DeliveryFixture.threeRoutes();
+
+        int assigned = delivery.assignPendingRoutes(SUPPLIER_HUB, DeliveryFixture.assigner())
+                + delivery.assignPendingRoutes(RECEIVER_HUB, DeliveryFixture.assigner());
+
+        assertThat(assigned).isZero();
+        assertThat(delivery.hasNoRouteAwaitingManager()).isTrue();
+        assertThat(delivery.getRoutes()).extracting(DeliveryRoute::getManagerId)
+                .containsExactly(SUPPLIER_MANAGER, SUPPLIER_MANAGER, RECEIVER_MANAGER);
+    }
+
+    @Test
+    @DisplayName("담당자가 없는 구간은 출발할 수 없고(INVALID_STATUS_TRANSITION), MASTER가 재배정하면 출발한다")
+    void cannotStartUnassignedRoute() {
+        Delivery delivery = DeliveryFixture.unassigned(SUPPLIER_HUB, SUPPLIER_HUB);
+        UUID pickup = UUID.randomUUID();
+        ReflectionTestUtils.setField(delivery.getRoutes().get(0), "id", pickup);
+
+        assertThatThrownBy(() -> delivery.startRoute(pickup))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(CommonErrorCode.INVALID_STATUS_TRANSITION);
+
+        delivery.reassignRouteManager(pickup, new DeliveryManager(SUPPLIER_MANAGER, SUPPLIER_HUB));
+        delivery.startRoute(pickup);
+        assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.PICKING_UP);
+        assertThat(delivery.getRoutes().get(0).getAssignedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("취소된 구간은 배정 대기가 아니라서 배정하지 않는다")
+    void canceledRouteIsNotAssigned() {
+        Delivery delivery = DeliveryFixture.unassigned(SUPPLIER_HUB, SUPPLIER_HUB);
+        delivery.cancel();
+
+        assertThat(delivery.assignPendingRoutes(SUPPLIER_HUB, DeliveryFixture.assigner())).isZero();
+        assertThat(delivery.hasNoRouteAwaitingManager()).isTrue();
     }
 }

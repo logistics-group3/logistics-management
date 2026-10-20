@@ -1,5 +1,7 @@
 package com.sparta.logistics.delivery.domain;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,4 +28,19 @@ public interface DeliveryRepository {
 
     /** 주문 ID로 배송 행을 잠그고 읽는다. 잠금 규칙은 {@link #findByIdForUpdate(UUID)}와 같다. */
     Optional<Delivery> findByOrderIdForUpdate(UUID orderId);
+
+    /**
+     * 허브 배정 작업 잠금을 기다리지 않고 시도한다. 잡으면 true이고 트랜잭션이 끝날 때 풀린다.
+     * 다른 작업이 이미 그 허브를 처리 중이면 false다(결정 로그 27). 트랜잭션 안에서만 부른다.
+     */
+    boolean tryLockHubAssignment(UUID hubId);
+
+    /**
+     * 이 허브가 담당하는 배정 대기 구간이 있는 배송을 오래된 순으로 최대 limit건 잠근다. 다른 요청이 잡고 있는 배송은 기다리지 않고
+     * 건너뛴다(SKIP LOCKED). 트랜잭션 안에서만 부른다.
+     */
+    List<UUID> lockDeliveriesAwaitingManager(UUID hubId, int limit);
+
+    /** 배송과 구간을 한 번에 읽는다. 배정 작업이 잠근 배송들을 읽을 때 쓴다. */
+    List<Delivery> findAllWithRoutesByIdIn(Collection<UUID> ids);
 }
