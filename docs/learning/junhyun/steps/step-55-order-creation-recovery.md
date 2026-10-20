@@ -1,7 +1,7 @@
 # 스텝 55 — 접수 후 멈춘 주문 생성의 안전한 운영자 복구
 
 - 날짜: 2026-10-20.
-- 브랜치: feat/docs-learning-evidence, 로컬 미커밋.
+- 구현·실험 브랜치: feat/docs-learning-evidence. 발행은 feat/order-creation-recovery의 [PR #27](https://github.com/logistics-group3/logistics-management/pull/27)로 분리했다.
 - 결정: [ADR 0019](../../../decisions/0019-order-creation-operator-recovery.md).
 - 실행·증거: [개선 전](../../../reviews/order-creation-recovery/2026-10-20-baseline-results.md), [구현과 전후 비교](../../../reviews/order-creation-recovery/2026-10-20-implementation-results.md).
 

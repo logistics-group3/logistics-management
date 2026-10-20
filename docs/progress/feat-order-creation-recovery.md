@@ -1,9 +1,11 @@
 # feat/order-creation-recovery
 
 ## 지금 하는 일
-주문 생성 복구를 dev 기준 새 브랜치로 분리해 커밋·푸시·PR 생성한다.
+주문 생성 복구 커밋·푸시와 dev 대상 PR #27 생성 완료, 리뷰 대기다.
 
 ## 진행 상태
+- [x] 기능 커밋 `7cebb13`을 feat/order-creation-recovery에 푸시하고 [PR #27](https://github.com/logistics-group3/logistics-management/pull/27)을 dev 대상으로 만들었다. origin/dev e55b2a3 위에 기능 변경만 구성했다. 기존 문서 PR #24는 유지했다.
+- [x] 발행 직전 `./gradlew build` 2초 성공·58개 작업 UP-TO-DATE, PR 범위 docs-check·에러 코드 31개·공백·상대 링크 검사 통과. 소스와 ZIP 2개 내부 비밀값/토큰 일치 0건이다. 분리 전후 서비스 코드·실험 도구는 동일하다.
 - [x] 사용자 요청으로 커밋·푸시·PR 발행을 시작했다. 기존 학습 문서 PR #24는 유지하고 기능 변경을 feat/order-creation-recovery에 분리한다. 이전 인계 내용은 이 파일에 보존했다.
 - [x] 최종 F1/F2(-02)는 실제 SIGKILL(exit 137·OOMKilled=false)·재기동 뒤 복구 API로 ABORTED·I-17 CLOSED·활성 주문/배송/구간 0을 확인했다. 같은 키 409·같은 복구 무부작용 재사용·지연 생성 409도 통과했다. [최종 전후 결과](../reviews/order-creation-recovery/2026-10-20-implementation-results.md).
 - [x] 최종 이력 API의 사유·예상 상태·요청자를 보강하고 backend build 47초 성공(5개 실행·53개 UP-TO-DATE), order 484개 재실행을 확인했다. 전체 XML 집계 857개 실패/오류/skip 0에는 재사용 결과가 포함된다. delivery 93개는 앞선 빌드에서 실행했다.
@@ -31,9 +33,9 @@
 - 면접 포인트: 과거 측정 증거와 현재 재검증 결과를 어떻게 구분하는가. 테스트 DB 연결과 서비스 런타임 HikariCP 메트릭은 왜 별도로 보는가.
 
 ## 다음 단계
-1. 로컬 변경의 V7·O-08~O-10·I-18·실행권과 복구 판단을 사용자·팀이 리뷰한다. 자동 재생성·복구 UI·자동 lease 회수·소유권 이전은 후속 범위다.
-2. 필요하면 보존한 전용 DB와 원문으로 추가 실패 시나리오를 검토한다. 같은 runId를 재사용하거나 기존 UI 스택을 종료하지 않는다.
-3. 커밋·푸시·PR 변경은 사용자 요청 시 수행한다. 기존 문서 변경·Eclipse 설정·bin 산출물을 보존한다.
+1. PR #27의 GitHub 검사·리뷰를 확인한다. 팀 리뷰와 병합은 별도 판단으로 남긴다.
+2. 복구 API·V7·실행권 계약의 의견을 반영한다. 추가 검증은 보존한 전용 DB와 새 runId로 수행한다.
+3. 자동 재생성·복구 UI·자동 lease 회수·소유권 이전은 후속 범위다. IDE 설정·bin·환경 파일과 기존 문서 PR #24를 보존한다.
 
 ## 직접 해보기
 1. IntelliJ에서 `OrderService.accept`와 `process`를 열고 진행 기록 커밋·I-09·주문 저장의 순서를 본다. 설계 문서의 F1·F2가 각각 그 사이에 있는지 확인한다.
@@ -46,7 +48,7 @@
 3. `gh pr view --json url,baseRefName,headRefName,state`로 대상 dev, 현재 브랜치, OPEN 상태를 확인한다.
 
 ## 메모
-- 최종 산출물 검사: 변경·추가 Markdown 39개 링크 누락 0, diff 공백·문서 동기화·에러 코드 31개 검사 통과. 구현 증거 ZIP 무결성·생성 비밀값/JWT/Slack 토큰 패턴 검사 통과. 코드·문서는 모두 로컬 미커밋이다.
+- 최종 산출물 검사: 변경·추가 Markdown 39개 링크 누락 0, diff 공백·문서 동기화·에러 코드 31개 검사 통과. 구현 증거 ZIP 무결성·생성 비밀값/JWT/Slack 토큰 패턴 검사 통과. 코드·문서는 PR #27에 발행했다.
 - 재현 도구 검사: Python 3개 구문·JDI Java 컴파일·diff 공백·문서 동기화·에러 코드 31개 검사 통과. 변경 Markdown 13개 링크 누락 0건, 생성 비밀값·JWT 패턴 노출 0건. 전체 정제 증거 ZIP은 결과 보고서에 연결했다.
 - 실험 단계에서는 서비스·DB·실제 프로세스 재기동을 검증했다. Docker bootJar는 테스트 제외 빌드이며, 이번 단계에서 전체 Gradle 테스트·프런트·브라우저 E2E는 실행하지 않았다. 이전 설계 단계의 미실행 표시는 당시 이력이다.
 - 설계 문서 검사(2026-10-20): `git diff --check`, `script/docs-check.sh` 통과. 변경 Markdown 6개 상대 링크 누락 0건. 기능 테스트 결과가 아니며 설계 문서는 로컬 미커밋이다.

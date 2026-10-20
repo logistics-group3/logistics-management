@@ -114,7 +114,7 @@ F1·F2 본 실험은 실제 Gateway·JWT·Feign·서비스·PostgreSQL을 사용
 전용 스택은 종료했다. `logistics-recovery-test_pgdata`·전용 환경 파일·전체 원문을 보존했다. 최종 확인 시 기존 컨테이너 12개 ID가 동일하고 모두 실행 중이었다.
 이 확인은 실행 중인 컨테이너에 영향이 없었다는 뜻이 아니다. OOM 전후 일부 재시작 관찰을 기록에 포함했다.
 자동 주문 재생성·자동 복구 스케줄러·다중 인스턴스 장시간 장애·복구 소유권 이전은 제공하거나 검증하지 않았다.
-실제 복구 API는 사용자 확인을 전제로 하며, 운영자 UI 연결은 후속 작업이다. 현재 변경은 로컬 미커밋이며 푸시·PR 변경은 하지 않았다.
+실제 복구 API는 사용자 확인을 전제로 하며, 운영자 UI 연결은 후속 작업이다. 구현·실험 완료 시점에는 로컬 미커밋이었으며 이후 사용자 요청으로 [PR #27](https://github.com/logistics-group3/logistics-management/pull/27)에 발행했다. 발행 상태는 [현재 인계](../../progress/feat-order-creation-recovery.md)를 따른다.
 
 다음 검토에서는 새 API·V7·실행권과 조건부 종료 계약을 팀이 리뷰한다. 일반 API 응답으로 COMPLETED가 왔다는 것만으로 판단하지 않고 대상 DB·CLOSED·이력까지 함께 본다.
 
