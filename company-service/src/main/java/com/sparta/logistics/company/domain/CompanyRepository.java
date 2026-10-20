@@ -14,6 +14,9 @@ public interface CompanyRepository {
 
     Optional<Company> findById(UUID id);
 
+    /** 업체 삭제와 상품 생성이 같은 업체의 활성 상태를 잠금 아래 확인한다. */
+    Optional<Company> findByIdForUpdate(UUID id);
+
     /** C-02. 정렬은 createdAt, name만 허용한다. */
     Page<Company> search(CompanySearchCondition condition, Pageable pageable);
 }

@@ -61,6 +61,17 @@ export interface Order extends OrderInput {
   createdAt: string
   updatedAt: string
 }
+export interface OrderAccepted {
+  orderId: string
+  status: 'PROCESSING'
+}
+export interface OrderCreation {
+  orderId: string
+  status: 'PROCESSING' | 'COMPLETED' | 'ABORTED' | 'RECOVERY_REQUIRED'
+  failureCode: string | null
+  failureMessage: string | null
+  order: Order | null
+}
 export type DeliveryStatus =
   | 'PICKUP_WAITING'
   | 'PICKING_UP'

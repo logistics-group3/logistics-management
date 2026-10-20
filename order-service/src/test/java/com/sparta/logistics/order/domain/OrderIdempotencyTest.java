@@ -39,7 +39,7 @@ class OrderIdempotencyTest {
         OrderCreation creation = creation();
         OrderErrorCode expected = switch (status) {
             case PROCESSING -> OrderErrorCode.ORDER_CREATION_IN_PROGRESS;
-            case ABORTED -> { creation.abort(null); yield OrderErrorCode.ORDER_CREATION_ABORTED; }
+            case ABORTED -> { creation.abort(null, null, null); yield OrderErrorCode.ORDER_CREATION_ABORTED; }
             case RECOVERY_REQUIRED -> {
                 creation.requireRecovery(null, CreationFailureReason.DELIVERY_RESULT_UNKNOWN);
                 yield OrderErrorCode.ORDER_CREATION_RECOVERY_REQUIRED;
@@ -57,7 +57,7 @@ class OrderIdempotencyTest {
         OrderCreation creation = creation();
         switch (status) {
             case COMPLETED -> creation.completeWithSnapshot(order());
-            case ABORTED -> creation.abort(null);
+            case ABORTED -> creation.abort(null, null, null);
             case RECOVERY_REQUIRED -> creation.requireRecovery(null, CreationFailureReason.DELIVERY_RESULT_UNKNOWN);
             default -> { }
         }

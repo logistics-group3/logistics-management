@@ -200,3 +200,73 @@
 - 추가 영향: 기존 개발 Webhook이 앱 목록에서 사라지고 404 no_service를 반환했다. 폐기 직전 상태를 확인하지 않아 정확한 무효화 시점은 미확인이다. 사용자 승인 후 같은 채널의 새 URL 한 줄만 `.env`에 반영하고 기존 이미지의 주문 컨테이너만 재생성했다. 나머지 8개 컨테이너·DB는 유지했다.
 - 확인: 새 Bot 인증·조회 정상, 새 Webhook은 메시지 없는 GET에 400 invalid_payload, 두 주문 서버 health UP. 추가 메시지는 보내지 않았다. 증거와 제한은 [검증 기록](reviews/slack-dm.md)에 있다.
 - 배운 점: 자격 증명이 보이는 페이지는 일부 영역이라도 캡처하지 않는다. 비밀값이 없는 별도 화면에서만 캡처하고 실제 이미지의 범위를 확인한 뒤 공유한다.
+
+### TS-022 지정 해제된 배송담당자가 기존 배송을 변경함
+
+- 서비스·작성: delivery / Junhyun An 작업 / 2026-10-19
+- 문제: deliveryManager=false이고 기존 managerId와 ID가 같은 USER의 D-03·D-05 요청이 허용됐다. 거절 회귀 테스트는 단위·HTTP 4건, 프런트 2건이 실패했다.
+- 원인: 현재 자격을 검사하지 않고 배정 ID 일치 또는 MASTER만 확인했다.
+- 해결: DeliveryService.validateAssignedManager가 MASTER 또는 현재 배송담당자인 해당 구간 담당자만 허용한다. 프런트 nextRouteAction도 같은 조건으로 맞췄다.
+- 확인: 배송 61개·프런트 단위 48개 통과. 거절 후 값 보존과 MASTER false 허용을 검증했다. 실제 Gateway·기존 JWT·캐시 만료 뒤 403·MASTER 재배정 회귀도 단독 실행 통과했다. 상세 범위는 [T07](../delivery-service/docs/tasks/T07.md)이다.
+
+### TS-023 /users/me로 Gateway 권한 캐시 만료를 잘못 판단함
+
+- 서비스·작성: frontend E2E / Junhyun An 작업 / 2026-10-19
+- 문제: 해제 후 /users/me가 false여서 곧바로 배송 API의 403을 기대했으나 200이었다. 첫 전체 E2E는 기존 18개 통과·신규 1개 실패였다.
+- 원인: /users/me는 user-service의 최신 DB 값을 응답한다. Gateway의 로컬 캐시가 주입하는 자격은 아직 true일 수 있다.
+- 해결: 실제 배송 상태 API에 금지된 WAITING 전이를 보낸다. 배정과 자격이 유효하면 상태 검사에서 409, 해제가 Gateway에 반영되면 인가에서 403이다. 데이터를 바꾸지 않고 실제 60초 TTL 반영을 기다린다. 원상 복구도 같은 방식으로 확인한다. UI 버튼 부재는 구간 데이터 로딩 후 검사한다.
+- 확인: 수정한 Gateway 회귀 단독 실행 1개 통과(약 2.1분). 제품 TTL·캐시 검사는 변경하지 않았다.
+
+### TS-024 업체 삭제 후 동시 생성 상품이 활성 상태로 남음
+
+- 서비스·작성: company / Junhyun An 작업 / 2026-10-19.
+- 문제: 실제 PostgreSQL에서 생성 선행·삭제 선행 모두 삭제된 업체 아래 활성 상품이 남거나 생성이 성공했다. 수정 전 동시성 회귀 3건 중 2건이 실패했다.
+- 원인: C-05는 보이는 상품만 조회해 삭제하고 P-01은 일반 조회 후 저장했다. 두 경로가 같은 업체의 활성 상태와 커밋 순서를 보호하지 않았다. FK는 물리 업체 행이 남아 있어 통과한다.
+- 해결: 두 서비스의 기존 트랜잭션이 CompanyRepository.findByIdForUpdate·PESSIMISTIC_WRITE를 공유한다. 잠금 획득 후 권한을 검사하고 커밋까지 유지한다.
+- 확인: company 50개 통과. 실제 pg_blocking_pids와 최종 DB 값으로 두 실행 순서·다른 업체 독립 진행을 확인했다. 상세는 [#15 검증](reviews/2026-10-19-issue-15-verification.md)이다.
+
+### TS-025 통합 테스트 컨텍스트가 늘자 PostgreSQL 연결이 고갈돼 무관한 테스트 18개가 실패함
+
+- 서비스·작성: order(테스트) / Junhyun An 작업 / 2026-10-19
+- 문제: 비동기 접수(#16) 구현 뒤 `./gradlew :order-service:test --rerun-tasks`가 463개 중 18개 실패했다. 18개가 모두 `OrderRepositoryIntegrationTest`였고 이 변경과 무관한 클래스다. 핵심 원인 줄은 `ApplicationContext` 로드 실패 아래의 `FlywaySqlException: Unable to obtain connection from database: FATAL: sorry, too many clients already`였다.
+- 원인: 통합 테스트는 Testcontainers PostgreSQL 한 개를 모든 Spring 컨텍스트가 공유하고, Spring은 프로퍼티·테스트 설정이 다른 컨텍스트를 캐시해 둔다. 캐시된 컨텍스트마다 Hikari 풀이 열려 있고 기본값(`maximumPoolSize` 10, `minimumIdle`은 `maximumPoolSize`와 같음)이라 컨텍스트 하나가 연결 10개를 계속 쥔다. 컨텍스트가 늘면 PostgreSQL 기본 `max_connections`(100, 공식 문서 기본값)에 닿는다. 수정 후 실행에서 한 JVM에 풀 12개(`HikariPool-12`)가 만들어졌다. 새 비동기 통합 테스트가 컨텍스트 1개를 더 만든 것이 한계를 넘긴 계기라고 추정한다(변경 전 컨텍스트 수는 측정하지 않았다).
+- 해결: 1차로 order 테스트 전용 풀 상한(PR #18)을 두었다. 근본 대책으로 `common` 테스트 지원에 `spring.properties`(`spring.test.context.cache.maxSize=8`)를 추가해 캐시 컨텍스트를 8개로 제한하고 order 로컬 풀 상한은 제거했다. 최악 연결은 8 x 10 = 80개로 한도 안이다.
+- 확인: 같은 코드·같은 명령에서 `script/test-db-connections.sh :order-service:test --rerun-tasks`로 연결 수를 잰 결과 캐시 상한 없이는 최대 91개·96개·91개(idle, 3회)에서 BUILD FAILED, 상한을 두면 최대 72개·80개·80개(3회)에서 BUILD SUCCESSFUL이었다. 컨테이너 `max_connections`는 100(예약 3)이다. 측정 과정은 [작업 계획](reviews/2026-10-19-test-connection-exhaustion-plan.md), 배경은 [STAR 기록](reviews/2026-10-19-test-connection-exhaustion.md)에 있다.
+- 배운 점: 실패한 테스트가 변경과 무관해 보이면 테스트 자체보다 자원 공유를 의심한다. 에이전트 여러 개가 같은 `build` 디렉터리에서 Gradle을 동시에 돌리면 `Could not write XML test results`로 실패하는데, 이는 연결 고갈과 별개의 원인(추정)이므로 병렬 실행을 피한다.
+
+### TS-026 실험용 설정으로 기동하자 postgres가 뜨지 않음
+- 서비스·작성: infra / 한얼 / 2026-10-16
+- 문제: `script/run.sh --reset` 중 `✘ Container logistics-management-postgres-1 Error dependency postgres failed to start`. 뒤 서비스가 모두 기동하지 못했다.
+- 원인: `.env`가 2026-10-13에 만들어진 뒤 `.env.example`에 추가된 `POSTGRES_USER`, `POSTGRES_PASSWORD`가 없었다. `docker-compose.yml`은 이 값을 기본값 없이 넘기므로 postgres 이미지가 관리자 비밀번호 없이 시작하다 종료된다. `script/run.sh`는 `.env`가 없을 때만 복사하므로 기존 `.env`는 갱신되지 않는다.
+- 해결: `.env.example`의 두 줄을 `.env`에 추가하고 다시 기동했다.
+- 배운 점: pull 뒤 `.env.example`이 바뀌었으면 키를 비교한다. `comm -13 <(grep -v '^#' .env | cut -d= -f1 | sort) <(grep -v '^#' .env.example | cut -d= -f1 | sort)`가 `.env`에 없는 키를 보여 준다.
+
+### TS-027 장애 격리 실험(S1)에서 배송 생성이 장애 전부터 100% 실패
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: `load-test/fault-isolation.sh` 결과에서 생성 확인 4,773건 모두 실패(약 30ms), 장애 중 조회 실패가 3~4초에 몰림.
+- 원인: `COMPOSE_FILE`을 export하지 않은 터미널에서 `script/run.sh --reset`을 실행해 덧붙임 파일이 빠졌다. 부하 테스트 API가 꺼져 405, Gateway 권한 캐시도 기본 60초라 user가 멈춘 동안 만료되면 Gateway가 3초 뒤 503을 냈다. k6 요약에는 상태 코드가 없어 증상과 설정으로 추정했다.
+- 해결: 실행 스크립트가 시작 전에 `docker compose config`로 실험 설정 두 개를 확인하고, k6 `setup()`이 부하 테스트 API에 빈 본문을 보내 400이 아니면 멈추게 했다.
+- 배운 점: 실험 전제 조건은 사람이 기억하지 않고 스크립트가 확인하게 한다.
+
+### TS-028 기동 직후 부하 테스트에서 delivery 커넥션 풀이 바닥나 모든 요청이 10초 타임아웃
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: 장애를 넣기 전부터 생성·조회의 84~96%가 k6 타임아웃(10초). delivery 로그 `HikariPool-1 - Connection is not available, request timed out after 30009ms (total=10, active=9, idle=1, waiting=157)`. 부하가 끝날 때까지 회복하지 않았다.
+- 원인: 기동 1분 안에 초당 20+20건을 넣어 예열 안 된 JVM이 요청마다 CPU를 많이 썼다(delivery 551%, user 319%, gateway 296%). 처리가 느려져 커넥션 10개가 금방 찼고, k6가 10초에 포기한 뒤에도 서버는 그 요청을 끝까지 처리해(서버 기준 201 1,668건) 밀린 일이 계속 쌓였다. 같은 속도의 두 번째 실행은 CPU가 10분의 1이었고 GC는 원인이 아니었다(누적 0.6초, 힙 30% 이하).
+- 해결: 측정 전 같은 속도로 1분씩 2번 이상 예열하고, 측정 사이에는 `--reset` 대신 `load-test/reset-delivery-data.sh`로 배송 테이블만 비운다. 실행 스크립트가 부하 중 컨테이너 CPU·커넥션 풀·GC를 `-stats.txt`로 남긴다. 상태 수집은 `load-test/diagnose.sh`.
+- 배운 점: 로컬 성능 측정은 JVM 예열 상태를 통제하지 않으면 측정값이 코드가 아니라 예열 정도를 보여 준다. k6 타임아웃만 보면 원인을 알 수 없어 서버 쪽 지표를 같이 남겨야 한다.
+- 재발(2026-10-19 12:30~12:35): 서킷 설정을 반영하려고 delivery를 재시작한 뒤 예열 실행부터 초당 40+40으로 돌렸다(앞 실험에서 셸에 남은 `CREATE_RATE`·`READ_RATE` 40으로 추정). 예열 실행에서 이미 CPU 781%·커넥션 대기 101이었고, 쉬지 않고 이어 돌린 cap4-40(시작 40초에 대기 170)과 s1-resilience-40b도 장애 전부터 90% 안팎이 10초 타임아웃이었다. k6가 포기한 요청을 서버가 계속 처리해 밀린 일이 다음 실행으로 넘어갔다. 처음에는 맥 용량 한계로 봤지만, 예열된 11:59에는 같은 부하를 CPU 76%로 처리했고 13:30 예열 후 재측정도 CPU 15%·실패 0.4%였다. 데이터 누적(배송 6,733건)도 원인에서 뺐다. 대처: 재시작 뒤에는 속도를 명시해(`CREATE_RATE=10 READ_RATE=10`) 낮은 속도부터 예열하고, 무너진 실행 뒤에는 쉬었다가 배송 데이터를 비운 뒤 다시 잰다.
+
+### TS-029 장애 격리 실험 뒤 user-service가 멈춘 채 남아 복구 구간이 무효
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: S1에서 user-service를 되살린 뒤에도 배송 생성이 12ms 만에 100% 실패했다. `docker compose ps`에서 user-service가 `paused`였다.
+- 원인: 실행 스크립트가 장애 중 상태를 모으려고 멈춘 user-service에 `docker compose exec`를 했고, 실패가 `set -euo pipefail`에 걸려 스크립트가 그 자리에서 끝났다. 뒤의 `unpause`가 실행되지 않았다. k6는 백그라운드라 계속 돌아 복구 구간과 그 뒤를 잘못 쟀다.
+- 해결: 상태 수집 실패가 스크립트를 끝내지 않게 하고(`|| true`, 실행 중이 아닌 컨테이너 건너뜀), `trap restore EXIT`로 어떻게 끝나든 user-service를 되살린다. 복구 40초 뒤 상태도 수집한다. 멈춘 채 남았다면 `docker compose unpause user-service`.
+- 배운 점: 장애를 주입하는 스크립트는 정상 종료 경로가 아니라 `trap`으로 원상 복구를 보장한다.
+
+### TS-030 resilience4j를 넣자 delivery 통합 테스트가 모두 컨텍스트 로드 실패
+- 서비스·작성: delivery / 한얼 / 2026-10-19
+- 문제: `./gradlew :delivery-service:test`에서 통합 테스트 4개 클래스(16개)가 `Failed to load ApplicationContext`. 원인 줄은 `ClassNotFoundException: io.github.resilience4j.spring6.fallback.RxJava3FallbackDecorator`(`FallbackConfigurationOnMissingBean` 조건 처리 중).
+- 원인: `resilience4j-spring-boot3`만 버전(2.3.0)을 적었다. 그 의존성인 `resilience4j-spring6` 등은 Spring Cloud BOM이 관리하는 다른 버전으로 올라와, spring-boot3 자동 설정이 참조하는 클래스가 spring6 jar에 없었다(버전 불일치로 판단, 의존성 트리로 확인 필요).
+- 해결: delivery `build.gradle`에 `resilience4j-bom:2.3.0`을 dependencyManagement로 가져와 resilience4j 모듈 버전을 한 번에 맞췄다. 의존성에는 버전을 적지 않는다.
+- 배운 점: 여러 모듈로 나뉜 라이브러리는 한 모듈만 버전을 올리지 말고 BOM으로 맞춘다. 확인: `./gradlew :delivery-service:dependencies --configuration runtimeClasspath | grep resilience4j`
+

@@ -58,7 +58,7 @@ class OrderCreationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(company, delivery, writer, orders);
+        service = new OrderService(company, delivery, writer, orders, OrderCreationExecutor.direct());
         given(company.getCompany(supplierId)).willReturn(new CompanyResult(supplierId, "공급", UUID.randomUUID(), "서울", UUID.randomUUID()));
         given(company.getCompany(receiverId)).willReturn(new CompanyResult(receiverId, "수령", UUID.randomUUID(), "부산", user.userId()));
         given(company.getProduct(productId)).willReturn(new ProductResult(productId, supplierId, "상품", 10_000L));
@@ -91,7 +91,7 @@ class OrderCreationServiceTest {
         assertThat(result.deliveryId()).isEqualTo(deliveryId);
         verify(writer, times(1)).save(any(), any(), any());
         verify(delivery, never()).deleteByOrderId(any());
-        verify(writer, never()).abort(any(), any());
+        verify(writer, never()).abort(any(), any(), any(), any());
         verify(writer, never()).requireRecovery(any(), any(), any());
     }
 
@@ -129,7 +129,7 @@ class OrderCreationServiceTest {
 
         verify(delivery, times(3)).deleteByOrderId(any());
         verify(writer).requireRecovery(any(), eq(deliveryId), eq(CreationFailureReason.DELIVERY_DELETE_FAILED));
-        verify(writer, never()).abort(any(), any());
+        verify(writer, never()).abort(any(), any(), any(), any());
     }
 
     @Test
@@ -140,7 +140,7 @@ class OrderCreationServiceTest {
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
         verify(delivery).deleteByOrderId(any());
-        verify(writer).abort(any(), eq(deliveryId));
+        verify(writer).abort(any(), eq(deliveryId), any(), any());
     }
 
     @Test
@@ -152,7 +152,7 @@ class OrderCreationServiceTest {
 
         verify(delivery).deleteByOrderId(any());
         verify(writer).requireRecovery(any(), isNull(), eq(CreationFailureReason.DELIVERY_RESULT_UNKNOWN));
-        verify(writer, never()).abort(any(), any());
+        verify(writer, never()).abort(any(), any(), any(), any());
         verify(writer, never()).resolveCreation(any());
         verify(writer, never()).save(any(), any(), any());
     }
@@ -180,7 +180,7 @@ class OrderCreationServiceTest {
     @DisplayName("명확한 배송 거절은 종료 기록에 실패해도 원래 409를 반환한다")
     void preservesDeliveryRejectionWhenAbortFails() {
         given(delivery.create(any())).willThrow(new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION));
-        willThrow(databaseFailure()).given(writer).abort(any(), isNull());
+        willThrow(databaseFailure()).given(writer).abort(any(), isNull(), any(), any());
 
         assertFailure(CommonErrorCode.INVALID_STATUS_TRANSITION);
         verify(delivery, never()).deleteByOrderId(any());
@@ -190,7 +190,7 @@ class OrderCreationServiceTest {
     @DisplayName("확인된 보상 뒤 종료 기록에 실패해도 최초 저장 실패를 유지한다")
     void preservesFailureWhenAbortAfterCleanupFails() {
         failSave(OrderCreationCommitResult.notCommitted());
-        willThrow(databaseFailure()).given(writer).abort(any(), any());
+        willThrow(databaseFailure()).given(writer).abort(any(), any(), any(), any());
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
         verify(delivery).deleteByOrderId(any());

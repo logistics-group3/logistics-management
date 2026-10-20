@@ -1,0 +1,7 @@
+# 부하 테스트용 덧붙임 설정. docker-compose.yml을 바꾸지 않고 delivery-service에만 부하 테스트 API를 켠다.
+# 사용: COMPOSE_FILE=docker-compose.yml:docker-compose.loadtest.yml script/run.sh delivery-service
+# 끄기: COMPOSE_FILE 없이 script/run.sh delivery-service로 다시 기동한다. 설명은 delivery-service/docs/load-test.md.
+services:
+  delivery-service:
+    environment:
+      DELIVERY_LOAD_TEST_ENABLED: "true"

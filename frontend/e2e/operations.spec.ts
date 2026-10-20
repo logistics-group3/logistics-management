@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import fs from 'node:fs'
+import { createOrderViaApi } from './order-creation'
 const data = JSON.parse(fs.readFileSync('../.local/ui-test-data.json', 'utf8'))
 const password = 'UiLocal!2026'
 async function login(page: Page, username = 'uimaster') {
@@ -82,7 +83,7 @@ test('주문 생성 → 요청사항 수정 → 취소 → MASTER 삭제', async
   await login(page)
   await createOrder(page, 'E2E 생성·취소 테스트')
   const detail = page.getByRole('dialog', { name: '주문 상세' })
-  await expect(detail).toBeVisible()
+  await expect(detail).toBeVisible({ timeout: 70000 })
   await expect(detail.getByText('55,500원', { exact: true })).toBeVisible()
   await detail.getByLabel('배송 요청사항', { exact: true }).fill('입고 전 10분 전에 연락 바랍니다.')
   await detail.getByRole('button', { name: '요청사항 저장' }).click()
@@ -101,7 +102,7 @@ test('배송 2구간 출발·도착, 집하 후 취소 거절, 완료 후 삭제
   await page.goto('/orders')
   await login(page)
   await createOrder(page, 'E2E 배송 완료 테스트')
-  await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible({ timeout: 70000 })
   const orderUrl = page.url()
   await page.getByRole('link', { name: '배송 상세', exact: true }).click()
   await expect(page.locator('.route-step')).toHaveCount(2)
@@ -141,7 +142,7 @@ test('생성 응답 유실 → 새로고침·재로그인 → 동일 키로 재�
     if (!interrupted) {
       interrupted = true
       const response = await route.fetch()
-      expect(response.status()).toBe(201)
+      expect([201, 202]).toContain(response.status())
       orderId = (await response.json()).data.orderId
       return route.abort('failed')
     }
@@ -153,7 +154,7 @@ test('생성 응답 유실 → 새로고침·재로그인 → 동일 키로 재�
   await login(page)
   await expect(page.getByRole('dialog').getByLabel('주문 수량', { exact: true })).toBeDisabled()
   await page.getByRole('button', { name: '같은 요청 결과 확인' }).click()
-  await expect(page).toHaveURL(new RegExp(`/orders/${orderId}$`))
+  await expect(page).toHaveURL(new RegExp(`/orders/${orderId}$`), { timeout: 70000 })
   expect(requests).toHaveLength(2)
   expect(requests[0]).toEqual(requests[1])
   expect(requests[0].key).toBeTruthy()
@@ -253,19 +254,14 @@ test('배송담당자의 배정 구간 처리와 세션 만료', async ({ page, 
     data: { username: 'uimaster', password },
   })
   const token = (await auth.json()).data.accessToken
-  const headers = { Authorization: `Bearer ${token}`, 'Idempotency-Key': crypto.randomUUID() }
-  const response = await request.post('/api/v1/orders', {
-    headers,
-    data: {
-      supplierCompanyId: data.supplierCompanyId,
-      receiverCompanyId: data.receiverCompanyId,
-      productId: data.products[0].productId,
-      quantity: 1,
-      requestNote: 'E2E 배송담당자 테스트',
-    },
+  const headers = { Authorization: `Bearer ${token}` }
+  const order = await createOrderViaApi(request, headers, {
+    supplierCompanyId: data.supplierCompanyId,
+    receiverCompanyId: data.receiverCompanyId,
+    productId: data.products[0].productId,
+    quantity: 1,
+    requestNote: 'E2E 배송담당자 테스트',
   })
-  expect(response.status()).toBe(201)
-  const order = (await response.json()).data
   await page.goto(`/deliveries/${order.deliveryId}`)
   await login(page, 'uidriver')
   await expect(page.getByText('이준호 (나)', { exact: false }).first()).toBeVisible()

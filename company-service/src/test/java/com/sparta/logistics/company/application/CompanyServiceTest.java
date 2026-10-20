@@ -199,7 +199,7 @@ class CompanyServiceTest {
         Company company = company(managerId);
         Product first = product(company);
         Product second = product(company);
-        given(companyRepository.findById(company.getId())).willReturn(Optional.of(company));
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
         given(productRepository.findAllByCompanyId(company.getId())).willReturn(List.of(first, second));
 
         companyService.delete(user(managerId), company.getId());
@@ -214,10 +214,21 @@ class CompanyServiceTest {
     @DisplayName("관리자가 아닌 USER가 삭제하면 FORBIDDEN이고 아무것도 삭제하지 않는다")
     void deleteByOtherUser() {
         Company company = company(UUID.randomUUID());
-        given(companyRepository.findById(company.getId())).willReturn(Optional.of(company));
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
 
         assertErrorCode(() -> companyService.delete(user(UUID.randomUUID()), company.getId()), CommonErrorCode.FORBIDDEN);
         assertThat(company.isDeleted()).isFalse();
+        verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    @DisplayName("없는 업체를 삭제하면 COMPANY_NOT_FOUND이고 상품을 변경하지 않는다")
+    void deleteUnknownCompany() {
+        UUID companyId = UUID.randomUUID();
+        given(companyRepository.findByIdForUpdate(companyId)).willReturn(Optional.empty());
+
+        assertErrorCode(() -> companyService.delete(master(), companyId), CompanyErrorCode.COMPANY_NOT_FOUND);
+
         verifyNoInteractions(productRepository);
     }
 }

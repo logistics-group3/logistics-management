@@ -5,8 +5,10 @@ import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.order.application.DeliveryGateway;
 import com.sparta.logistics.order.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.order.infrastructure.client.dto.CreateDeliveryRequest;
+import com.sparta.logistics.order.infrastructure.client.dto.DeliveryOrderStateResponse;
 import com.sparta.logistics.order.infrastructure.client.dto.DeliveryResponse;
 import com.sparta.logistics.order.infrastructure.client.dto.DeliveryStatusResponse;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,10 +19,13 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DeliveryClientAdapter implements DeliveryGateway {
 
+    private static final Set<String> ORDER_STATES = Set.of("ACTIVE", "CLOSED", "NONE");
+
     private final DeliveryCreateClient createClient;
     private final DeliveryDeleteClient deleteClient;
     private final DeliveryCancelClient cancelClient;
     private final DeliveryCancelRevertClient cancelRevertClient;
+    private final DeliveryOrderStateClient orderStateClient;
 
     @Override
     public UUID create(CreateDeliveryCommand command) {
@@ -37,6 +42,15 @@ public class DeliveryClientAdapter implements DeliveryGateway {
         if (response == null || response.getStatusCode() != HttpStatus.NO_CONTENT) {
             throw new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE, "배송 삭제 완료 응답을 확인할 수 없습니다.");
         }
+    }
+
+    @Override
+    public boolean isCreationClosed(UUID orderId) {
+        DeliveryOrderStateResponse response = orderStateClient.getByOrderId(orderId);
+        if (response == null || !orderId.equals(response.orderId()) || !ORDER_STATES.contains(response.state())) {
+            throw new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE, "배송 생성 시도의 결과를 확인할 수 없습니다.");
+        }
+        return "CLOSED".equals(response.state());
     }
 
     @Override

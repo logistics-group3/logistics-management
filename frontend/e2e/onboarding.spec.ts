@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import type { APIRequestContext, Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import fs from 'node:fs'
+import { createOrderViaApi, waitForCreation } from './order-creation'
 const fixture = JSON.parse(fs.readFileSync('../.local/ui-test-data.json', 'utf8'))
 const password = 'UiLocal!2026'
 const unique = (prefix: string) => prefix + Date.now().toString(36).slice(-7)
@@ -179,9 +180,12 @@ test('신규 회원가입 → 본인 업체 2곳 등록 → 상품 등록 → �
     )
     await orderForm.getByRole('button', { name: '주문 등록', exact: true }).click()
     const result = await orderResponse
-    expect(result.status()).toBe(201)
-    const order = (await result.json()).data
-    resources.orders.push(order.orderId)
+    // 주문 생성은 202 접수 뒤 진행 조회로 완료된다. 완료된 키의 재요청만 201이다.
+    expect([201, 202]).toContain(result.status())
+    const orderId = (await result.json()).data.orderId
+    resources.orders.push(orderId)
+    await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible({ timeout: 70000 })
+    const order = await waitForCreation(request, await adminHeaders(request), orderId)
     expect(order.ordererId).toBe(account.userId)
     await expect(
       page.getByRole('dialog', { name: '주문 상세' }).locator('.price-total'),
@@ -232,8 +236,9 @@ test('MASTER 업체 담당자 이전 → 새 담당자 주문 생성, 다른 USE
     )
     await form.getByRole('button', { name: '주문 등록', exact: true }).click()
     const result = await creation
-    expect(result.status()).toBe(201)
+    expect([201, 202]).toContain(result.status())
     resources.orders.push((await result.json()).data.orderId)
+    await expect(page.getByRole('dialog', { name: '주문 상세' })).toBeVisible({ timeout: 70000 })
     const auth = await request.post('/api/v1/auth/login', {
       data: { username: 'uiviewer', password },
     })
@@ -315,18 +320,13 @@ test('MASTER 배송담당자·허브 연결 → 실제 자동 배정과 구간 �
         })
       ).json()
     ).data
-    const orderResponse = await request.post('/api/v1/orders', {
-      headers: { ...headers, 'Idempotency-Key': crypto.randomUUID() },
-      data: {
-        supplierCompanyId: companies[0].companyId,
-        receiverCompanyId: companies[1].companyId,
-        productId: product.productId,
-        quantity: 1,
-        requestNote: 'E2E 담당 배정',
-      },
+    const order = await createOrderViaApi(request, headers, {
+      supplierCompanyId: companies[0].companyId,
+      receiverCompanyId: companies[1].companyId,
+      productId: product.productId,
+      quantity: 1,
+      requestNote: 'E2E 담당 배정',
     })
-    expect(orderResponse.status()).toBe(201)
-    const order = (await orderResponse.json()).data
     resources.orders.push(order.orderId)
     const delivery = (
       await (await request.get(`/api/v1/deliveries/${order.deliveryId}`, { headers })).json()

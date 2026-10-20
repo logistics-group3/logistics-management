@@ -14,20 +14,22 @@ import com.sparta.logistics.delivery.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
 import com.sparta.logistics.delivery.application.dto.ActiveRouteCount;
 import com.sparta.logistics.delivery.domain.Delivery;
+import com.sparta.logistics.delivery.domain.DeliveryCreationClosureRepository;
 import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
 import com.sparta.logistics.delivery.domain.DeliveryRoute;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.support.TransactionOperations;
 
 @ExtendWith(MockitoExtension.class)
 class DeliveryCreationServiceTest {
@@ -41,6 +43,8 @@ class DeliveryCreationServiceTest {
     @Mock
     private DeliveryRepository deliveryRepository;
     @Mock
+    private DeliveryCreationClosureRepository closureRepository;
+    @Mock
     private DeliveryQueryRepository deliveryQueryRepository;
     @Mock
     private HubRouteReader hubRouteReader;
@@ -48,8 +52,13 @@ class DeliveryCreationServiceTest {
     private DeliveryManagerReader deliveryManagerReader;
     @Mock
     private RecipientReader recipientReader;
-    @InjectMocks
     private DeliveryCreationService deliveryCreationService;
+
+    @BeforeEach
+    void setUp() {
+        deliveryCreationService = new DeliveryCreationService(deliveryRepository, closureRepository, deliveryQueryRepository,
+                hubRouteReader, deliveryManagerReader, recipientReader, TransactionOperations.withoutTransaction());
+    }
 
     @Test
     @DisplayName("구간 담당 허브에 배송담당자가 없으면 DELIVERY_MANAGER_NOT_FOUND이고 아무것도 저장하지 않는다")
@@ -124,7 +133,8 @@ class DeliveryCreationServiceTest {
     void concurrentDuplicate() {
         Delivery winner = DeliveryFixture.twoRoutes();
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
-        given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty(), Optional.of(winner));
+        // 처음 조회, 저장 트랜잭션 안의 재조회는 비어 있고, 유니크 위반 뒤 새 조회에서 먼저 저장된 배송이 보인다
+        given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty(), Optional.empty(), Optional.of(winner));
         given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
         given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
         given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.empty());
@@ -134,6 +144,39 @@ class DeliveryCreationServiceTest {
 
         assertThat(result.created()).isFalse();
         assertThat(result.delivery().deliveryId()).isEqualTo(winner.getId());
+    }
+
+    @Test
+    @DisplayName("종료된 시도(I-13 종료 표시)면 원격 호출 없이 DELIVERY_CREATION_CLOSED이고 저장하지 않는다")
+    void closedBeforeRemoteCalls() {
+        CreateDeliveryCommand command = command(SUPPLIER_HUB, RECEIVER_HUB);
+        given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty());
+        given(closureRepository.existsById(command.orderId())).willReturn(true);
+
+        assertThatThrownBy(() -> deliveryCreationService.create(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(DeliveryErrorCode.DELIVERY_CREATION_CLOSED);
+        then(hubRouteReader).shouldHaveNoInteractions();
+        then(deliveryManagerReader).shouldHaveNoInteractions();
+        then(deliveryRepository).should(never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("원격 호출 중에 종료되면 저장 직전 잠금 안에서 확인해 DELIVERY_CREATION_CLOSED이고 저장하지 않는다")
+    void closedWhileRemoteCallsRunning() {
+        CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
+        given(deliveryRepository.findByOrderId(command.orderId())).willReturn(Optional.empty());
+        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of(MANAGER_A));
+        given(deliveryQueryRepository.countActiveRoutes(anyCollection())).willReturn(List.of());
+        given(recipientReader.findSlackId(command.receiverManagerId())).willReturn(Optional.empty());
+        // 처음 확인은 없음, 잠금 안의 확인은 있음
+        given(closureRepository.existsById(command.orderId())).willReturn(false, true);
+
+        assertThatThrownBy(() -> deliveryCreationService.create(command))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(DeliveryErrorCode.DELIVERY_CREATION_CLOSED);
+        then(closureRepository).should().lockOrder(command.orderId());
+        then(deliveryRepository).should(never()).saveAndFlush(any());
     }
 
     private void givenNoExistingDelivery(CreateDeliveryCommand command) {

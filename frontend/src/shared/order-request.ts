@@ -1,8 +1,10 @@
 import { ApiError } from './api'
-import type { OrderInput } from './types'
+import type { Order, OrderAccepted, OrderCreation, OrderInput } from './types'
 export interface PendingOrder {
   key: string
   body: OrderInput
+  // 202 접수 뒤에 저장한다. 새로고침 후에는 POST 없이 이 주문의 진행만 조회한다.
+  orderId?: string
   createdAt: string
 }
 const storageKey = (userId: string) => `sparta:order:v1:${userId}`
@@ -30,4 +32,28 @@ export function creationFailure(error: unknown): 'edit' | 'retry' | 'blocked' | 
   if (error.status === 0 || error.status >= 500 || error.status === 401 || error.status === 409)
     return 'retry'
   return 'edit'
+}
+export const CREATION_POLL_INTERVAL_MS = 1000
+export const CREATION_POLL_LIMIT_MS = 60000
+// Note: api()는 HTTP 상태를 버리므로 201(완료된 주문)과 202(접수)는 data 모양으로 구분한다.
+export function classifyCreation(
+  data: Order | OrderAccepted | null | undefined,
+): { kind: 'created'; order: Order } | { kind: 'accepted'; orderId: string } | { kind: 'unknown' } {
+  if (!data?.orderId) return { kind: 'unknown' }
+  if (data.status === 'PROCESSING' && !('deliveryId' in data))
+    return { kind: 'accepted', orderId: data.orderId }
+  if ('deliveryId' in data && data.deliveryId) return { kind: 'created', order: data as Order }
+  return { kind: 'unknown' }
+}
+export type CreationStep = 'completed' | 'aborted' | 'recovery' | 'continue' | 'timeout'
+// 종료 상태를 시간 초과보다 먼저 본다. COMPLETED인데 주문이 없으면 결과를 확정할 수 없다.
+export function creationStep(
+  progress: OrderCreation,
+  elapsedMs: number,
+  limitMs = CREATION_POLL_LIMIT_MS,
+): CreationStep {
+  if (progress.status === 'COMPLETED') return progress.order ? 'completed' : 'recovery'
+  if (progress.status === 'ABORTED') return 'aborted'
+  if (progress.status === 'RECOVERY_REQUIRED') return 'recovery'
+  return elapsedMs >= limitMs ? 'timeout' : 'continue'
 }

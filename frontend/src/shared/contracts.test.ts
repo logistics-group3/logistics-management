@@ -2,7 +2,15 @@ import { validateSignup } from './signup'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { ApiError, parseResponse } from './api'
 import { money } from './format'
-import { clearPending, creationFailure, loadPending, savePending } from './order-request'
+import {
+  classifyCreation,
+  clearPending,
+  creationFailure,
+  creationStep,
+  loadPending,
+  savePending,
+} from './order-request'
+import type { Order, OrderCreation } from './types'
 import { nextRouteAction } from './delivery-rules'
 import type { DeliveryDetail, DeliveryRoute, User } from './types'
 describe('원화 정수 정밀도', () => {
@@ -61,7 +69,7 @@ describe('미완료 주문 보존', () => {
     expect(creationFailure(new ApiError(400, 'VALIDATION_ERROR', ''))).toBe('edit'))
 })
 describe('배송 구간 액션', () => {
-  const user = { userId: 'driver', role: 'USER' } as User
+  const user = { userId: 'driver', role: 'USER', isDeliveryManager: true } as User
   const first = {
     sequence: 1,
     status: 'WAITING',
@@ -84,10 +92,22 @@ describe('배송 구간 액션', () => {
   })
   it('담당자 외 USER에게 변경 액션을 주지 않는다', () =>
     expect(nextRouteAction(delivery, first, { ...user, userId: 'other' })).toBeNull())
+  it.each(['WAITING', 'MOVING'] as const)(
+    '지정 해제된 담당자에게 %s 구간의 출발·도착 액션을 주지 않는다',
+    (status) =>
+      expect(
+        nextRouteAction(delivery, { ...first, status }, { ...user, isDeliveryManager: false }),
+      ).toBeNull(),
+  )
   it('MASTER는 담당자가 아니어도 처리할 수 있다', () =>
-    expect(nextRouteAction(delivery, first, { ...user, role: 'MASTER', userId: 'admin' })).toBe(
-      'MOVING',
-    ))
+    expect(
+      nextRouteAction(delivery, first, {
+        ...user,
+        role: 'MASTER',
+        userId: 'admin',
+        isDeliveryManager: false,
+      }),
+    ).toBe('MOVING'))
   it('취소된 배송과 완료된 배송은 변경할 수 없다', () => {
     expect(nextRouteAction({ ...delivery, status: 'CANCELED' }, first, user)).toBeNull()
     expect(nextRouteAction({ ...delivery, status: 'DELIVERED' }, first, user)).toBeNull()
@@ -138,4 +158,36 @@ it('멤버 ID 없이 가입하며 빈 이메일과 잘못된 이메일은 거절
   expect(validateSignup({ ...valid, slackEmail: '' }).slackEmail).toBeTruthy()
   expect(validateSignup({ ...valid, slackEmail: 'driver+test@example.com' })).toEqual({})
   expect(validateSignup({ ...valid, slackEmail: 'not-an-email' }).slackEmail).toBeTruthy()
+})
+describe('주문 생성 비동기 접수', () => {
+  const order = { orderId: 'o1', status: 'ORDERED', deliveryId: 'd1' } as Order
+  const progress = (status: OrderCreation['status'], withOrder = false): OrderCreation => ({
+    orderId: 'o1',
+    status,
+    failureCode: null,
+    failureMessage: null,
+    order: withOrder ? order : null,
+  })
+  it('202 접수 본문과 201 주문 본문을 구분한다', () => {
+    expect(classifyCreation({ orderId: 'o1', status: 'PROCESSING' })).toEqual({
+      kind: 'accepted',
+      orderId: 'o1',
+    })
+    expect(classifyCreation(order)).toEqual({ kind: 'created', order })
+  })
+  it.each([undefined, null, {}, { orderId: 'o1', status: 'ORDERED' }])(
+    '알 수 없는 본문 %j은 결과 미확정으로 본다',
+    (value) => expect(classifyCreation(value as never)).toEqual({ kind: 'unknown' }),
+  )
+  it('종료 상태는 시간 초과보다 먼저 판정한다', () => {
+    expect(creationStep(progress('COMPLETED', true), 99999)).toBe('completed')
+    expect(creationStep(progress('ABORTED'), 99999)).toBe('aborted')
+    expect(creationStep(progress('RECOVERY_REQUIRED'), 0)).toBe('recovery')
+  })
+  it('COMPLETED인데 주문이 없으면 확정하지 않는다', () =>
+    expect(creationStep(progress('COMPLETED'), 0)).toBe('recovery'))
+  it('처리 중이면 한도까지 계속하고 넘으면 시간 초과로 본다', () => {
+    expect(creationStep(progress('PROCESSING'), 59999)).toBe('continue')
+    expect(creationStep(progress('PROCESSING'), 60000)).toBe('timeout')
+  })
 })

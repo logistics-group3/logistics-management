@@ -15,7 +15,9 @@ paths:
 | 컨트롤러 | `MockMvcBuilders.standaloneSetup` 또는 `@WebMvcTest`(common 웹 설정이 자동 포함) | `AuthControllerTest`, `AuthControllerWebMvcTest` |
 
 - H2를 쓰지 않는다. DB 테스트는 Docker가 켜져 있어야 하고 기본 `./gradlew build`에 포함된다.
-- 통합 테스트는 같은 애너테이션과 속성을 쓰면 Spring 컨텍스트를 재사용한다. 테스트마다 속성을 바꾸면 컨텍스트가 새로 뜬다.
+- 통합 테스트는 같은 애너테이션과 속성을 쓰면 Spring 컨텍스트를 재사용한다. 테스트마다 속성·`@MockitoBean`·`@Import`를 바꾸면 컨텍스트가 새로 뜬다.
+- 컨텍스트마다 Hikari 풀이 DB 연결을 약 10개 쥐고, 모듈의 모든 통합 테스트가 PostgreSQL 컨테이너 한 개(`max_connections` 100, 일반 연결 97)를 공유한다. 새 컨텍스트가 연결을 못 얻으면 `too many clients already`로 그 클래스 전체가 실패한다(TS-025).
+- `common` 테스트 지원의 `spring.properties`가 캐시 컨텍스트를 8개로 제한해 오래된 컨텍스트의 풀을 닫는다(최악 8 x 10 = 80). 상한을 올리거나 컨텍스트 변형을 크게 늘리기 전에 `script/test-db-connections.sh :모듈:test`로 최대 연결 수를 확인한다.
 
 ## 형식
 ```java

@@ -53,7 +53,7 @@ class ProductServiceTest {
     void createByManager() {
         UUID managerId = UUID.randomUUID();
         Company company = company(managerId);
-        given(companyRepository.findById(company.getId())).willReturn(Optional.of(company));
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
         given(productRepository.save(any(Product.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         ProductResult result = productService.create(user(managerId), company.getId(),
@@ -68,7 +68,7 @@ class ProductServiceTest {
     @DisplayName("업체 관리자가 아니면 상품을 만들 수 없다")
     void createByOtherUser() {
         Company company = company(UUID.randomUUID());
-        given(companyRepository.findById(company.getId())).willReturn(Optional.of(company));
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
 
         assertErrorCode(() -> productService.create(user(UUID.randomUUID()), company.getId(),
                 new CreateProductCommand("생수", null, 1000L)), CommonErrorCode.FORBIDDEN);
@@ -79,7 +79,7 @@ class ProductServiceTest {
     @DisplayName("없는 업체에 상품을 만들면 COMPANY_NOT_FOUND")
     void createForUnknownCompany() {
         UUID companyId = UUID.randomUUID();
-        given(companyRepository.findById(companyId)).willReturn(Optional.empty());
+        given(companyRepository.findByIdForUpdate(companyId)).willReturn(Optional.empty());
 
         assertErrorCode(() -> productService.create(master(), companyId,
                 new CreateProductCommand("생수", null, 1000L)), CompanyErrorCode.COMPANY_NOT_FOUND);

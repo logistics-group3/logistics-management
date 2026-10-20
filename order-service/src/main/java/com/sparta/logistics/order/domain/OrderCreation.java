@@ -53,6 +53,13 @@ public class OrderCreation extends BaseEntity {
     @Column(name = "request_hash", length = 67)
     private String requestHash;
 
+    /** ABORTED의 원인 코드와 안내 문구. 비동기 접수라 요청 응답으로 돌려줄 수 없어 진행 조회가 보여 준다. */
+    @Column(name = "failure_code", length = 50)
+    private String failureCode;
+
+    @Column(name = "failure_message", length = 255)
+    private String failureMessage;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "response_snapshot", columnDefinition = "jsonb")
     private OrderCreationSnapshot responseSnapshot;
@@ -96,11 +103,17 @@ public class OrderCreation extends BaseEntity {
         status = OrderCreationStatus.COMPLETED;
     }
 
-    public OrderCreationSnapshot replay(OrderRequestIdentity identity) {
+    /** 같은 키 재요청의 공통 판정. 키는 같은데 요청이 다르면 충돌이고, 논리 삭제된 기록은 복구 필요다. */
+    public void validateReplayOf(OrderRequestIdentity identity) {
         if (!identity.key().equals(idempotencyKey) || !identity.requestHash().equals(requestHash)) {
             throw new BusinessException(OrderErrorCode.ORDER_IDEMPOTENCY_KEY_CONFLICT);
         }
         if (isDeleted()) throw new BusinessException(OrderErrorCode.ORDER_CREATION_RECOVERY_REQUIRED);
+    }
+
+    /** 동기 실행의 재요청 판정. 처리 중이면 ORDER_CREATION_IN_PROGRESS다(비동기 접수는 validateReplayOf 후 상태로 분기한다). */
+    public OrderCreationSnapshot replay(OrderRequestIdentity identity) {
+        validateReplayOf(identity);
         return switch (status) {
             case PROCESSING -> throw new BusinessException(OrderErrorCode.ORDER_CREATION_IN_PROGRESS);
             case ABORTED -> throw new BusinessException(OrderErrorCode.ORDER_CREATION_ABORTED);
@@ -112,9 +125,12 @@ public class OrderCreation extends BaseEntity {
         };
     }
 
-    public void abort(UUID deliveryId) {
+    public void abort(UUID deliveryId, String failureCode, String failureMessage) {
         validateProcessing();
         this.deliveryId = deliveryId;
+        this.failureCode = failureCode;
+        this.failureMessage = failureMessage == null || failureMessage.length() <= 255
+                ? failureMessage : failureMessage.substring(0, 255);
         status = OrderCreationStatus.ABORTED;
     }
 

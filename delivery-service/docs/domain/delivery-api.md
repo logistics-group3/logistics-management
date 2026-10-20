@@ -1,6 +1,6 @@
 # 배송 API 명세 (delivery-service)
 
-> 최종 수정: 2026-10-15 · 담당: 한얼 · 상태: **구현 (D-01~05, I-09~13. I-03·I-14 제공 전이라 Gateway 경유 미확인)**
+> 최종 수정: 2026-10-19 · 담당: 한얼 · 상태: **구현 (D-01~05, I-09~13. I-03·I-14 제공 전이라 Gateway 경유 미확인)**
 > 기준: Notion SA(스파르타물류_SA문서_Master) v2.0 — 6.1 공통 규약 · 6.2 외부 API · 6.3 내부 API · 6.8 배송 API 상세 · 7.3 멱등성
 > 표기 — [SA] SA 원문 그대로 · [제안] SA에는 필드 목록만 있어 형식(JSON·상태 코드)을 채운 것, 구현하며 확정 · [미정] 상대 담당과 확인
 > 설계 배경(상태·배정 규칙)은 [`delivery.md`](delivery.md)
@@ -31,9 +31,9 @@ flowchart LR
 |---|---|---|---|---|
 | 제공·외부 | D-01 | `GET /api/v1/deliveries` | 클라이언트 | [SA] |
 | 제공·외부 | D-02 | `GET /api/v1/deliveries/{deliveryId}` | 클라이언트 | [SA] |
-| 제공·외부 | D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 업체 배송 구간 담당자, MASTER | [SA] |
+| 제공·외부 | D-03 | `PATCH /api/v1/deliveries/{deliveryId}` | 현재 배송담당자인 업체 배송 구간 담당자, MASTER | [SA] |
 | 제공·외부 | D-04 | `POST /api/v1/deliveries/{deliveryId}/routes/{routeId}/manager` | MASTER | [SA] |
-| 제공·외부 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 구간 담당자, MASTER | [SA] |
+| 제공·외부 | D-05 | `PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` | 현재 배송담당자인 구간 담당자, MASTER | [SA] |
 | 제공·내부 | I-09 | `POST /internal/deliveries` | order (주문 생성) | [제안] |
 | 제공·내부 | I-10 | `GET /internal/deliveries/{deliveryId}` | order | [제안] |
 | 제공·내부 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order (주문 취소) | [제안] |
@@ -68,7 +68,7 @@ flowchart LR
 | 404 | `DELIVERY_NOT_FOUND` · `DELIVERY_ROUTE_NOT_FOUND` | 없음 / 다른 배송의 구간 |
 | 404 | `DELIVERY_MANAGER_NOT_FOUND` | 구간 담당 허브에 배송담당자 0명, 재배정 대상이 없거나 배송담당자 아님 |
 | 409 | `INVALID_STATUS_TRANSITION` | 앞 구간 도착 전 출발, 도착·취소된 구간, 집하 시작 후 취소, 업체 배송 출발 후 배송지 수정 |
-| 503 | `SERVICE_UNAVAILABLE` | hub·user 호출 실패·타임아웃 |
+| 503 | `SERVICE_UNAVAILABLE` | hub·user 호출 실패·타임아웃, user 서킷 브레이커·벌크헤드 거절 |
 
 ### 1-4. DeliveryResponse [SA] (SA 6.8)
 D-02·D-03·D-04·D-05가 돌려주는 객체. D-01은 `routes`를 뺀 것.
@@ -168,7 +168,7 @@ Response `200 OK`
 Error: 403 `FORBIDDEN` (담당하지 않은 배송) · 404 `DELIVERY_NOT_FOUND`
 
 ### D-03. 배송지·수령인 수정 [SA]
-`PATCH /api/v1/deliveries/{deliveryId}` · 업체 배송(`LAST_MILE`) 구간 담당자 본인, MASTER
+`PATCH /api/v1/deliveries/{deliveryId}` · 현재 배송담당자인 업체 배송(`LAST_MILE`) 구간 담당자 본인, MASTER
 업체 배송 출발(`OUT_FOR_DELIVERY`) 전까지만.
 
 | Body | 타입 | 필수 | 설명 |
@@ -199,12 +199,15 @@ Content-Type: application/json
 
 { "managerId": "5c4d3e2f-1a0b-4c9d-8e7f-6a5b4c3d2e1f" }
 ```
-처리: I-01 조회 → 배송담당자인가 → 소속 허브 = 구간 담당 허브인가 → 구간이 `WAITING`·`MOVING`인가 → `manager_id` 변경
+처리: I-01 조회(트랜잭션·잠금 밖) → 배송 행 잠금 → 배송담당자인가 → 소속 허브 = 구간 담당 허브인가 → 구간이 `WAITING`·`MOVING`인가 → `manager_id` 변경
+같은 배송의 다른 변경과 겹치면 나중 요청이 기다렸다가 먼저 끝난 상태로 판단한다(도착·취소 뒤면 409). I-01 조회가 먼저라 없는 구간·배송이어도 `DELIVERY_MANAGER_NOT_FOUND`가 먼저 나올 수 있다.
 Response `200 OK`: 수정된 `DeliveryResponse` (구간 포함)
 Error: 400 `MANAGER_HUB_MISMATCH` · 403 `FORBIDDEN` · 404 `DELIVERY_NOT_FOUND` · `DELIVERY_ROUTE_NOT_FOUND` · `DELIVERY_MANAGER_NOT_FOUND` · 409 `INVALID_STATUS_TRANSITION` (도착·취소된 구간)
 
 ### D-05. 구간 상태 변경 [SA]
-`PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` · 그 구간 담당자 본인, MASTER
+`PATCH /api/v1/deliveries/{deliveryId}/routes/{routeId}/status` · 현재 배송담당자인 그 구간 담당자 본인, MASTER
+
+지정 해제 후 배정 ID만 남은 사용자는 D-03·D-05에서 403이다. 권한 캐시 반영 지연과 MASTER 수동 인계 절차는 [서비스 계약 DELIVERY-007](../../../docs/services/delivery/README.md#delivery-007-배송담당자-지정-해제-시-진행-중-구간-처리)을 따른다.
 
 | Body | 타입 | 필수 | 설명 |
 |---|---|---|---|
@@ -293,8 +296,24 @@ Error: 404 `DELIVERY_NOT_FOUND`
 
 ### I-13. 배송 삭제 (주문 삭제·생성 보상)
 `DELETE /internal/deliveries/orders/{orderId}` · 호출: order · 멱등키 `orderId`
-배송·구간 논리 삭제. 대상이 없거나 이미 삭제여도 성공.
+배송·구간 논리 삭제. 대상이 없거나 이미 삭제여도 성공. 어느 경우든 같은 orderId의 **종료 표시**를 남겨, 이후 같은 orderId의 I-09는 배송을 만들지 않고 409 `DELIVERY_CREATION_CLOSED`로 거절한다(이슈 #14). 반복 호출해도 표는 한 번만 남는다.
 Response `204 No Content`
+
+### I-17. 주문 생성 시도의 배송 결과 조회 (이슈 #14)
+`GET /internal/deliveries/orders/{orderId}` · 호출: order
+
+배송 ID를 받지 못한 생성 시도의 결과를 orderId로 확인한다.
+Response `200 OK`
+```json
+{ "orderId": "e8b7f6a5-…", "state": "ACTIVE", "deliveryId": "f9c8a7b6-…", "status": "PICKUP_WAITING" }
+```
+| state | 의미 |
+|---|---|
+| `ACTIVE` | 배송이 있다. `deliveryId`, `status`가 채워진다 |
+| `CLOSED` | 시도가 종료됐다(I-13). 이후 I-09는 거절되므로 활성 배송이 생기지 않는다고 단정할 수 있다. `deliveryId`, `status`는 null |
+| `NONE` | 배송도 종료 표시도 없다. 원래 I-09가 실행 중이거나 아직 도착하지 않았을 수 있어 종료로 단정할 수 없다 |
+
+I-09 Error에 409 `DELIVERY_CREATION_CLOSED`가 추가됐다.
 
 ---
 
@@ -309,7 +328,9 @@ I-10, 상태 전이, 담당자 배정 규칙은 유지한다. 알림용 이메�
 
 배송이 부르는 쪽. 응답은 Feign DTO(infrastructure)에서 받아 **배송 용어로 바꿔** application에 넘긴다 (`delivery.md` §2-2).
 - Feign 공통: `FeignHeaderInterceptor`가 `X-User-*` 전달, `FeignErrorDecoder`가 4xx는 상대 code 그대로, 5xx·타임아웃은 503 `SERVICE_UNAVAILABLE`
-- 타임아웃: connect 5초 / read 20초 (SA v2.0, `config-repo/application.yml`과 같음. 10/15 확인)
+- 타임아웃: delivery는 user·hub 호출을 connect 1초 / read 2초로 덮어쓴다(`config-repo/delivery-service.yml`, 결정 로그 26). 평소 내부 조회는 수십 ms다. 공통값은 connect 5초 / read 20초(SA v2.0, `config-repo/application.yml`)
+- 재시도: 연결 실패(거부, 연결 타임아웃)만 1번 더 보낸다(`ConnectFailureRetryConfig`). 읽기 타임아웃은 다시 보내지 않는다
+- user 호출 보호(`UserClientAdapter`, Resilience4j): 벌크헤드 동시 10·대기 0, 서킷 브레이커는 최근 10초(최소 20건)에서 실패 50% 또는 1.5초 넘는 호출 80%면 열고 10초 뒤 3번 시험한다. 4xx는 실패로 세지 않는다. 거절은 503 `SERVICE_UNAVAILABLE`
 
 ### I-01. 사용자 단건 (user) [제안]
 `GET /internal/users/{userId}`
@@ -329,8 +350,8 @@ Error: 404 `USER_NOT_FOUND` (없거나 탈퇴)
 
 | 배송에서 쓰는 곳 | 쓰는 필드 | 결과 처리 |
 |---|---|---|
-| I-09 수령인 Slack ID | `receiverManagerId` → `slackId` | 성공 → `recipient_slack_id`. 404면 Slack ID 없이(NULL) 진행한다(구현으로 확정). 503·타임아웃은 그대로 올라가 order가 보상 |
-| D-04 재배정 검증 | `isDeliveryManager`, `hubId` | 404 또는 `isDeliveryManager=false` → 404 `DELIVERY_MANAGER_NOT_FOUND` / `hubId` ≠ 구간 담당 허브 → 400 `MANAGER_HUB_MISMATCH` |
+| I-09 수령인 Slack ID | `receiverManagerId` → `slackId` | 성공 → `recipient_slack_id`. 404면 Slack ID 없이(NULL) 진행한다(구현으로 확정). user 장애(5xx·타임아웃·서킷/벌크헤드 거절)여도 Slack ID 없이 진행한다(부분 저하, 결정 로그 24) |
+| D-04 재배정 검증 | `isDeliveryManager`, `hubId` | 404 또는 `isDeliveryManager=false` → 404 `DELIVERY_MANAGER_NOT_FOUND` / `hubId` ≠ 구간 담당 허브 → 400 `MANAGER_HUB_MISMATCH` / user 장애 → 503 `SERVICE_UNAVAILABLE` |
 
 > 10/15 저장소 확인: user `InternalUserResult`에 `hubId`가 있다
 
@@ -381,13 +402,14 @@ order ──I-09──▶ delivery
                  3. 구간 담당 허브 목록 = {공급업체 허브, 요청업체 허브} (같으면 1개)
                     허브마다       I-14 (후보 목록)                         ─▶ user
                     후보 0명인 허브가 하나라도 → 404 DELIVERY_MANAGER_NOT_FOUND
-                 4. I-01 (receiverManagerId → 수령인 Slack ID)             ─▶ user
+                 4. I-01 (receiverManagerId → 수령인 Slack ID, user 장애면 NULL) ─▶ user
                  5. 구간별 담당자 선택 (담당 건수 최소, 동점 userId)
                  6. 배송 + 구간 2~3개 저장 (한 로컬 트랜잭션)
                  7. 201 { deliveryId, status: PICKUP_WAITING }
 ```
 | 단계 | 실패 | 배송이 돌려주는 것 | order가 하는 것 (SA 7.1) |
 |---|---|---|---|
-| 2 · 3 · 4 | 5xx·타임아웃 | 503 `SERVICE_UNAVAILABLE` | I-13 보상 후 503 |
+| 2 · 3 | 5xx·타임아웃·서킷/벌크헤드 거절 | 503 `SERVICE_UNAVAILABLE` | I-13 보상 후 503 |
+| 4 | user 장애 | 실패하지 않는다. Slack ID 없이 저장 | 없음 |
 | 3 | 후보 0명 | 404 `DELIVERY_MANAGER_NOT_FOUND` | 보상 없이 404 (저장된 것 없음) |
 | 6 | DB 오류 | 500 | I-13 보상 후 503 |
