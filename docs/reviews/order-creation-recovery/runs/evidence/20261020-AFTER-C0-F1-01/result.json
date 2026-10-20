@@ -1,0 +1,68 @@
+{
+  "kind": "C0-F1",
+  "runId": "20261020-AFTER-C0-F1-01",
+  "startedAt": "2026-10-20T11:43:59.053471+09:00",
+  "orderId": "29503c93-9e87-4508-becb-57b5aa7b1367",
+  "verdict": "PASS_CONTROL",
+  "before": {
+    "creation": {
+      "attempt_id": "afc04b04-aa2e-437e-859f-0bb652df37c6",
+      "order_id": "29503c93-9e87-4508-becb-57b5aa7b1367",
+      "status": "PROCESSING",
+      "delivery_id": null,
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:43:59.930108",
+      "updated_at": "2026-10-20T11:43:59.930108",
+      "deleted_at": null
+    },
+    "allOrders": 0,
+    "activeOrders": 0,
+    "allDeliveries": 0,
+    "activeDeliveries": 0,
+    "deliveries": [],
+    "activeRoutes": 0,
+    "closures": 0,
+    "i17": {
+      "orderId": "29503c93-9e87-4508-becb-57b5aa7b1367",
+      "state": "NONE",
+      "deliveryId": null,
+      "status": null
+    }
+  },
+  "after": {
+    "creation": {
+      "attempt_id": "afc04b04-aa2e-437e-859f-0bb652df37c6",
+      "order_id": "29503c93-9e87-4508-becb-57b5aa7b1367",
+      "status": "COMPLETED",
+      "delivery_id": "8bac2479-eaf7-42b6-af30-3040fd77f3b2",
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:43:59.930108",
+      "updated_at": "2026-10-20T11:44:01.132781",
+      "deleted_at": null
+    },
+    "allOrders": 1,
+    "activeOrders": 1,
+    "allDeliveries": 1,
+    "activeDeliveries": 1,
+    "deliveries": [
+      {
+        "delivery_id": "8bac2479-eaf7-42b6-af30-3040fd77f3b2",
+        "order_id": "29503c93-9e87-4508-becb-57b5aa7b1367",
+        "status": "PICKUP_WAITING",
+        "deleted_at": null
+      }
+    ],
+    "activeRoutes": 2,
+    "closures": 0,
+    "i17": {
+      "orderId": "29503c93-9e87-4508-becb-57b5aa7b1367",
+      "state": "ACTIVE",
+      "deliveryId": "8bac2479-eaf7-42b6-af30-3040fd77f3b2",
+      "status": "PICKUP_WAITING"
+    }
+  },
+  "replayStatus": 201,
+  "endedAt": "2026-10-20T11:44:01.892596+09:00"
+}

@@ -1,0 +1,12 @@
+services:
+  order-service:
+    restart: "no"
+    environment:
+      SLACK_WEBHOOK_URL: ""
+      SLACK_DM_ENABLED: "false"
+      SLACK_BOT_TOKEN: ""
+      SLACK_DM_WORKSPACE_ID: ""
+      SLACK_DM_ALLOWED_EMAILS: ""
+      JAVA_OPTS: "-Xms128m -Xmx384m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    ports:
+      - "127.0.0.1:25005:5005"

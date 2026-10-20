@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-20T11:21:27.802764+09:00",
+  "stackStopped": true,
+  "volumePreserved": true,
+  "originalContainerIdsPreserved": {
+    "logistics-ui-test-order-service-1": "21a140342ac8",
+    "logistics-ui-test-grafana-1": "002ac001b10d",
+    "logistics-ui-test-prometheus-1": "c52082d00f8a",
+    "logistics-ui-test-company-service-1": "c349a4c62b71",
+    "logistics-ui-test-hub-service-1": "edd971ea394f",
+    "logistics-ui-test-delivery-service-1": "b886201a7455",
+    "logistics-ui-test-gateway-service-1": "1f5840dd430e",
+    "logistics-ui-test-user-service-1": "6f21356fbec7",
+    "logistics-ui-test-postgres-1": "6a2d1002c567",
+    "logistics-ui-test-eureka-server-1": "b55bd7d039e1",
+    "logistics-ui-test-config-server-1": "78848c7216a4",
+    "life-manager-db-1": "e180f5e64a35"
+  }
+}

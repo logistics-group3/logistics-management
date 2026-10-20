@@ -1,0 +1,2 @@
+ARMED com.sparta.logistics.order.application.OrderService:156
+HIT {"at":"2026-10-20T02:20:07.301558Z","line":156,"method":"process","thread":"order-creation-1","deliveryCreateEntries":1,"orderSaveEntries":0}

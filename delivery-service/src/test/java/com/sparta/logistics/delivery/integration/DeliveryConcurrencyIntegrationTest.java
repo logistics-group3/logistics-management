@@ -78,6 +78,33 @@ class DeliveryConcurrencyIntegrationTest extends PostgresIntegrationTest {
     private final UUID hub = UUID.randomUUID();
     private final UUID manager = UUID.randomUUID();
 
+    @Test
+    @DisplayName("집하 출발이 먼저 잠그면 생성 복구는 배송과 종료 표시를 변경하지 않는다")
+    void recoveryAfterDepartureIsRejected() throws Exception {
+        Delivery delivery = createDelivery();
+        Race race = race(
+                () -> deliveryService.changeRouteStatus(master(), delivery.id(), delivery.routeId(1), MOVING),
+                () -> deliveryService.closeCreation(delivery.orderId(), delivery.id()));
+        assertThat(race.first()).isNull();
+        assertThat(race.second()).isInstanceOf(BusinessException.class);
+        assertThat(deliveryStatus(delivery.id())).isEqualTo("PICKING_UP");
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM p_delivery_creation_closures WHERE order_id=?",
+                Integer.class, delivery.orderId())).isZero();
+    }
+
+    @Test
+    @DisplayName("생성 복구가 먼저 끝나면 뒤의 출발은 삭제된 배송을 시작하지 못한다")
+    void departureAfterRecoveryIsRejected() throws Exception {
+        Delivery delivery = createDelivery();
+        Race race = race(
+                () -> deliveryService.closeCreation(delivery.orderId(), delivery.id()),
+                () -> deliveryService.changeRouteStatus(master(), delivery.id(), delivery.routeId(1), MOVING));
+        assertThat(race.first()).isNull();
+        assertThat(race.second()).isInstanceOf(BusinessException.class);
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM p_delivery_creation_closures WHERE order_id=?",
+                Integer.class, delivery.orderId())).isEqualTo(1);
+    }
+
     @AfterEach
     void tearDown() {
         executor.shutdownNow();

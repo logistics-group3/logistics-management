@@ -413,3 +413,11 @@ order ──I-09──▶ delivery
 | 4 | user 장애 | 실패하지 않는다. Slack ID 없이 저장 | 없음 |
 | 3 | 후보 0명 | 404 `DELIVERY_MANAGER_NOT_FOUND` | 보상 없이 404 (저장된 것 없음) |
 | 6 | DB 오류 | 500 | I-13 보상 후 503 |
+
+## I-18 생성 실패·운영자 복구용 조건부 종료 (로컬 확장)
+
+`DELETE /internal/deliveries/orders/{orderId}/creation?expectedDeliveryId={UUID}`. expectedDeliveryId는 선택이며 전달하면 활성 배송 ID와 일치해야 한다.
+orderId advisory lock → 배송 행 잠금 안에서 PICKUP_WAITING과 모든 구간 WAITING을 확인한다. 충족하면 배송·구간 논리 삭제와 종료 표시를 함께 커밋한다.
+배송 없음·이미 종료는 204다. 진행·완료·취소·배송 ID/구간 불일치는 409 INVALID_STATUS_TRANSITION이며 종료 표시도 만들지 않는다.
+현재 배송이 있는데 종료 표시도 있는 모순 상태도 거절한다. 생성 보상과 O-09가 사용하고, 완료 배송 삭제 O-06의 기존 I-13은 유지한다.
+결정은 [ADR 0019](../../../docs/decisions/0019-order-creation-operator-recovery.md), 실제 검증은 복구 전후 보고서를 따른다.

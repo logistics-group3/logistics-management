@@ -1,0 +1,27 @@
+{
+  "creation": {
+    "attempt_id": "75b3ed54-7bdd-4807-bb04-8ef1223c789c",
+    "order_id": "160b53dc-390e-4c1b-b547-123e324dfec2",
+    "status": "COMPLETED",
+    "delivery_id": "33c467cd-0d84-464a-ac08-d6fad659442e",
+    "failure_reason": null,
+    "failure_code": null,
+    "created_at": "2026-10-20T11:47:42.639297",
+    "updated_at": "2026-10-20T11:47:43.50998",
+    "deleted_at": null
+  },
+  "allOrders": 1,
+  "activeOrders": 1,
+  "allDeliveries": 1,
+  "activeDeliveries": 1,
+  "deliveries": [
+    {
+      "delivery_id": "33c467cd-0d84-464a-ac08-d6fad659442e",
+      "order_id": "160b53dc-390e-4c1b-b547-123e324dfec2",
+      "status": "PICKUP_WAITING",
+      "deleted_at": null
+    }
+  ],
+  "activeRoutes": 2,
+  "closures": 0
+}

@@ -1,0 +1,33 @@
+{
+  "start": "2026-10-20T11:52:03.611606+09:00",
+  "end": "2026-10-20T11:52:03.621368+09:00",
+  "method": "GET",
+  "url": "http://127.0.0.1:28080/api/v1/orders/creations/f7f1245e-b3f0-4baa-9498-414d9245bb33",
+  "requestBody": null,
+  "idempotencyKey": null,
+  "status": 200,
+  "responseHeaders": {
+    "transfer-encoding": "chunked",
+    "Content-Type": "application/json",
+    "Date": "Tue, 20 Oct 2026 02:52:03 GMT",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 200,
+    "message": "SUCCESS",
+    "data": {
+      "orderId": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+      "status": "PROCESSING",
+      "failureCode": null,
+      "failureMessage": null,
+      "order": null
+    }
+  }
+}

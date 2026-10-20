@@ -1,0 +1,1 @@
+{"start": "2026-10-20T11:50:44.556173+09:00", "end": "2026-10-20T11:51:32.144948+09:00", "cwd": "/Users/alloy/Desktop/bootcamp/logistics-management", "argv": ["./gradlew", "build"], "command": "./gradlew build", "exitCode": 0, "stdout": "backend-build.stdout", "stderr": "backend-build.stderr"}

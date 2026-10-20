@@ -137,7 +137,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
 
         assertThat(orders.findById(result.orderId())).isPresent();
         assertThat(recordStatus(result.orderId())).isEqualTo("COMPLETED");
-        verify(delivery, never()).deleteByOrderId(any());
+        verify(delivery, never()).closeCreation(any());
         verify(notification, times(1)).send(any());
     }
 
@@ -153,7 +153,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
         UUID orderId = fixtureIds.get(0);
         assertThat(orders.findById(orderId)).isPresent();
         assertThat(recordStatus(orderId)).isEqualTo("COMPLETED");
-        verify(delivery, never()).deleteByOrderId(any());
+        verify(delivery, never()).closeCreation(any());
         verify(notification, times(1)).send(any());
     }
 
@@ -168,7 +168,7 @@ class OrderCreationRecordIntegrationTest extends PostgresIntegrationTest {
             assertThat(orders.findById(orderId)).isEmpty();
             assertThat(recordStatus(orderId)).isEqualTo("PROCESSING");
             return null;
-        }).given(delivery).deleteByOrderId(any());
+        }).given(delivery).closeCreation(any());
 
         assertThatThrownBy(() -> service.create(user, "test-key", command)).extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 

@@ -2,6 +2,8 @@ package com.sparta.logistics.order.domain;
 
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface OrderCreationRepository {
 
@@ -13,4 +15,6 @@ public interface OrderCreationRepository {
     Optional<OrderCreation> findByOrderId(UUID orderId);
 
     Optional<OrderCreation> findByKeyIncludingDeleted(UUID ordererId, String key);
+
+    Page<OrderCreation> findRecoveryCandidates(Pageable pageable);
 }

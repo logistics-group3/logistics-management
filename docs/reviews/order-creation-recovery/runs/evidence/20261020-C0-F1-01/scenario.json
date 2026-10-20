@@ -1,0 +1,11 @@
+{
+  "runId": "20261020-C0-F1-01",
+  "kind": "C0-F1",
+  "startedAt": "2026-10-20T11:17:34.357791+09:00",
+  "source": "order-service/src/main/java/com/sparta/logistics/order/application/OrderService.java",
+  "sourceSha256": "da3a1e25ebe3295f400992544a361cf948993f4f64c9aafdcef410af75f2a3f5",
+  "line": 144,
+  "anchor": "process(creation);",
+  "orderContainer": "e51314b80c3bcd8a4572ce4c453e21ba7a26f633b30f3caddce14ebd2ad10931",
+  "expected": "COMPLETED"
+}

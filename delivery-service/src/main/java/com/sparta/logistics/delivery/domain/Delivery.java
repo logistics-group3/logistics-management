@@ -213,6 +213,16 @@ public class Delivery extends BaseEntity {
         routes.forEach(route -> route.softDelete(username));
     }
 
+    /** I-18 생성 실패 정리. 출발과 같은 배송 행 잠금 안에서 검사한 뒤에만 삭제한다. */
+    public void closeCreation(UUID expectedDeliveryId, String username) {
+        if ((expectedDeliveryId != null && !expectedDeliveryId.equals(id))
+                || status != DeliveryStatus.PICKUP_WAITING
+                || routes.stream().anyMatch(route -> route.getStatus() != RouteStatus.WAITING)) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        softDelete(username);
+    }
+
     private void addRoute(RouteType type, UUID departureHub, UUID arrivalHub, RouteInfo expected, ManagerAssigner assigner) {
         UUID managerId = assigner.assign(type.managingHubId(departureHub, arrivalHub));
         routes.add(new DeliveryRoute(this, routes.size() + 1, type, departureHub, arrivalHub, expected, managerId));

@@ -151,6 +151,9 @@ public class OrderService {
     /** 처리 단계. I-09 배송 생성 → 주문 저장 → 실패 시 보상. 결과나 원래 예외를 돌려주고, 진행 기록에도 남긴다. */
     private OrderResult process(Creation creation) {
         OrderCreationAttempt attempt = creation.attempt();
+        if (orderWriter.isRecoveryClaimed(attempt)) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION, "운영자 복구로 인계된 생성 작업입니다.");
+        }
         UUID deliveryId = createDelivery(attempt, creation.deliveryCommand());
         try {
             CreateOrderCommand command = creation.command();
@@ -270,10 +273,14 @@ public class OrderService {
     }
 
     private boolean compensateDelivery(OrderCreationAttempt attempt) {
+        if (orderWriter.isRecoveryClaimed(attempt)) {
+            return false;
+        }
         RuntimeException lastFailure = null;
         for (int number = 1; number <= COMPENSATION_MAX_ATTEMPTS; number++) {
             try {
-                deliveryGateway.deleteByOrderId(attempt.orderId());
+                // Note: 인계 직전 검사를 통과한 오래된 호출도 배송 출발과 원자적으로 경쟁해야 한다.
+                deliveryGateway.closeCreation(attempt.orderId());
                 return true;
             } catch (RuntimeException exception) {
                 lastFailure = exception;

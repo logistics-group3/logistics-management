@@ -27,6 +27,7 @@
 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order | 구현 | 응답 `deliveryId, orderId, status`. 이미 취소면 200 |
 | I-12 | `POST /internal/deliveries/{deliveryId}/cancel-revert` | order | 구현 | 응답 `deliveryId, orderId, status`. 취소 상태가 아니면 no-op 200 |
 | I-13 | `DELETE /internal/deliveries/orders/{orderId}` | order | 구현 | 204. 대상이 없어도 204, 어느 경우든 종료 표시를 남긴다(이슈 #14) |
+| I-18 | `DELETE /internal/deliveries/orders/{orderId}/creation` | order | 로컬 구현·팀 리뷰 대기 | 선택 expectedDeliveryId. 집하·모든 구간 대기만 정리, 없음·이미 종료도 204, 진행·취소·불일치 409 |
 | I-17 | `GET /internal/deliveries/orders/{orderId}` | order | 구현 | `{orderId, state: ACTIVE\|CLOSED\|NONE, deliveryId, status}`. 배송 ID 없이 생성 시도 결과 확인(이슈 #14) |
 | I-15 | `GET /internal/deliveries/{deliveryId}/notification-recipients` | order | 로컬 구현·팀 리뷰 대기 | `{deliveryId, orderId, status, managerIds}`. WAITING·MOVING 담당자 중복 제거, 완료·취소는 빈 목록, 없음·삭제는 404 DELIVERY_NOT_FOUND. [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md) |
 
@@ -142,3 +143,10 @@ delivery 초기 구현 시 I-03·I-14는 미구현이었다. 최종 대조한 de
 - 관련: D-01, `DeliveryQueryRepositoryImpl.search`, `DeliveryIntegrationTest`
 - 내용: 배송 검색은 요청 정렬만 쓴다. `createdAt`이 같으면 페이지 사이에 중복·누락이 생길 수 있다(주문 검색은 ID로 보조 정렬). D-01~D-05의 HTTP 계층 테스트가 없어 `@RequireRole`·요청 검증은 간접적으로만 확인된다. 통합 테스트는 `HubRouteReader`를 mock으로 바꾼다. hub I-03(PR #9)이 dev에 들어왔으니 응답 형식 계약 테스트를 추가할 수 있다.
 - 결정:
+
+### DELIVERY-009 주문 생성 복구용 조건부 종료
+
+- 상태: 로컬 구현·검증 완료, 팀 리뷰 대기.
+- 작성: order·delivery 통합 작업 / Junhyun An 요청 / 2026-10-20.
+- 결정: 사용자가 [설계](../../reviews/2026-10-20-order-creation-recovery-plan.md)에 따른 두 서비스 구현·F1/F2 전후 검증을 명시적으로 요청했다. 별도 확인 없이 승인 범위를 구현한다. 담당자·팀 전체 승인으로 해석하지 않는다.
+- 계약: [ADR 0019](../../decisions/0019-order-creation-operator-recovery.md)의 I-18. 기존 I-13은 유지한다.

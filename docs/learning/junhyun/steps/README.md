@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 55 | [주문 생성의 안전한 운영자 복구](step-55-order-creation-recovery.md) | feat(order): 주문 생성 운영자 복구와 조건부 배송 종료 |
 | 53 | [업체 삭제와 상품 생성의 커밋 순서 보호](step-53-company-delete-product-create.md) | fix(company): 업체 삭제와 상품 생성 경쟁 보호 (#15) |
 | 52 | [지정 해제된 배송담당자의 변경 권한 차단](step-52-delivery-manager-release.md) | 미커밋 (T07, #13) |
 | 51 | [허브 경로 API 병합과 다른 허브 간 주문 화면 연동](step-51-cross-hub-order-ui.md) | feat(ui): 다른 허브 간 주문 제한 해제와 멘토 가이드 갱신 |

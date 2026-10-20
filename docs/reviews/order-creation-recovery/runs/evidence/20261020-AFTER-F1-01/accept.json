@@ -1,0 +1,36 @@
+{
+  "start": "2026-10-20T11:44:03.687218+09:00",
+  "end": "2026-10-20T11:44:03.721082+09:00",
+  "method": "POST",
+  "url": "http://127.0.0.1:28080/api/v1/orders",
+  "requestBody": {
+    "supplierCompanyId": "2e2f0558-072e-42fd-959b-17eded69c600",
+    "receiverCompanyId": "5f73664d-3f5f-4c31-a1e0-b899469b92c4",
+    "productId": "cae5e184-b9db-4f0d-be47-db3cfcb594ea",
+    "quantity": 2,
+    "requestNote": "20261020-AFTER-F1-01"
+  },
+  "idempotencyKey": "20261020-AFTER-F1-01",
+  "status": 202,
+  "responseHeaders": {
+    "transfer-encoding": "chunked",
+    "Content-Type": "application/json",
+    "Date": "Tue, 20 Oct 2026 02:44:03 GMT",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 202,
+    "message": "주문이 접수되었습니다. 처리 결과는 진행 조회로 확인하세요.",
+    "data": {
+      "orderId": "b90fd719-6cdf-4d6c-87ab-f3428fb33f5b",
+      "status": "PROCESSING"
+    }
+  }
+}

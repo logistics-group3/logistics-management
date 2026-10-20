@@ -5,13 +5,14 @@
 # 스파르타 물류 SA 문서
 
 > MSA 기반 국내 B2B 물류 관리 및 배송 시스템 — System Architecture
-작성일: 2026-10-12 · 최종 수정: 2026-10-19 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
+작성일: 2026-10-12 · 최종 수정: 2026-10-20 · 버전: v2.0 (멘토 피드백 반영) · 작성: 3조 (안준현, 권민혁, 지한얼, 김은지, 최승근, 김진우)
 >
 
 **변경 이력**
 
 | 버전 | 날짜 | 내용 |
 | --- | --- | --- |
+| v2.0 생성 운영자 복구 | 2026-10-20 | 사용자가 승인한 로컬 확장 O-08~O-10·I-18·V7을 11장과 [ADR 0019](../decisions/0019-order-creation-operator-recovery.md)에 기록했다. 팀 리뷰 대기다. |
 | v2.0 배송 권한 보강 | 2026-10-19 | 사용자 확인을 받은 #13의 로컬 수정이다. D-03·D-05는 현재 배송담당자인 해당 구간 담당자 또는 MASTER만 허용한다. 60초 캐시와 MASTER 수동 인계를 유지하며 팀 리뷰·병합 전이다. |
 | v1.0 | 2026-10-12 | 초안 |
 | v1.1 | 2026-10-12 | [SA 제작 미팅](https://app.notion.com/p/SA-3f77bd823b7580eaaab5f0f9e1248abf?pvs=21) 결정 반영: 출고 허브 결정 방식(요청업체 허브 우선, 부족분은 가까운 허브 순으로 모아서 출고), 주문 권한(요청업체 관리자 본인), Gateway 권한 캐시 60초, PK는 UUID로 확정, Kafka는 고도화 단계로 이동, docker-compose 형식 복구 |
@@ -3028,3 +3029,27 @@ volumes:
 
 - 비즈니스 서비스는 호스트 포트를 공개하지 않으므로 `docker compose up -d --scale order-service=2`로 인스턴스를 늘릴 수 있다.
 - `.env`의 `*_DB_PASSWORD` 값은 `init.sql`에서 만든 계정 비밀번호와 같아야 한다.
+
+## 11. 주문 생성 운영자 복구 — 2026-10-20 로컬 확장
+
+사용자가 설계와 구현·F1/F2 검증을 승인했다. 팀 리뷰는 남아 있으며 [ADR 0019](../decisions/0019-order-creation-operator-recovery.md)를 계약 상세의 기준으로 둔다.
+기존 공개 주문 상태·O-01 접수·O-07 진행 조회는 유지한다. 원본 주문을 재생성하지 않고 안전한 중단으로 정리한다.
+
+| API | 계약 |
+|---|---|
+| O-08 GET `/api/v1/orders/creation-recoveries/candidates` | MASTER, 미해결 생성 조사 목록·페이지 |
+| O-09 POST `/api/v1/orders/{orderId}/creation-recoveries` | MASTER, recoveryId·attemptId·expectedStatus·reason·originalExecutionStopped·선택 resumeExecutionId |
+| O-10 GET `/api/v1/orders/creation-recoveries/{recoveryId}` | MASTER, 복구 상태·실행 ID·감사 이벤트 |
+| I-18 DELETE `/internal/deliveries/orders/{orderId}/creation` | order 전용, 선택 expectedDeliveryId, 없음·이미 종료·집하 대기만 204, 진행·취소·불일치 409 |
+
+order V7의 데이터는 다음과 같다. Audit 6개는 기존 BaseEntity 규칙을 따른다.
+
+| 테이블 | 업무 필드·제약 |
+|---|---|
+| p_order_creations 확장 | recovery_id UUID, failure_reason에 RECOVERY_TAKEOVER 추가 |
+| p_order_creation_recoveries | recovery_id PK, status(RUNNING/DEFERRED/COMPLETED), execution_id UUID, reason VARCHAR(500), expected_status VARCHAR(20), message VARCHAR(255), attempt_id UNIQUE·같은 스키마 생성 기록 FK, order_id UUID, requested_by UUID |
+| p_order_creation_recovery_events | event_id PK, recovery_id 같은 스키마 FK, execution_id UUID, step VARCHAR(30), detail VARCHAR(500), 추가 전용 운영 이력 |
+
+생성 기록 잠금으로 정상 저장과 복구 실행권 획득을 직렬화한다. 원격 호출은 로컬 트랜잭션 밖에서 하고, 마지막 종료 때 주문·삭제 이력 부재와 실행 ID를 다시 확인한다.
+I-18은 기존 orderId advisory lock과 배송 행 잠금으로 출발·지연 생성과 경쟁한다. CLOSED 확인 후에만 생성 시도를 ABORTED로 닫는다.
+판단 불가·진행 배송은 RECOVERY_REQUIRED와 DEFERRED로 보존한다. 시간만으로 작업 실패나 실행권 만료를 확정하지 않는다.

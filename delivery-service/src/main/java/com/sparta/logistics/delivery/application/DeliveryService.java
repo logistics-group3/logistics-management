@@ -104,6 +104,21 @@ public class DeliveryService {
         deliveryRepository.findByOrderIdForUpdate(orderId).ifPresent(delivery -> delivery.softDelete(username));
     }
 
+    /** I-18 주문 생성 정리. 출발 전 배송만 정리하고 이후 도착할 I-09도 막는다. */
+    @Transactional
+    public void closeCreation(UUID orderId, UUID expectedDeliveryId) {
+        String username = auditorAware.getCurrentAuditor().orElse(HeaderAuditorAware.SYSTEM);
+        // Note: I-09·I-13과 같은 순서로 잠근 뒤 D-05와 같은 배송 행을 잠근다. 조회 후 출발 경쟁을 없앤다.
+        closureRepository.lockOrder(orderId);
+        var delivery = deliveryRepository.findByOrderIdForUpdate(orderId);
+        if (delivery.isPresent() && closureRepository.existsById(orderId)) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        delivery.ifPresent(value -> value.closeCreation(expectedDeliveryId, username));
+        // close의 flushAutomatically가 위 논리 삭제까지 반영한 뒤 영속성 컨텍스트를 비운다.
+        closureRepository.close(orderId, username);
+    }
+
     private void validateAssignedManager(UserContext user, UUID managerId) {
         // Note: 지정 해제 후에도 구간의 managerId는 남는다. 현재 자격과 배정 관계를 함께 검사한다.
         if (!user.isMaster() && (!user.deliveryManager() || !user.isSelf(managerId))) {

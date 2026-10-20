@@ -90,7 +90,7 @@ class OrderCreationServiceTest {
         assertThat(result.orderId()).isEqualTo(saved.get().getId());
         assertThat(result.deliveryId()).isEqualTo(deliveryId);
         verify(writer, times(1)).save(any(), any(), any());
-        verify(delivery, never()).deleteByOrderId(any());
+        verify(delivery, never()).closeCreation(any());
         verify(writer, never()).abort(any(), any(), any(), any());
         verify(writer, never()).requireRecovery(any(), any(), any());
     }
@@ -102,7 +102,7 @@ class OrderCreationServiceTest {
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
-        verify(delivery, never()).deleteByOrderId(any());
+        verify(delivery, never()).closeCreation(any());
         verify(writer).requireRecovery(any(), eq(deliveryId), eq(CreationFailureReason.ORDER_COMMIT_UNKNOWN));
     }
 
@@ -115,7 +115,7 @@ class OrderCreationServiceTest {
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
-        verify(delivery, never()).deleteByOrderId(any());
+        verify(delivery, never()).closeCreation(any());
         verify(writer).requireRecovery(any(), eq(deliveryId), eq(CreationFailureReason.ORDER_COMMIT_UNKNOWN));
     }
 
@@ -123,11 +123,11 @@ class OrderCreationServiceTest {
     @DisplayName("미저장 확인 뒤 배송 삭제까지 실패하면 삭제 실패 사유를 보존한다")
     void recordsFailedDeletion() {
         failSave(OrderCreationCommitResult.notCommitted());
-        willThrow(new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE)).given(delivery).deleteByOrderId(any());
+        willThrow(new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE)).given(delivery).closeCreation(any());
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
-        verify(delivery, times(3)).deleteByOrderId(any());
+        verify(delivery, times(3)).closeCreation(any());
         verify(writer).requireRecovery(any(), eq(deliveryId), eq(CreationFailureReason.DELIVERY_DELETE_FAILED));
         verify(writer, never()).abort(any(), any(), any(), any());
     }
@@ -139,7 +139,7 @@ class OrderCreationServiceTest {
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
-        verify(delivery).deleteByOrderId(any());
+        verify(delivery).closeCreation(any());
         verify(writer).abort(any(), eq(deliveryId), any(), any());
     }
 
@@ -150,7 +150,7 @@ class OrderCreationServiceTest {
 
         assertFailure(CommonErrorCode.SERVICE_UNAVAILABLE);
 
-        verify(delivery).deleteByOrderId(any());
+        verify(delivery).closeCreation(any());
         verify(writer).requireRecovery(any(), isNull(), eq(CreationFailureReason.DELIVERY_RESULT_UNKNOWN));
         verify(writer, never()).abort(any(), any(), any(), any());
         verify(writer, never()).resolveCreation(any());
@@ -173,7 +173,7 @@ class OrderCreationServiceTest {
         willThrow(databaseFailure()).given(writer).requireRecovery(any(), any(), any());
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
-        verify(delivery, never()).deleteByOrderId(any());
+        verify(delivery, never()).closeCreation(any());
     }
 
     @Test
@@ -183,7 +183,7 @@ class OrderCreationServiceTest {
         willThrow(databaseFailure()).given(writer).abort(any(), isNull(), any(), any());
 
         assertFailure(CommonErrorCode.INVALID_STATUS_TRANSITION);
-        verify(delivery, never()).deleteByOrderId(any());
+        verify(delivery, never()).closeCreation(any());
     }
 
     @Test
@@ -193,7 +193,7 @@ class OrderCreationServiceTest {
         willThrow(databaseFailure()).given(writer).abort(any(), any(), any(), any());
 
         assertFailure(CommonErrorCode.INTERNAL_SERVER_ERROR);
-        verify(delivery).deleteByOrderId(any());
+        verify(delivery).closeCreation(any());
     }
 
     @Test
