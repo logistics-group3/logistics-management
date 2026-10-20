@@ -1,7 +1,7 @@
 # feat/delivery-T09
 
 ## 지금 하는 일
-주문 확정 뒤 배정과 배정 결과 알림(I-19·I-20·I-21)을 delivery·order에 구현하고 커밋했다. 정본은 `delivery-service/docs/tasks/T09.md`, 근거는 결정 로그 29, 계층별 진행은 `docs/services/delivery/notes.md` "T09". 다음은 부하 측정 단계 4 → dev PR.
+주문 확정 뒤 배정과 배정 결과 알림(I-19·I-20·I-21)을 delivery·order에 구현하고 커밋했다. 정본은 `delivery-service/docs/tasks/T09.md`, 근거는 결정 로그 29, 계층별 진행은 `docs/services/delivery/notes.md` "T09". 다음은 dev PR(제목·본문 초안은 대화에서 만듦, ORDER-002 → ORDER-003으로 고쳐 쓴다) → 부하 측정 단계 4.
 
 ## 진행 상태
 - [x] 브랜치: `origin/dev`(0b4df55, hub #28 포함) 위로 옮김(2026-10-20). hub가 ORDER-002를 먼저 써서 T09 리뷰 요청은 ORDER-003. T08은 #25로 dev에 merge. 임시 커밋은 풀어서 아래 다섯 커밋으로 나눴다(push 안 함). 옮기기 전 상태는 `backup/T09-before-rebase`
@@ -9,6 +9,7 @@
 - [x] delivery 구현·테스트 115개 통과, order 구현·테스트 471개 통과, `./gradlew build` 통과, `script/docs-check.sh` OK, `script/error-codes-check.sh` 통과(2026-10-20)
 - [x] 문서: 결정 로그 29(구현하며 정한 것 포함), T09.md, delivery·order README 계약, ORDER-003(OPEN, Junhyun 리뷰 요청), ADR 0016 갱신, `delivery-api.md`·`delivery.md`, Slack DM 가이드, `load-test.md`, 구현 노트
 - [x] 커밋 나누기(2026-10-20): ① docs(delivery) 설계 ② feat(delivery) 확정 뒤 배정·수동 지정·알림·안전망(시드·k6 확정 호출 포함) ③ feat(order) I-19 호출·I-20·I-21·DM 시점 ④ docs 계약·ADR·가이드·progress ⑤ test(load-test) 주문 → DM 끝단 측정 도구. ②까지만 있는 상태도 컴파일된다(order와 모듈이 나뉨)
+- [x] PR 전 확인(2026-10-20): origin/dev 0b4df55 위 rebase(충돌은 order README ORDER-002 하나), `./gradlew build` 통과(delivery 123·order 492 테스트, 실패 0), `docs-check` OK, `error-codes-check` PASS, 리뷰 체크리스트 셀프 점검(원격 호출은 트랜잭션 밖, I-19는 주문 커밋 확인 뒤에만)
 - [ ] 프런트 검증: 프런트 코드·외부 API 응답을 바꾸지 않아 미실행. 필요하면 실행
 - [ ] 실제 기동 확인: 주문 → DM, 후보 0명 → MASTER 알림 → D-04 → DM, `script/delivery-e2e-check.sh`(미실행)
 - [ ] 측정 단계 4(확정 비용, T08 조건)와 주문 경로(O-01, `order-creation` 4개 포화)
