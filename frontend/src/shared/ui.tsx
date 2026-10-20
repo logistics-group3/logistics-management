@@ -51,7 +51,7 @@ export function Loading() {
   return (
     <div className="empty" role="status">
       <LoaderCircle className="spin" size={24} />
-      <p>데이터를 불러오고 있습니다.</p>
+      <p>조회 중…</p>
     </div>
   )
 }
@@ -66,30 +66,26 @@ export function Empty({
     <div className="empty">
       <Inbox size={30} />
       <h3>{text}</h3>
-      <p>검색 조건을 바꾸거나 새 데이터를 등록해 보세요.</p>
       {children}
     </div>
   )
 }
 export function PageTitle({
-  eyebrow,
   title,
   description,
   actions,
 }: {
-  eyebrow: string
   title: string
-  description: string
+  description?: string
   actions?: ReactNode
 }) {
   return (
     <div className="page-heading">
       <div>
-        <span className="eyebrow">{eyebrow}</span>
         <h1 id="page-title" tabIndex={-1}>
           {title}
         </h1>
-        <p>{description}</p>
+        {description && <p>{description}</p>}
       </div>
       <div className="actions">{actions}</div>
     </div>

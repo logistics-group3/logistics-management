@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, RefreshCw } from 'lucide-react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, ListFilter, RefreshCw, Truck } from 'lucide-react'
 import { api, params } from '../shared/api'
 import { labels, dateTime, shortId } from '../shared/format'
 import { useDirectory } from '../shared/queries'
@@ -10,11 +10,19 @@ import { DeliverySheet } from './DeliverySheet'
 import type { Delivery, Page } from '../shared/types'
 import { Button } from '../components/ui/button'
 import { Dialog } from '../components/ui/dialog'
-import { useAuth } from '../app/auth'
 export function Deliveries() {
   const [page, setPage] = useState(0)
   const [size, setSize] = useState(10)
-  const [status, setStatus] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const status = searchParams.get('status') ?? ''
+  const setStatus = (value: string) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous)
+      if (value) next.set('status', value)
+      else next.delete('status')
+      return next
+    })
+  }
   const [hub, setHub] = useState('')
   const directory = useDirectory()
   const query = params({ page, size, status, destinationHubId: hub, sort: 'createdAt,desc' })
@@ -24,17 +32,10 @@ export function Deliveries() {
   })
   const selected = useLocation().pathname.split('/')[2]
   const navigate = useNavigate()
-  const { user } = useAuth()
   return (
     <>
       <PageTitle
-        eyebrow="DELIVERY OPERATIONS"
         title="배송 관리"
-        description={
-          user?.isDeliveryManager && user.role !== 'MASTER'
-            ? '내가 담당하는 배송의 구간과 진행 상황을 확인합니다.'
-            : '집하에서 최종 도착까지 배송 흐름을 관리합니다.'
-        }
         actions={
           <Button variant="secondary" onClick={() => void deliveries.refetch()}>
             <RefreshCw size={16} />
@@ -42,8 +43,19 @@ export function Deliveries() {
           </Button>
         }
       />
-      <section className="panel">
+      <section className="panel delivery-list-panel">
+        <div className="list-section-heading">
+          <span>
+            <Truck size={17} />
+            배송 조회
+          </span>
+          <span className="small muted">상태별 조회 · 담당 구간 처리</span>
+        </div>
         <div className="filters">
+          <div className="filter-label">
+            <ListFilter size={15} />
+            조회 조건
+          </div>
           <Field label="배송 상태">
             <select
               value={status}
@@ -124,7 +136,13 @@ export function Deliveries() {
                 {deliveries.data.content.map((d) => (
                   <tr key={d.deliveryId}>
                     <td>
-                      <Link className="row-link mono" to={`/deliveries/${d.deliveryId}`}>
+                      <Link
+                        className="row-link mono"
+                        to={{
+                          pathname: `/deliveries/${d.deliveryId}`,
+                          search: searchParams.toString(),
+                        }}
+                      >
                         DLV-{shortId(d.deliveryId)}
                       </Link>
                       <span className="subline">{dateTime(d.createdAt)}</span>
@@ -151,7 +169,10 @@ export function Deliveries() {
                       <Link
                         className="table-action"
                         aria-label={`배송 ${shortId(d.deliveryId)} 상세`}
-                        to={`/deliveries/${d.deliveryId}`}
+                        to={{
+                          pathname: `/deliveries/${d.deliveryId}`,
+                          search: searchParams.toString(),
+                        }}
                       >
                         <ArrowRight size={17} />
                       </Link>
@@ -178,7 +199,7 @@ export function Deliveries() {
       {selected && (
         <Dialog
           open
-          onClose={() => navigate('/deliveries')}
+          onClose={() => navigate({ pathname: '/deliveries', search: searchParams.toString() })}
           title="배송 상세"
           description={`DLV-${shortId(selected)}`}
           sheet

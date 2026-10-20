@@ -12,12 +12,12 @@ export function SetupGuide() {
     return (
       <div className="setup-guide">
         <div>
-          <span className="eyebrow">READY TO DELIVER</span>
-          <h2>{directory.hubName(user.hubId!)} 배송 담당자입니다.</h2>
-          <p>배정된 구간에서 출발·도착을 처리할 수 있습니다.</p>
+          <h2>담당 허브: {directory.hubName(user.hubId!)}</h2>
+          <p>본인 배정 구간만 출발·도착 처리 가능</p>
         </div>
         <Link className="text-link" to="/deliveries">
-          <Truck size={17} />내 배송 확인
+          <Truck size={17} />
+          배정 배송 확인하기
           <ArrowRight size={15} />
         </Link>
       </div>
@@ -25,12 +25,11 @@ export function SetupGuide() {
   return (
     <section className="setup-guide" aria-label="주문 시작 안내">
       <div>
-        <span className="eyebrow">GET STARTED</span>
-        <h2>{owned.length ? '담당 업체가 연결되었습니다.' : '내 업체 등록부터 시작하세요.'}</h2>
+        <h2>{owned.length ? '담당 업체' : '담당 업체 등록 필요'}</h2>
         <p>
           {owned.length
-            ? `${owned.map((c) => c.name).join(', ')}의 주문을 만들 수 있습니다.`
-            : '업체를 등록하면 본인이 담당자로 연결되어 주문을 생성할 수 있습니다.'}
+            ? owned.map((c) => c.name).join(', ')
+            : '주문 등록 전 담당 업체를 등록하세요.'}
         </p>
       </div>
       <div className="setup-steps">

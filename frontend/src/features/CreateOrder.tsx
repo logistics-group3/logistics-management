@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Check, Package, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Check, Package } from 'lucide-react'
 import { useAuth } from '../app/auth'
 import { ApiError, api } from '../shared/api'
 import { money } from '../shared/format'
@@ -85,7 +85,7 @@ export function CreateOrder() {
       cache.invalidateQueries({ queryKey: ['orders'] }),
       cache.invalidateQueries({ queryKey: ['deliveries'] }),
     ])
-    notify('주문이 접수되었습니다. 배송과 구간 담당자가 연결되었습니다.')
+    notify('주문이 접수되었습니다.')
     navigate(`/orders/${orderId}`)
   }
   // 1초 간격으로 진행을 조회한다. 일시적 네트워크·서버 오류는 한도 안에서 계속 조회한다.
@@ -190,17 +190,10 @@ export function CreateOrder() {
         void submit()
       }}
     >
-      <div className="form-intro">
-        <ShieldCheck size={19} />
-        <span>한 번의 주문 접수로 배송까지 자동 생성됩니다.</span>
-      </div>
       {pending && (
         <div className="notice warning">
-          <strong>기존 요청의 결과를 확인해 주세요.</strong>
-          <p>
-            중복 주문을 방지하기 위해 처음 제출한 내용을 유지합니다. 다시 로그인한 뒤에도 이 탭에서
-            이어갈 수 있습니다.
-          </p>
+          <strong>미완료 주문 요청</strong>
+          <p>중복 등록 방지를 위해 기존 요청을 유지합니다. 재로그인 후 같은 요청으로 확인하세요.</p>
           <details>
             <summary>요청 번호</summary>
             <code>{pending.key}</code>
@@ -209,25 +202,19 @@ export function CreateOrder() {
       )}
       {phase === 'polling' && (
         <div className="notice" role="status">
-          주문을 처리하고 있습니다. 배송과 구간 담당자를 연결하는 중이며 이 화면을 닫지 마세요.
+          주문 처리 중…
         </div>
       )}
       {phase === 'timeout' && (
         <div className="notice warning" role="status">
-          <strong>처리가 길어지고 있습니다.</strong>
-          <p>
-            새 주문을 만들지 말고 아래 버튼으로 같은 요청의 결과를 다시 확인해 주세요. 요청 번호가
-            같아 중복 주문은 생기지 않습니다.
-          </p>
+          <strong>처리 결과 미확정</strong>
+          <p>새 요청을 등록하지 말고 같은 요청 번호로 처리 결과를 확인하세요.</p>
         </div>
       )}
       {phase === 'recovery' && (
         <div className="notice warning" role="status">
-          <strong>결과 확인이 필요합니다.</strong>
-          <p>
-            같은 요청을 다시 보내지 말고 주문 목록에서 확인하세요. 요청 번호를 관리자에게 전달할 수
-            있습니다.
-          </p>
+          <strong>관리자 확인 필요</strong>
+          <p>재전송을 중단하고 요청 번호를 관리자에게 전달하세요.</p>
         </div>
       )}
       <ErrorNotice error={error} help={help} />
@@ -294,7 +281,7 @@ export function CreateOrder() {
             directory.companies.isSuccess &&
             !directory.companies.data?.some((company) => company.managerId === user?.userId) && (
               <div className="notice">
-                연결된 수령업체가 없습니다. 업체를 등록하면 본인이 담당자로 연결됩니다.
+                담당 수령업체가 없습니다. 업체 등록이 필요합니다.
                 <div className="actions">
                   <Button asChild>
                     <Link to="/companies?create=1">내 업체 등록하기</Link>
@@ -310,9 +297,9 @@ export function CreateOrder() {
           )}
           {crossHub && (
             <div className="notice" role="status">
-              다른 허브 간 주문입니다. 배송은 공급업체 집하 → 허브 간 이동(
+              배송 경로: 공급업체 집하 → 허브 간 이동(
               {directory.hubName(supplier.hubId)} → {directory.hubName(receiver.hubId)}) → 수령업체
-              배송 3구간으로 만들어집니다. 각 구간의 출발 허브에 배송담당자가 있어야 합니다.
+              배송. 각 출발 허브에 배송담당자가 필요합니다.
             </div>
           )}
         </section>
@@ -399,7 +386,7 @@ export function CreateOrder() {
             (!pending && (!product || !receiver || !supplier || overflow))
           }
         >
-          {busy ? '주문을 처리하고 있습니다…' : pending ? '같은 요청 결과 확인' : '주문 등록'}
+          {busy ? '주문 처리 중…' : pending ? '같은 요청 결과 확인' : '주문 등록'}
           <ArrowRight size={16} />
         </Button>
       </div>
@@ -414,7 +401,7 @@ export function CreateOrder() {
             setError(undefined)
           }}
         >
-          종료된 요청을 정리하고 다시 작성
+          종료된 요청 정리하기
         </Button>
       )}
     </form>

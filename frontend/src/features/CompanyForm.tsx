@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Building2, Check, RefreshCw, Save } from 'lucide-react'
+import { Check, RefreshCw, Save } from 'lucide-react'
 import { useAuth } from '../app/auth'
 import { api, ApiError } from '../shared/api'
 import { buildCompanyRequest } from '../shared/catalog-rules'
@@ -61,11 +61,7 @@ export function CompanyForm({
             cache.invalidateQueries({ queryKey: ['directory', 'companies'] }),
             cache.invalidateQueries({ queryKey: ['products'] }),
           ])
-          notify(
-            company
-              ? '업체 정보와 담당자 연결을 저장했습니다.'
-              : '업체가 등록되고 담당자가 연결되었습니다.',
-          )
+          notify(company ? '업체 정보가 저장되었습니다.' : '업체가 등록되었습니다.')
           onSaved(result)
         } catch (value) {
           setError(value)
@@ -77,14 +73,7 @@ export function CompanyForm({
         }
       }}
     >
-      <div className="form-intro">
-        <Building2 size={19} />
-        <span>
-          {master
-            ? '업체와 업무를 담당할 사용자를 함께 연결합니다.'
-            : '등록하는 업체의 담당자로 본인이 자동 연결됩니다.'}
-        </span>
-      </div>
+      {!master && <div className="notice">업체 담당자는 로그인한 사용자로 지정됩니다.</div>}
       <ErrorNotice
         error={error}
         help={
@@ -105,10 +94,7 @@ export function CompanyForm({
             placeholder="예: 한빛 리테일 강남점"
           />
         </Field>
-        <Field
-          label="관리 허브"
-          hint="주문 테스트는 공급업체와 수령업체를 같은 허브로 등록해 주세요."
-        >
+        <Field label="관리 허브" hint="집하·배송을 담당할 허브">
           <select
             required
             value={values.hubId}
@@ -190,7 +176,7 @@ export function CompanyForm({
                 <span>{user!.username}</span>
               </div>
               <Check size={18} />
-              <p>다른 사용자로 담당자를 바꾸는 작업은 관리자만 할 수 있습니다.</p>
+              <p>담당자 변경 권한: 관리자</p>
             </div>
           )}
         </section>
@@ -207,7 +193,7 @@ export function CompanyForm({
             }
           >
             <Save size={16} />
-            {busy ? '저장 중…' : company ? '업체 변경 저장' : '업체 등록 완료'}
+            {busy ? '저장 중…' : company ? '업체 변경 저장' : '업체 등록'}
           </Button>
         )}
       </div>

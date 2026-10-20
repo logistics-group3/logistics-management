@@ -1,6 +1,6 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
 import type { ReactNode } from 'react'
 export function Dialog({
   open,
@@ -13,11 +13,12 @@ export function Dialog({
   open: boolean
   onClose: () => void
   title: string
-  description: string
+  description?: string
   children: ReactNode
   sheet?: boolean
 }) {
   const opener = useRef<HTMLElement | null>(null)
+  const descriptionId = useId()
   return (
     <DialogPrimitive.Root
       open={open}
@@ -28,6 +29,7 @@ export function Dialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="dialog-overlay" />
         <DialogPrimitive.Content
+          aria-describedby={description ? descriptionId : undefined}
           className={sheet ? 'dialog-content sheet' : 'dialog-content'}
           onOpenAutoFocus={() => {
             opener.current =
@@ -43,7 +45,11 @@ export function Dialog({
           <header className="dialog-header">
             <div>
               <DialogPrimitive.Title>{title}</DialogPrimitive.Title>
-              <DialogPrimitive.Description>{description}</DialogPrimitive.Description>
+              {description && (
+                <DialogPrimitive.Description id={descriptionId}>
+                  {description}
+                </DialogPrimitive.Description>
+              )}
             </div>
             <DialogPrimitive.Close className="icon-button" aria-label="닫기">
               <X size={20} />
