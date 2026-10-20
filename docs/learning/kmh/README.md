@@ -4,6 +4,9 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-20 | [Redis 캐시 A·B·C 개발 내용을 핵심 코드로 설명하는 발표 흐름](qna/2026-10-20-redis-cache-presentation-flow.md) | 중급 | redis, cache, caffeine, spring-cache, transaction, gateway, performance-test, presentation | kmh |
+| 2026-10-20 | [Prometheus를 수동으로 띄우고 수집을 확인하는 방법](qna/2026-10-20-prometheus-manual-start.md) | 기초 | prometheus, docker-compose, eureka, monitoring, local-run | kmh |
+| 2026-10-20 | [k6와 Prometheus는 어떻게 동작하고 성능 측정에서 어떻게 함께 쓰나](qna/2026-10-20-k6-prometheus-how-it-works.md) | 중급 | k6, prometheus, micrometer, performance-test, load-test, observability | kmh |
 | 2026-10-19 | [캐시 도입 전 성능 기준선 측정 계획](qna/2026-10-19-performance-baseline-plan.md) | 중급 | performance-test, k6, baseline, prometheus, cache, redis | kmh |
 | 2026-10-19 | [이 프로젝트에서 Redis 캐시를 적용할 만한 구간](qna/2026-10-19-redis-cache-candidates.md) | 중급 | redis, cache, caffeine, performance-test, gateway, msa | kmh |
 | 2026-10-19 | [Slack 연동 방법과 테스트 절차](qna/2026-10-19-slack-integration-and-test.md) | 중급 | slack, webhook, slack-web-api, dm, notification, test, http-stub | kmh |
