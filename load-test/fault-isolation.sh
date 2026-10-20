@@ -27,18 +27,20 @@ for key in DELIVERY_LOAD_TEST_ENABLED AUTH_USERCACHETTL; do
 done
 
 # 서비스를 막 다시 띄웠으면 delivery가 Eureka에 등록될 때까지 Gateway가 503을 준다. 부하 테스트 API가 400(빈 본문 검증 실패)을
-# 돌려줄 때까지 최대 2분 기다린다. 기다린 만큼 장애 시각도 뒤로 민다.
+# 돌려줄 때까지 최대 5분 기다린다. 기다린 만큼 장애 시각도 뒤로 민다.
+# Note: 응답이 5초를 넘으면 curl이 실패 코드로 끝나고 set -e가 스크립트를 메시지 없이 끝낸다. || true로 다음 시도로 넘긴다.
+#   Mac이 바쁠 때 delivery 기동이 272초 걸린 적이 있어 2분으로는 모자랐다(2026-10-19 배치 창 비교).
 base="${BASE_URL:-http://localhost:8080}"
-for i in $(seq 1 24); do
+for i in $(seq 1 60); do
   token=$(curl -s -m 5 -X POST "$base/api/v1/auth/login" -H 'Content-Type: application/json' \
-    -d '{"username":"dmaster","password":"Sparta!2026"}' | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p')
+    -d '{"username":"dmaster","password":"Sparta!2026"}' | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p') || true
   code=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $token" \
-    -H 'Content-Type: application/json' -d '{}' "$base/api/v1/deliveries/load-test")
+    -H 'Content-Type: application/json' -d '{}' "$base/api/v1/deliveries/load-test") || true
   [ "$code" = 400 ] && break
   echo "서비스 준비 대기 중(부하 테스트 API $code)... $((i * 5))초" >&2
   sleep 5
 done
-[ "$code" = 400 ] || { echo "2분 안에 준비되지 않았다(마지막 응답 $code). docker compose ps와 Eureka(http://localhost:8761)를 확인한다." >&2; exit 1; }
+[ "$code" = 400 ] || { echo "5분 안에 준비되지 않았다(마지막 응답 $code). docker compose ps와 Eureka(http://localhost:8761)를 확인한다." >&2; exit 1; }
 FAULT_AT=$(( $(date +%s) + LEAD ))
 
 if [ "$FAULT_MODE" = none ]; then K6_FAULT_AT=0; else K6_FAULT_AT=$FAULT_AT; fi

@@ -42,31 +42,31 @@ FROM load_src;
 
 -- 집하: 업체 → 출발 허브
 INSERT INTO delivery_schema.p_delivery_routes (delivery_route_id, sequence, route_type, status, delivery_id,
-                                               departure_hub_id, arrival_hub_id, manager_id,
-                                               created_at, created_by, updated_at, updated_by)
-SELECT gen_random_uuid(), 1, 'PICKUP', 'ARRIVED', delivery_id, NULL, departure_hub_id, manager_id,
-       ts, 'LOAD', ts, 'LOAD'
+                                               departure_hub_id, arrival_hub_id, managing_hub_id, manager_id,
+                                               assigned_at, created_at, created_by, updated_at, updated_by)
+SELECT gen_random_uuid(), 1, 'PICKUP', 'ARRIVED', delivery_id, NULL, departure_hub_id, departure_hub_id, manager_id,
+       ts, ts, 'LOAD', ts, 'LOAD'
 FROM load_src;
 
 -- 허브 이동: 허브가 다를 때만
 INSERT INTO delivery_schema.p_delivery_routes (delivery_route_id, sequence, route_type,
                                                expected_distance_km, expected_duration_minutes,
                                                actual_distance_km, actual_duration_minutes, status, delivery_id,
-                                               departure_hub_id, arrival_hub_id, manager_id,
-                                               created_at, created_by, updated_at, updated_by)
+                                               departure_hub_id, arrival_hub_id, managing_hub_id, manager_id,
+                                               assigned_at, created_at, created_by, updated_at, updated_by)
 SELECT gen_random_uuid(), 2, 'HUB_TRANSFER', 120.50, 95, 123.10, 101, 'ARRIVED', delivery_id,
-       departure_hub_id, destination_hub_id, manager_id,
-       ts, 'LOAD', ts, 'LOAD'
+       departure_hub_id, destination_hub_id, departure_hub_id, manager_id,
+       ts, ts, 'LOAD', ts, 'LOAD'
 FROM load_src
 WHERE departure_hub_id <> destination_hub_id;
 
 -- 업체 배송: 목적지 허브 → 업체
 INSERT INTO delivery_schema.p_delivery_routes (delivery_route_id, sequence, route_type, status, delivery_id,
-                                               departure_hub_id, arrival_hub_id, manager_id,
-                                               created_at, created_by, updated_at, updated_by)
+                                               departure_hub_id, arrival_hub_id, managing_hub_id, manager_id,
+                                               assigned_at, created_at, created_by, updated_at, updated_by)
 SELECT gen_random_uuid(), CASE WHEN departure_hub_id = destination_hub_id THEN 2 ELSE 3 END, 'LAST_MILE', 'ARRIVED',
-       delivery_id, destination_hub_id, NULL, manager_id,
-       ts, 'LOAD', ts, 'LOAD'
+       delivery_id, destination_hub_id, NULL, destination_hub_id, manager_id,
+       ts, ts, 'LOAD', ts, 'LOAD'
 FROM load_src;
 
 COMMIT;

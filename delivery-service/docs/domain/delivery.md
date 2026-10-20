@@ -1,6 +1,6 @@
 # 배송 도메인 설계 (delivery-service)
 
-> 최종 수정: 2026-10-15 · 담당: 한얼 · 상태: **구현 (구현하며 정한 것은 결정 로그 16)**
+> 최종 수정: 2026-10-19 · 담당: 한얼 · 상태: **구현 (구현하며 정한 것은 결정 로그 16, 배정 분리는 27)**
 > 기준: **Notion SA(스파르타물류_SA문서_Master) v2.0** (2026-10-13, 멘토 피드백 반영) — 1.5 #10·#13, 2.3, 2.5, 5.6, 6.2, 6.3, 6.8, 7.1~7.3, 8.4
 > 표기 — [SA] SA 확정 · [제안] SA에 없음, 팀 합의 후 [SA] · [미정] 결정 필요
 > 설계가 어떻게 정해졌는지는 [`delivery-decision-log.md`](delivery-decision-log.md)에 있다.
@@ -187,14 +187,17 @@ DeliveryStatus.from(routes)                                   // 구간 상태 �
 ### 4-2. 자동 배정 규칙 [SA] (SA 6.3)
 
 ```
+언제   = 배송 생성(I-09)이 커밋된 뒤 허브별 배정 작업이 비동기로 (결정 로그 27). 생성 때 구간 담당자는 비어 있다(배정 대기)
 후보   = I-14 GET /internal/users/delivery-managers?hubId={구간 담당 허브}  → [{userId, slackId}]
 담당 건수 = delivery_db에서 manager_id = 후보 AND status IN (WAITING, MOVING) 인 구간 수
-배정   = 담당 건수가 가장 적은 후보, 동점이면 userId 순
-후보 0명 → 404 DELIVERY_MANAGER_NOT_FOUND (저장 전에 확인 → 남는 데이터 없음) → order는 주문 실패
+배정   = 담당 건수가 가장 적은 후보, 동점이면 userId 순. 대기 구간을 오래된 배송 순으로 모아 차례로 고른다
+후보 0명 → 대기로 둔다. 30초 주기 작업이 다시 시도하고, MASTER가 D-04로 직접 배정할 수 있다. 주문은 실패하지 않는다
 ```
-- I-14는 구간 담당 허브 수만큼 부른다 (공급업체 허브, 요청업체 허브 — 같으면 1번)
+- 배정 작업은 허브마다 한 번에 하나만 돈다. 허브 잠금을 기다리지 않고 시도(`pg_try_advisory_xact_lock`)해서 못 잡으면 바로 끝낸다. 커밋 직후 신호는 허브마다 하나로 합친다(실행 중 + "끝나면 한 번 더")
+- I-14는 배정 작업 한 번에 그 허브로 한 번 부른다
 - 한 배송 안에서 집하·허브 이동은 같은 허브라 같은 사람이 뽑힐 수 있다. [구현] 두 번째 구간을 고를 때 첫 번째 배정을 담당 건수에 더해서 센다 (SA 예시도 집하·허브 이동 담당자가 같음)
-- [제안] 동시 주문: 같은 허브에 두 주문이 동시에 들어오면 같은 사람을 고를 수 있다 → 배송 생성 트랜잭션에서 허브 단위 잠금 `pg_advisory_xact_lock(hashtext(:hubId))` 후 세기. 편차가 1~2건이라 MVP에서는 생략 가능 → 생략(결정 로그 16)
+- [구현] 동시 주문: 동기 배정 때는 같은 허브 동시 50건이 2명에게 몰렸다(결정 로그 16의 가정이 틀림). 허브 잠금을 생성 경로에 넣으면 잠금을 기다리는 생성이 커넥션을 쥐어 같은 허브 생성 240/초(30만 건, D-01 인덱스 적용)에서 조회까지 멈췄다. 배정을 생성에서 떼어 허브별로 한 줄로 처리하고, 같은 조건에서 640/초를 통과했다(결정 로그 27, 28)
+- 담당자가 없는 구간은 출발할 수 없다(D-05 409 `INVALID_STATUS_TRANSITION`)
 
 ### 4-3. 재배정 — D-04 (MASTER) [SA]
 
@@ -263,17 +266,13 @@ sequenceDiagram
         opt 출발 허브 ≠ 목적지 허브
             D->>H: I-03 허브 경로 (예상 거리·시간)
         end
-        D->>U: I-14 구간 담당 허브별 배송담당자 목록
         D->>U: I-01 receiverManagerId → 수령인 Slack ID
-        D->>DB: 후보별 담당 건수 → 구간별 담당자 선택
-        alt 어떤 구간이든 후보 0명
-            D-->>O: 404 DELIVERY_MANAGER_NOT_FOUND (저장 안 함)
-        else
-            D->>DB: 배송 + 구간 저장 (로컬 트랜잭션)
-            D-->>O: 201 deliveryId, status
-        end
+        D->>DB: 배송 + 구간 저장, 구간 담당자 비어 있음 (로컬 트랜잭션)
+        D-->>O: 201 deliveryId, status
+        D-)D: 커밋 뒤 구간 담당 허브 배정 작업 깨움 (비동기)
     end
     Note over O,D: 5xx·타임아웃 → order가 I-13(orderId)로 삭제 보상 후 503
+    Note over D,DB: 배정 작업(허브마다 하나): I-14 후보 → 허브 try-lock → 대기 구간 배송 잠금(SKIP LOCKED) → 담당 건수 → 배정 → 커밋
 ```
 
 ### 5-3. 구간 상태 변경 (구간 담당자)
@@ -364,7 +363,9 @@ erDiagram
         decimal actual_distance_km "(8,2)"
         int actual_duration_minutes
         varchar status "(20)"
-        uuid manager_id "구간 담당자"
+        uuid managing_hub_id "구간 담당 허브"
+        uuid manager_id "구간 담당자, NULL이면 배정 대기"
+        timestamp assigned_at "담당자가 처음 정해진 시각"
     }
 ```
 모든 테이블에 Audit 6컬럼(`created_at/by`, `updated_at/by`, `deleted_at/by`) — 표에서 생략.
@@ -381,7 +382,7 @@ erDiagram
 | recipient_name | VARCHAR(100) | NOT NULL | 기본값 요청업체명 |
 | recipient_slack_id | VARCHAR(50) | NULL | 요청업체 관리자 Slack ID (I-01) |
 
-인덱스: `status`, `supplier_company_id`, `receiver_company_id`, `departure_hub_id`, `destination_hub_id`
+인덱스: `status`, `supplier_company_id`, `receiver_company_id`, `departure_hub_id`, `destination_hub_id`, D-01 허브별 최신순 목록용 `(departure_hub_id, created_at DESC) INCLUDE (delivery_id) WHERE deleted_at IS NULL`(V4 `idx_p_deliveries_departure_hub_id_created_at`, 결정 로그 28)
 
 ### `p_delivery_routes` — 배송 구간 (배송 1건당 2~3건)
 | 컬럼 | 타입 | 제약 | 설명 |
@@ -395,9 +396,11 @@ erDiagram
 | expected_distance_km / expected_duration_minutes | DECIMAL(8,2) / INT | NULL | 허브 이동만 (I-03 값) |
 | actual_distance_km / actual_duration_minutes | DECIMAL(8,2) / INT | NULL | 도착 시 입력 (허브 이동은 필수) |
 | status | VARCHAR(20) | NOT NULL DEFAULT 'WAITING', CHECK | `WAITING` / `MOVING` / `ARRIVED` / `CANCELED` |
-| manager_id | UUID | NOT NULL | 구간 담당자 |
+| managing_hub_id | UUID | NOT NULL | 구간 담당 허브. 집하는 도착 허브, 나머지는 출발 허브. 배정 후보는 이 허브 소속 (V3) |
+| manager_id | UUID | NULL | 구간 담당자. NULL이면 배정 대기 (V3부터 NULL 허용, 결정 로그 27) |
+| assigned_at | TIMESTAMP | NULL | 담당자가 처음 정해진 시각. 배정 지연을 잰다 (V3) |
 
-`UNIQUE (delivery_id, sequence)` · 인덱스: `manager_id`, `status` · 값 객체 `RouteInfo(distanceKm, durationMinutes)` × 2
+`UNIQUE (delivery_id, sequence)` · 인덱스: `manager_id`, `status`, 배정 대기 부분 인덱스 `(managing_hub_id) WHERE manager_id IS NULL AND status = 'WAITING' AND deleted_at IS NULL` · 값 객체 `RouteInfo(distanceKm, durationMinutes)` × 2
 [제안] 담당 건수 쿼리용 부분 인덱스 `(manager_id) WHERE status IN ('WAITING','MOVING') AND deleted_at IS NULL`
 
 ---

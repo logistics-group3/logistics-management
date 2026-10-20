@@ -17,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -79,31 +80,53 @@ public class DeliveryRoute extends BaseEntity {
     @Column(name = "arrival_hub_id")
     private UUID arrivalHubId;
 
-    /** 구간 담당 배송담당자. user-service p_users.user_id 논리 참조 */
-    @Column(name = "manager_id", nullable = false)
+    /** 구간 담당 허브. 배정·재배정 대상은 이 허브 소속 배송담당자다. 배정 작업이 허브별 대기 구간을 찾을 때 쓴다. */
+    @Column(name = "managing_hub_id", nullable = false)
+    private UUID managingHubId;
+
+    /** 구간 담당 배송담당자. user-service p_users.user_id 논리 참조. NULL이면 배정 대기(결정 로그 27) */
+    @Column(name = "manager_id")
     private UUID managerId;
 
+    /** 담당자가 처음 정해진 시각. 배정 지연을 잰다. */
+    @Column(name = "assigned_at")
+    private LocalDateTime assignedAt;
+
+    /** 담당자 없이 만든다. 담당자는 배송 생성 뒤 허브별 배정 작업이 채운다. */
     DeliveryRoute(Delivery delivery, int sequence, RouteType routeType, UUID departureHubId, UUID arrivalHubId,
-                  RouteInfo expected, UUID managerId) {
+                  RouteInfo expected) {
         this.delivery = delivery;
         this.sequence = sequence;
         this.routeType = routeType;
         this.departureHubId = departureHubId;
         this.arrivalHubId = arrivalHubId;
+        this.managingHubId = routeType.managingHubId(departureHubId, arrivalHubId);
         this.expected = expected;
-        this.managerId = managerId;
         this.status = RouteStatus.WAITING;
     }
 
-    /** 구간 담당 허브. 배정·재배정 대상은 이 허브 소속 배송담당자다. */
-    public UUID getManagingHubId() {
-        return routeType.managingHubId(departureHubId, arrivalHubId);
+    /** 배정 대기: 담당자가 없고 아직 출발 전(WAITING)이다. 취소된 구간은 배정하지 않는다. */
+    public boolean isAwaitingManager() {
+        return managerId == null && status == RouteStatus.WAITING;
+    }
+
+    /** 자동 배정. 배정 대기 구간에만 담당자를 넣는다. 이미 담당자가 있으면 그대로 둔다(배정 작업이 여러 번 불려도 결과가 같다). */
+    boolean assignManager(UUID managerId) {
+        if (!isAwaitingManager()) {
+            return false;
+        }
+        this.managerId = managerId;
+        this.assignedAt = LocalDateTime.now();
+        return true;
     }
 
 
-    /** WAITING → MOVING */
+    /** WAITING → MOVING. 담당자가 정해지지 않은 구간은 출발할 수 없다(결정 로그 27). */
     void start() {
         requireStatus(RouteStatus.WAITING);
+        if (managerId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
         this.status = RouteStatus.MOVING;
     }
 
@@ -133,6 +156,9 @@ public class DeliveryRoute extends BaseEntity {
     void changeManager(UUID managerId) {
         if (status == RouteStatus.ARRIVED || status == RouteStatus.CANCELED) {
             throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (this.assignedAt == null) {
+            this.assignedAt = LocalDateTime.now();
         }
         this.managerId = managerId;
     }

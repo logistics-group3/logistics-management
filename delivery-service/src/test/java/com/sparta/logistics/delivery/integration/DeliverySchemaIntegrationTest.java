@@ -1,5 +1,6 @@
 package com.sparta.logistics.delivery.integration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sparta.logistics.common.support.PostgresIntegrationTest;
@@ -11,7 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * V1 마이그레이션의 CHECK 제약 검증. Hibernate validate는 CHECK를 보지 않으므로 SQL로 직접 넣어 본다(migration 규칙).
+ * 마이그레이션의 CHECK 제약과 부분 인덱스 검증. Hibernate validate는 CHECK·부분 인덱스를 보지 않으므로 SQL로 직접 확인한다(migration 규칙).
  * Java enum을 거치지 않는 경로(직접 SQL, 초기 데이터)에서 잘못된 값이 들어오는 것을 DB가 막는지 확인한다.
  */
 class DeliverySchemaIntegrationTest extends PostgresIntegrationTest {
@@ -41,6 +42,18 @@ class DeliverySchemaIntegrationTest extends PostgresIntegrationTest {
                 .hasMessageContaining("ck_p_delivery_routes_status");
     }
 
+    @Test
+    @DisplayName("D-01 허브별 최신순 목록 인덱스는 허브·생성 시각 순서에 배송 ID를 담고 삭제되지 않은 배송만 담는다(V4)")
+    void departureHubCreatedAtIndex() {
+        String definition = jdbcTemplate.queryForObject(
+                "SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_p_deliveries_departure_hub_id_created_at'",
+                String.class);
+
+        assertThat(definition)
+                .contains("(departure_hub_id, created_at DESC) INCLUDE (delivery_id)")
+                .contains("WHERE (deleted_at IS NULL)");
+    }
+
     private void insertDelivery(UUID deliveryId, String status) {
         jdbcTemplate.update("""
                 INSERT INTO p_deliveries (delivery_id, status, pickup_address, delivery_address, recipient_name,
@@ -54,8 +67,8 @@ class DeliverySchemaIntegrationTest extends PostgresIntegrationTest {
     private void insertRoute(UUID deliveryId, int sequence, String routeType, String status) {
         jdbcTemplate.update("""
                 INSERT INTO p_delivery_routes (delivery_route_id, sequence, route_type, status, delivery_id, manager_id,
-                    created_at, created_by, updated_at, updated_by)
-                VALUES (?, ?, ?, ?, ?, ?, now(), 'test', now(), 'test')
-                """, UUID.randomUUID(), sequence, routeType, status, deliveryId, UUID.randomUUID());
+                    managing_hub_id, created_at, created_by, updated_at, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, now(), 'test', now(), 'test')
+                """, UUID.randomUUID(), sequence, routeType, status, deliveryId, UUID.randomUUID(), UUID.randomUUID());
     }
 }

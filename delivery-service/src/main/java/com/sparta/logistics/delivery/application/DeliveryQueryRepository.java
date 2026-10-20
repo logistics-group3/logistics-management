@@ -35,4 +35,10 @@ public interface DeliveryQueryRepository {
 
     /** 자동 배정 후보별 담당 건수(WAITING·MOVING 구간 수, 논리 삭제 제외). 담당 구간이 없는 후보는 결과에 없다. */
     List<ActiveRouteCount> countActiveRoutes(Collection<UUID> managerIds);
+
+    /** 배정 대기 구간(담당자 없음, WAITING)이 있는 구간 담당 허브. 주기 작업이 다시 깨울 허브를 찾는다(결정 로그 27). */
+    List<UUID> findHubsAwaitingManager();
+
+    /** 이 허브에 배정 대기 구간이 남아 있나 */
+    boolean existsRouteAwaitingManager(UUID hubId);
 }
