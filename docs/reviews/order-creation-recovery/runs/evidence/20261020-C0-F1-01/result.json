@@ -1,0 +1,8 @@
+{
+  "kind": "C0-F1",
+  "runId": "20261020-C0-F1-01",
+  "startedAt": "2026-10-20T11:17:34.358231+09:00",
+  "verdict": "FAILED_OR_INCONCLUSIVE",
+  "error": "접수 실패: 503, {'status': 503, 'code': 'SERVICE_UNAVAILABLE', 'message': '일시적으로 서비스를 이용할 수 없습니다.', 'path': '/api/v1/orders', 'timestamp': '2026-10-20T11:17:58'}",
+  "endedAt": "2026-10-20T11:17:58.982592+09:00"
+}

@@ -137,7 +137,7 @@ class OrderCreationAsyncIntegrationTest extends PostgresIntegrationTest {
         assertThat(progress.failureCode()).isEqualTo("DELIVERY_MANAGER_NOT_FOUND");
         assertThat(progress.failureMessage()).isEqualTo("배정할 배송담당자가 없습니다.");
         assertThat(progress.order()).isNull();
-        verify(deliveryGateway, never()).deleteByOrderId(any());
+        verify(deliveryGateway, never()).closeCreation(any());
         // 같은 키로 다시 확인하면 거절이 아니라 기존 실패 종료(409)다.
         assertThatThrownBy(() -> service.accept(user, "rejected-key", command))
                 .isInstanceOf(BusinessException.class)

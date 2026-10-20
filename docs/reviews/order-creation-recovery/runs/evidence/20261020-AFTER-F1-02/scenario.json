@@ -1,0 +1,16 @@
+{
+  "runId": "20261020-AFTER-F1-02",
+  "kind": "F1",
+  "startedAt": "2026-10-20T11:47:45.802564+09:00",
+  "source": "order-service/src/main/java/com/sparta/logistics/order/application/OrderService.java",
+  "sourceSha256": "32b3919dc2ccad2452cf033664caba0507cf82c0f9ccf40cb6d8b78358e058dd",
+  "line": 144,
+  "anchor": "process(creation);",
+  "orderContainer": "2a4e696d6c91c3f4d5bcae28deff6429786eaaa02826f77baf7ed96b83045b83",
+  "toolSha256": {
+    "JdiGate.java": "cfb0298589e5d3420ccaa79d563242b68dd87f52e9641bdf960bddb7361e9ebf",
+    "experiment.py": "5d07b6efecf8c3818bc288ff7b5c1cd38512ca3fef272065b87365601f1b33aa",
+    "scenario.py": "3924695a94469710a92c1111457dac3b24b2efd1f5f3dbacf38e88817b2df4d0"
+  },
+  "expected": "PROCESSING after restart; no recovery"
+}

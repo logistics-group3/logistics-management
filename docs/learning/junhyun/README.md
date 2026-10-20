@@ -16,11 +16,11 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-20 | [물류 서비스를 취업 포트폴리오로 고도화할 때 무엇부터 해야 하나](qna/2026-10-16-backend-portfolio-hardening.md) | 고급 | portfolio, distributed-systems, recovery, idempotency, outbox, performance | Junhyun An |
 | 2026-10-16 | [허브 간 이동 도착 때 실제 거리·소요시간을 왜 필수로 받나, 그리고 배송 로직 검토](qna/2026-10-16-delivery-actual-distance-review.md) | 중급 | delivery, domain-model, validation, concurrency, optimistic-lock, privacy, msa | Junhyun An |
 | 2026-10-16 | [가속 시간과 AI 돌발 사건을 넣어 물류 시스템을 시뮬레이션 게임으로 만들면 어떤가](qna/2026-10-16-logistics-simulation-game.md) | 고급 | simulation, virtual-time, logistics, ai, replay, portfolio | Junhyun An |
 | 2026-10-16 | [리소스 부족이나 장애가 생기면 Slack 알림을 무엇으로 보내나](qna/2026-10-16-slack-monitoring-alerts.md) | 중급 | prometheus, grafana, alerting, slack, monitoring | Junhyun An |
 | 2026-10-16 | [물류 MSA의 보안을 고도화하려면 무엇부터 해야 하나](qna/2026-10-16-security-hardening-priorities.md) | 고급 | security, authorization, jwt, rate-limiting, msa, audit | Junhyun An |
-| 2026-10-16 | [물류 서비스를 취업 포트폴리오로 고도화할 때 무엇부터 해야 하나](qna/2026-10-16-backend-portfolio-hardening.md) | 고급 | portfolio, distributed-systems, recovery, idempotency, outbox, performance | Junhyun An |
 | 2026-10-16 | [Gateway 메트릭의 비공개 별도 관리 포트란 무엇인가](qna/2026-10-16-gateway-private-management-port.md) | 기초 | gateway, actuator, prometheus, docker, security, port | Junhyun An |
 | 2026-10-16 | [Zipkin Find a trace 화면은 어떻게 보나](qna/2026-10-16-zipkin-find-a-trace.md) | 기초 | zipkin, distributed-tracing, eureka, observability | Junhyun An |
 | 2026-10-16 | [Zipkin Dependencies 화면에서 서비스 사이를 흐르는 점의 개수는 무엇을 뜻하나](qna/2026-10-16-zipkin-dependencies-particles.md) | 중급 | zipkin, distributed-tracing, dependencies, vizceral, observability | Junhyun An |

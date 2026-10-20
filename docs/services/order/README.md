@@ -10,7 +10,7 @@
 | 포트 | 8084 |
 | 스키마·DB 계정 | `order_schema` / `order_app` |
 | 책임 | 주문 생성(Saga 오케스트레이션)·조회·요청사항 수정·취소·삭제, Slack 알림 |
-| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations`, `p_order_deletions` (SA 5.5·주문 ADR 0006~0009) |
+| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations`, `p_order_deletions`, `p_order_creation_recoveries`, `p_order_creation_recovery_events` (SA 5.5·11, ADR 0019) |
 
 ## 2. 제공 API (계약)
 
@@ -18,6 +18,9 @@
 |---|---|---|---|---|
 | O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | Idempotency-Key 필수·최초 응답 재사용·동시 생성 차단. **비동기 접수**: 접수 전 검증 통과 시 202와 orderId, 배송 생성·저장·보상은 별도 스레드(ADR 0010, 이슈 #16). 같은 키 재요청은 처리 중 202·완료 201. 생성 진행 기록·커밋 재확인·보상·커밋 후 Slack |
 | O-07 | `GET /api/v1/orders/creations/{orderId}` | 주문자 본인, MASTER | 구현 | 생성 진행 조회(PROCESSING·COMPLETED·ABORTED·RECOVERY_REQUIRED). 실패 사유 `failureCode`·`failureMessage`(ADR 0010) |
+| O-08 | `GET /api/v1/orders/creation-recoveries/candidates` | MASTER | 로컬 구현 | PROCESSING·RECOVERY_REQUIRED 조사 목록, createdAt·updatedAt 정렬 |
+| O-09 | `POST /api/v1/orders/{orderId}/creation-recoveries` | MASTER | 로컬 구현 | 실행 중단 확인·복구 ID·attemptId·예상 상태·사유, 같은 ID 재사용·명시적 재개 |
+| O-10 | `GET /api/v1/orders/creation-recoveries/{recoveryId}` | MASTER | 로컬 구현 | RUNNING·DEFERRED·COMPLETED, 실행 ID와 단계별 감사 이력 |
 | O-02 | `GET /api/v1/orders` | 로그인, USER는 본인 주문만 | 구현 | 선택 필터·QueryDSL·페이지·정렬, 내용과 count에 같은 권한 조건 |
 | O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
 | O-04 | `PATCH /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | requestNote 필수·공백 불가·최대 500자. 취소된 주문은 409 INVALID_STATUS_TRANSITION |
@@ -38,6 +41,8 @@
 | I-12 `POST /internal/deliveries/{deliveryId}/cancel-revert` | delivery | 확인된 로컬 롤백의 배송 원복 | 응답 없는 통신 실패에 최대 3회 (`order-delivery-cancel-revert`), 5xx 응답은 재시도 없음 |
 | I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 생성 실패 보상·O-06 배송 삭제 | 생성 보상은 OrderService가 총 3회. O-06은 요청당 1회, 실패 후 같은 DELETE로 재개. Feign 자체 재시도 없음 |
 | I-15 `GET /internal/deliveries/{deliveryId}/notification-recipients` | delivery | 커밋 후 DM의 현재 담당자 조회 | 통신 실패 시 총 3회 (`order-dm-delivery`), 5xx는 1회 |
+| I-18 `DELETE /internal/deliveries/orders/{orderId}/creation` | delivery | 생성 실패 보상·운영자 복구 조건부 종료 | Feign 재시도 없음, 생성 보상만 최대 3회 |
+| I-17 `GET /internal/deliveries/orders/{orderId}` | delivery | 배송 ID·상태와 CLOSED 확인 | 1회 (`order-delivery-state`) |
 | I-16 `GET /internal/users/{userId}/notification-contact` | user | 배송담당 여부·Slack 이메일 조회 | 통신 실패 시 총 3회 (`order-dm-user`), 5xx는 1회 |
 
 `CompanyClientAdapter`와 `DeliveryClientAdapter`가 application 인터페이스를 실제 Feign에 연결한다. 주소는 Eureka 서비스 이름으로 찾고 URL을 하드코딩하지 않는다. 5xx 응답은 재시도하지 않고 공통 디코더가 `SERVICE_UNAVAILABLE`로 바꾼다.
@@ -135,3 +140,10 @@ O-06은 MASTER가 본문 없이 호출하며 성공은 200·data=null이다. CAN
 - 내용: delivery는 SA v2.0의 3구간 모델을 채택했다(delivery ADR 0003, 0001 대체). 배송은 `PICKUP_WAITING`에서 시작하고, I-11 배송 취소는 `PICKUP_WAITING`에서만 성공한다. 그 밖의 상태에서는 409 `INVALID_STATUS_TRANSITION`을 반환한다. order ADR 0002는 "모든 배송은 HUB_WAITING으로 시작(ADR-11)"을 근거로 취소 조건을 `HUB_WAITING`으로 두고 있어 근거가 바뀌었다. order 쪽 취소 조건과 ADR 0002 채택 여부를 확인해 달라.
 - 주문 측 확인(2026-10-15): 현재 O-05는 SA v2.0의 PICKUP_WAITING 기준을 따르며 집하 시작 여부는 I-11이 원자적으로 판단한다. order ADR 0002는 제안 상태로 채택하지 않았다. 주문의 HTTP 대역 검증은 통과했고 제공 서비스와의 실제 통합은 별도 확인 대상이다.
 - 결정: 주문 측 구현 기준을 답변했다. 제공 담당자 확인과 실제 연동 결과는 후속 기록으로 남긴다.
+
+## 2026-10-20 생성 복구 로컬 확장
+
+[ADR 0019](../../decisions/0019-order-creation-operator-recovery.md)에 따라 두 서비스의 통합 구현을 진행했다. 팀 전체 승인을 뜻하지 않는다.
+V7은 생성 기록 recovery_id·RECOVERY_TAKEOVER 사유와 p_order_creation_recoveries·p_order_creation_recovery_events를 추가한다.
+O-09 본문·응답·재개 계약은 ADR과 [복구 운영 안내](recovery.md)를 따른다. 외부 호출 중 order DB 트랜잭션을 유지하지 않는다.
+생성 보상은 I-18을 사용한다. 기존 주문 삭제 O-06의 I-13은 유지한다. 기존 생성·진행 조회 응답은 바꾸지 않는다.

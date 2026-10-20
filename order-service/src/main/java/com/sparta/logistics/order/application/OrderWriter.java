@@ -105,6 +105,14 @@ public class OrderWriter {
         findCreation(attempt).requireRecovery(deliveryId, reason);
     }
 
+    /** 정상 작업이 복구로 인계됐는지 확인한다. 저장 시에는 같은 생성 기록 잠금으로 다시 검사한다. */
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public boolean isRecoveryClaimed(OrderCreationAttempt attempt) {
+        return creationRepository.findByOrderId(attempt.orderId())
+                .filter(creation -> creation.getId().equals(attempt.attemptId()))
+                .map(creation -> creation.getRecoveryId() != null).orElse(false);
+    }
+
     private OrderCreation findCreation(UUID orderId) {
         return creationRepository.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR));

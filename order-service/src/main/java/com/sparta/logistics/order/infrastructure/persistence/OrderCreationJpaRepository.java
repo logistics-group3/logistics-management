@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface OrderCreationJpaRepository extends JpaRepository<OrderCreation, UUID>, OrderCreationRepository {
 
@@ -22,4 +24,8 @@ public interface OrderCreationJpaRepository extends JpaRepository<OrderCreation,
     @Override
     @Query(value = "SELECT * FROM {h-schema}p_order_creations WHERE orderer_id = :ordererId AND idempotency_key = :key", nativeQuery = true)
     Optional<OrderCreation> findByKeyIncludingDeleted(@Param("ordererId") UUID ordererId, @Param("key") String key);
+
+    @Override
+    @Query("select c from OrderCreation c where c.status in ('PROCESSING', 'RECOVERY_REQUIRED')")
+    Page<OrderCreation> findRecoveryCandidates(Pageable pageable);
 }

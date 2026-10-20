@@ -132,7 +132,7 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
         awaitIdle();
         assertThat(SLACK.requests("POST", "/chat.postMessage")).hasSize(1);
         assertThat(output.getAll()).contains(id.toString(), "PERMISSION_DENIED").doesNotContain("ui-test-dm-secret", "driver+test@example.com");
-        verify(deliveries, never()).deleteByOrderId(any());
+        verify(deliveries, never()).closeCreation(any());
     }
 
     @Test @DisplayName("롤백한 트랜잭션과 트랜잭션 밖 이벤트는 DM을 발송하지 않는다")

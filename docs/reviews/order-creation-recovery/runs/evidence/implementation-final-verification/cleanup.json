@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-20T11:52:10.891396+09:00",
+  "stackStopped": true,
+  "volumePreserved": true,
+  "originalContainerIdsPreserved": true,
+  "originalContainersRunning": 12,
+  "incident": "OOM 실행 1건은 제외했다. 기존 일부 컨테이너 재시작도 관찰했으므로 무영향이라고 주장하지 않는다."
+}

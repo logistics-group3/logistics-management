@@ -47,6 +47,9 @@ public class OrderCreation extends BaseEntity {
     @Column(name = "delivery_id")
     private UUID deliveryId;
 
+    @Column(name = "recovery_id")
+    private UUID recoveryId;
+
     @Column(name = "idempotency_key", length = 128)
     private String idempotencyKey;
 
@@ -148,5 +151,29 @@ public class OrderCreation extends BaseEntity {
         if (status != OrderCreationStatus.PROCESSING) {
             throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
         }
+    }
+
+    /** O-09 원래 작업의 저장 권한을 회수한다. 기존 실패 사유는 별도 복구 이벤트가 보존한다. */
+    public void claimRecovery(UUID requestId) {
+        if (requestId == null || (recoveryId != null && !recoveryId.equals(requestId))
+                || (status != OrderCreationStatus.PROCESSING && status != OrderCreationStatus.RECOVERY_REQUIRED)) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        recoveryId = requestId;
+        if (status == OrderCreationStatus.PROCESSING) {
+            status = OrderCreationStatus.RECOVERY_REQUIRED;
+            failureReason = CreationFailureReason.RECOVERY_TAKEOVER;
+        }
+    }
+
+    /** O-09 CLOSED 확인과 주문 부재 재검증 후에만 복구를 종료한다. */
+    public void finishRecovery(UUID requestId) {
+        if (status != OrderCreationStatus.RECOVERY_REQUIRED || !requestId.equals(recoveryId)) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        failureReason = null;
+        failureCode = CommonErrorCode.SERVICE_UNAVAILABLE.code();
+        failureMessage = "운영자가 배송 생성 종료를 확인하고 주문 생성 시도를 종료했습니다.";
+        status = OrderCreationStatus.ABORTED;
     }
 }

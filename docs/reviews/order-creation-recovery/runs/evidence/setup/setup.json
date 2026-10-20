@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-20T11:16:03.577917+09:00",
+  "project": "logistics-recovery-test",
+  "envPermission": "0600",
+  "portBindCheck": "passed",
+  "services": [
+    "postgres",
+    "config-server",
+    "eureka-server",
+    "zipkin",
+    "user-service",
+    "hub-service",
+    "company-service",
+    "delivery-service",
+    "order-service",
+    "gateway-service"
+  ],
+  "debugger": "loopback:25005",
+  "monitoring": "Zipkin only; Prometheus/Grafana not started",
+  "businessCodeChanges": false
+}

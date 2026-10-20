@@ -4,6 +4,7 @@
 
 | 스텝 | 문서 | 커밋 제목 |
 |---|---|---|
+| 55 | [주문 생성의 안전한 운영자 복구](step-55-order-creation-recovery.md) | feat(order): 주문 생성 운영자 복구와 조건부 배송 종료 |
 | 54 | [결과를 모르는 주문 생성 시도의 자동 종료](step-54-order-auto-abort-on-closure.md) | fix(order): I-17이 종료를 확인하면 결과 불명 주문 생성 시도를 자동으로 닫는다 |
 | 53 | [업체 삭제와 상품 생성의 커밋 순서 보호](step-53-company-delete-product-create.md) | fix(company): 업체 삭제와 상품 생성 경쟁 보호 (#15) |
 | 52 | [지정 해제된 배송담당자의 변경 권한 차단](step-52-delivery-manager-release.md) | 미커밋 (T07, #13) |

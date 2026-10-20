@@ -2,7 +2,7 @@
 
 - 작성: Junhyun An 작업 / 2026-10-15
 - 기준: 현재 O-01~O-06 코드, [SA 7장](../../SA/sparta-logistics-sa.md), 주문 ADR 0006~0009
-- 상태: 생성·취소·삭제 진행 기록·커밋 재확인, 생성 멱등키와 삭제 재요청을 구현했다. 생성·취소의 운영 복구 API·자동 재실행은 후속 설계다. 타 서비스 담당자는 [연동 계약](integration-contract.md)을 함께 읽는다.
+- 상태: 생성·취소·삭제 진행 기록·커밋 재확인, 생성 멱등키와 삭제 재요청을 구현했다. 생성 운영 복구 O-08~O-10은 [ADR 0019](../../decisions/0019-order-creation-operator-recovery.md)로 로컬 구현했다. 취소 복구·자동 재실행은 후속 설계다. 타 서비스 담당자는 [연동 계약](integration-contract.md)을 함께 읽는다.
 
 ## 1. 오류 코드보다 먼저 결정할 것
 
@@ -68,9 +68,9 @@ Controller마다 try/catch를 반복하지 않는다. application에서는 **보
 | 동시 생성 기록 INSERT의 유니크 충돌 | 기존 결과에 따라 201·409 | 실패한 트랜잭션 종료 후 기존 키 재조회. 충돌한 요청의 I-09 호출 없음 |
 | 다른 생성 기록 시작의 DB 예외 | 500 INTERNAL_SERVER_ERROR | I-09 호출 없음. 시작 기록이 커밋됐을 수도 있어 로그의 orderId·attemptId로 확인 |
 | I-09의 명확한 4xx | 하위 오류 코드 유지 | ABORTED 기록, 삭제 보상 없음 |
-| I-09 타임아웃·5xx·잘못된 성공 응답 | 503 SERVICE_UNAVAILABLE | I-13 보상이 성공하고 I-17이 CLOSED면 ABORTED(SERVICE_UNAVAILABLE). 보상 실패·I-17이 ACTIVE·NONE·조회 실패면 DELIVERY_RESULT_UNKNOWN으로 복구 대기 |
-| 배송 생성 뒤 엔티티 검증·저장 예외, 미저장 확인 | 원래 업무 오류 또는 500 | I-13 성공이면 ABORTED, 실패이면 DELIVERY_DELETE_FAILED |
-| 저장 예외 후 실제 커밋 확인 | 201 유지 | 저장된 OrderResult 반환, I-13·이벤트 재발행 없음 |
+| I-09 타임아웃·5xx·잘못된 성공 응답 | 503 SERVICE_UNAVAILABLE | I-18 보상이 성공하고 I-17이 CLOSED면 ABORTED(SERVICE_UNAVAILABLE). 보상 실패·I-17이 ACTIVE·NONE·조회 실패면 DELIVERY_RESULT_UNKNOWN으로 복구 대기 |
+| 배송 생성 뒤 엔티티 검증·저장 예외, 미저장 확인 | 원래 업무 오류 또는 500 | I-18 성공이면 ABORTED, 실패이면 DELIVERY_DELETE_FAILED |
+| 저장 예외 후 실제 커밋 확인 | 201 유지 | 저장된 OrderResult 반환, I-18·이벤트 재발행 없음 |
 | 저장 결과 조회 실패·상태 불일치 | 최초 실패 유지 | ORDER_COMMIT_UNKNOWN, 자동 삭제 없음 |
 | 종료·복구 기록 갱신 실패 | 최초 실패 유지 | 기존 PROCESSING·COMPLETED 등을 덮지 않고 식별자를 로그에 남김 |
 | 커밋 후 Slack 실패 | 201 유지 | 전송 실패 로그, 배송 보상 없음 |
@@ -85,7 +85,7 @@ PROCESSING이고 주문이 없을 때만 미저장으로 판정한다. 그 외�
 사용자가 응답을 못 받으면 같은 키·본문으로 재요청한다. `(orderer_id, idempotency_key)` UNIQUE가 동시 요청을 막으며, 키는 자동 만료하지 않는다. JSON 표현이 달라도 파싱한 필드가 같으면 같은 요청이다([ADR 0008](decisions/0008-order-idempotency-key.md)).
 ABORTED는 원인을 해결한 뒤 별도 새 주문에 새 키를 사용할 수 있다. PROCESSING·RECOVERY_REQUIRED는 새 키로 우회하지 않는다. 상세 규칙은 [호출자 계약](integration-contract.md)에 있다.
 
-**진행 조회·지연 생성:** 진행 조회는 O-07로 제공한다. 운영 복구 API·자동 재처리는 아직 없다. I-13이 먼저 끝난 뒤 지연된 I-09는 delivery의 종료 표시가 409 `DELIVERY_CREATION_CLOSED`로 거절하고(이슈 #14), 배송 ID 없는 시도의 결과는 I-17(`GET /internal/deliveries/orders/{orderId}`)로 확인한다. 서버가 처리 중 종료되면 시도가 PROCESSING으로 남으며 시간만으로 해제하지 않는다. 계약은 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 있고 팀 리뷰가 남아 있다.
+**진행 조회·지연 생성:** 진행 조회는 O-07로 제공한다. 운영 복구는 O-08~O-10으로 제공한다([운영 안내](recovery.md)). 자동 재처리는 없다. I-18이 먼저 끝난 뒤 지연된 I-09는 delivery의 종료 표시가 409 `DELIVERY_CREATION_CLOSED`로 거절하고(이슈 #14), 배송 ID 없는 시도의 결과는 I-17(`GET /internal/deliveries/orders/{orderId}`)로 확인한다. 서버가 처리 중 종료되면 시도가 PROCESSING으로 남으며 시간만으로 해제하지 않는다. 계약은 [DELIVERY-002](../delivery/README.md#delivery-002-지연-생성과-삭제의-순서-역전-방지-계약-검토)에 있고 팀 리뷰가 남아 있다.
 
 ## 4. 주문 취소 O-05: 구현한 실패 흐름
 
@@ -187,7 +187,7 @@ ORDER BY c.created_at;
 
 - 생성 기록과 주문이 모두 완료된 경우에는 배송 삭제·이벤트 재발행을 하지 않는다. 특정 실패 로그를 조사할 때는 orderId로 COMPLETED 기록도 함께 확인한다.
 - 주문이 없더라도 I-09가 진행 중일 수 있다. 원래 원격 작업 종료와 실제 배송 상태를 확인한 후에만 정리 완료를 기록한다.
-- deliveryId를 못 받은 경우에는 delivery 담당자가 orderId로 결과를 확인해야 한다. I-10은 deliveryId를 요구하므로 현재 계약만으로 모든 미확정 요청을 조회할 수 없다.
+- deliveryId를 못 받은 경우에도 I-17로 orderId의 ACTIVE·CLOSED·NONE을 조회한다. O-09는 조건부 I-18과 CLOSED 재확인 뒤에만 종료한다.
 - 실패한 원래 주문을 자동 재생성하지 않는다. 원본 전체 요청이 없는 상태에서 현재 상품·주소를 다시 조회해 옛 요청을 복원하면 다른 주문이 될 수 있다.
 - 주문 없음·확인된 배송 삭제이면 ABORTED 종료를 검토하고, 원격 결과가 미확정이면 RECOVERY_REQUIRED를 유지한다.
 

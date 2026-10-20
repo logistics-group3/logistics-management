@@ -117,3 +117,21 @@
 - E2E는 `script/delivery-e2e-check.sh`, 시드는 `infra/postgres/seed/delivery-e2e.sql`, 실행 방법은 [`e2e.md`](../../../delivery-service/docs/e2e.md).
 ### 핵심
 - 단위·통합 테스트는 hub·user·order를 목으로 바꿔 서비스 사이 연결을 확인하지 못한다. 고정 ID 시드로 Gateway를 거쳐 주문 → 배송 완료 → 삭제를 한 번에 확인한다.
+
+## I-18 주문 생성 복구용 조건부 종료 (2026-10-20)
+
+### 처리 과정
+- Delivery.closeCreation에서 집하·모든 구간 대기·예상 ID를 검증하고 DeliveryService에서 orderId → 배송 행 잠금으로 조율한다.
+- 배송 없음·이미 종료는 종료 표시를 보존하고 204다. 진행·취소·ID 불일치는 배송과 종료 표시 모두 유지하며 거절한다.
+- I-13을 바꾸지 않고 별도 내부 API를 추가했다. [T08](../../../delivery-service/docs/tasks/T08.md), [ADR 0019](../../decisions/0019-order-creation-operator-recovery.md)를 따른다.
+
+### 핵심
+- 출발과 정리가 같은 배송 행을 잠가 관찰 뒤 상태 변경 경쟁을 막는다. 조건 검사·구간 논리 삭제·종료 표시가 같은 트랜잭션이다.
+- 생성 저장도 같은 orderId 잠금을 사용하므로 종료 표시 이후 늦은 I-09를 거절한다.
+
+### 확인 질문
+- I-13에 조건을 바로 추가하면 어떤 기존 호출자가 영향을 받는가?
+- 출발 선행과 정리 선행 각각의 올바른 결과는 무엇인가?
+
+### 메모
+- PostgreSQL에서 두 경쟁 순서·구간 삭제·반복 종료·ID 불일치를 확인했다. 실제 F1/F2 결과는 [전후 보고서](../../reviews/order-creation-recovery/2026-10-20-implementation-results.md)를 따른다.

@@ -1,0 +1,152 @@
+{
+  "at": "2026-10-20T11:52:04.667863+09:00",
+  "cases": [
+    {
+      "runId": "20261020-AFTER-C0-F1-02",
+      "verdict": "PASS_CONTROL",
+      "current": {
+        "creation": {
+          "attempt_id": "75b3ed54-7bdd-4807-bb04-8ef1223c789c",
+          "order_id": "160b53dc-390e-4c1b-b547-123e324dfec2",
+          "status": "COMPLETED",
+          "delivery_id": "33c467cd-0d84-464a-ac08-d6fad659442e",
+          "failure_reason": null,
+          "failure_code": null,
+          "created_at": "2026-10-20T11:47:42.639297",
+          "updated_at": "2026-10-20T11:47:43.50998",
+          "deleted_at": null
+        },
+        "allOrders": 1,
+        "activeOrders": 1,
+        "allDeliveries": 1,
+        "activeDeliveries": 1,
+        "deliveries": [
+          {
+            "delivery_id": "33c467cd-0d84-464a-ac08-d6fad659442e",
+            "order_id": "160b53dc-390e-4c1b-b547-123e324dfec2",
+            "status": "PICKUP_WAITING",
+            "deleted_at": null
+          }
+        ],
+        "activeRoutes": 2,
+        "closures": 0,
+        "i17": {
+          "orderId": "160b53dc-390e-4c1b-b547-123e324dfec2",
+          "state": "ACTIVE",
+          "deliveryId": "33c467cd-0d84-464a-ac08-d6fad659442e",
+          "status": "PICKUP_WAITING"
+        }
+      }
+    },
+    {
+      "runId": "20261020-AFTER-C0-F2-02",
+      "verdict": "PASS_CONTROL",
+      "current": {
+        "creation": {
+          "attempt_id": "f3405666-d254-49e8-922a-32a24a0ec836",
+          "order_id": "213adf34-d945-4092-8ef5-dcdde5364293",
+          "status": "COMPLETED",
+          "delivery_id": "070a9876-3d71-4bd5-b80b-99cbb80c8aa8",
+          "failure_reason": null,
+          "failure_code": null,
+          "created_at": "2026-10-20T11:47:44.942231",
+          "updated_at": "2026-10-20T11:47:45.221825",
+          "deleted_at": null
+        },
+        "allOrders": 1,
+        "activeOrders": 1,
+        "allDeliveries": 1,
+        "activeDeliveries": 1,
+        "deliveries": [
+          {
+            "delivery_id": "070a9876-3d71-4bd5-b80b-99cbb80c8aa8",
+            "order_id": "213adf34-d945-4092-8ef5-dcdde5364293",
+            "status": "PICKUP_WAITING",
+            "deleted_at": null
+          }
+        ],
+        "activeRoutes": 2,
+        "closures": 0,
+        "i17": {
+          "orderId": "213adf34-d945-4092-8ef5-dcdde5364293",
+          "state": "ACTIVE",
+          "deliveryId": "070a9876-3d71-4bd5-b80b-99cbb80c8aa8",
+          "status": "PICKUP_WAITING"
+        }
+      }
+    },
+    {
+      "runId": "20261020-AFTER-F1-02",
+      "verdict": "RECOVERED",
+      "current": {
+        "creation": {
+          "attempt_id": "a22735b4-fb9b-421c-bc24-359c7ff7e651",
+          "order_id": "47b96d83-e767-4c91-95dc-b17d043d95d5",
+          "status": "ABORTED",
+          "delivery_id": null,
+          "failure_reason": null,
+          "failure_code": "SERVICE_UNAVAILABLE",
+          "created_at": "2026-10-20T11:47:46.035775",
+          "updated_at": "2026-10-20T11:48:08.761972",
+          "deleted_at": null
+        },
+        "allOrders": 0,
+        "activeOrders": 0,
+        "allDeliveries": 0,
+        "activeDeliveries": 0,
+        "deliveries": [],
+        "activeRoutes": 0,
+        "closures": 1,
+        "i17": {
+          "orderId": "47b96d83-e767-4c91-95dc-b17d043d95d5",
+          "state": "CLOSED",
+          "deliveryId": null,
+          "status": null
+        }
+      }
+    },
+    {
+      "runId": "20261020-AFTER-F2-02",
+      "verdict": "RECOVERED",
+      "current": {
+        "creation": {
+          "attempt_id": "f7ec73c8-a713-471b-9198-1fdf41289e77",
+          "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+          "status": "ABORTED",
+          "delivery_id": null,
+          "failure_reason": null,
+          "failure_code": "SERVICE_UNAVAILABLE",
+          "created_at": "2026-10-20T11:48:09.987234",
+          "updated_at": "2026-10-20T11:48:29.070881",
+          "deleted_at": null
+        },
+        "allOrders": 0,
+        "activeOrders": 0,
+        "allDeliveries": 1,
+        "activeDeliveries": 0,
+        "deliveries": [
+          {
+            "delivery_id": "b3bbf724-c63b-4b70-bcab-82e837e557e2",
+            "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+            "status": "PICKUP_WAITING",
+            "deleted_at": "2026-10-20T11:48:29.044552"
+          }
+        ],
+        "activeRoutes": 0,
+        "closures": 1,
+        "i17": {
+          "orderId": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+          "state": "CLOSED",
+          "deliveryId": null,
+          "status": null
+        }
+      }
+    }
+  ],
+  "baselineRecordsPreserved": true,
+  "gatewayAuthorization": {
+    "unauthenticated": 401,
+    "user": 403,
+    "master": 200
+  }
+}

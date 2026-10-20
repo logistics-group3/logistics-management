@@ -1,0 +1,2 @@
+{"status":409,"code":"DELIVERY_CREATION_CLOSED","message":"이미 종료된 배송 생성 시도입니다.","path":"/internal/deliveries","timestamp":"2026-10-20T11:48:09"}
+409

@@ -253,7 +253,7 @@ class OrderNotificationIntegrationTest extends PostgresIntegrationTest {
         assertThat(result.path("order").path("orderId").asText()).isEqualTo(orderId.toString());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id = ?",
                 Integer.class, orderId)).isEqualTo(1);
-        verify(deliveryGateway, never()).deleteByOrderId(any());
+        verify(deliveryGateway, never()).closeCreation(any());
         return orderId;
     }
 

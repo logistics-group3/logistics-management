@@ -213,6 +213,19 @@ public class Delivery extends BaseEntity {
         routes.forEach(route -> route.softDelete(username));
     }
 
+    /** I-18 생성 실패 정리. 출발과 같은 배송 행 잠금 안에서 검사한 뒤에만 삭제한다. */
+    public void closeCreation(UUID expectedDeliveryId, String username) {
+        if ((expectedDeliveryId != null && !expectedDeliveryId.equals(id))
+                || status != DeliveryStatus.PICKUP_WAITING
+                || routes.stream().anyMatch(route -> route.getStatus() != RouteStatus.WAITING)) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        softDelete(username);
+    }
+
+    private void addRoute(RouteType type, UUID departureHub, UUID arrivalHub, RouteInfo expected, ManagerAssigner assigner) {
+        UUID managerId = assigner.assign(type.managingHubId(departureHub, arrivalHub));
+        routes.add(new DeliveryRoute(this, routes.size() + 1, type, departureHub, arrivalHub, expected, managerId));
     /**
      * 자동 배정(SA 6.3). 이 허브가 담당하는 배정 대기 구간에 순번대로 담당자를 넣는다. 고를 때마다 assigner가 고른 사람의 건수를
      * 올리므로 같은 배송의 집하·허브 이동이 한 사람에게 몰리지 않는다. 이미 배정된 구간은 건너뛴다(멱등).

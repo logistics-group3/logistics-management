@@ -1,0 +1,33 @@
+{
+  "start": "2026-10-20T11:52:03.206800+09:00",
+  "end": "2026-10-20T11:52:03.219257+09:00",
+  "method": "GET",
+  "url": "http://127.0.0.1:28080/api/v1/orders/creations/47b96d83-e767-4c91-95dc-b17d043d95d5",
+  "requestBody": null,
+  "idempotencyKey": null,
+  "status": 200,
+  "responseHeaders": {
+    "transfer-encoding": "chunked",
+    "Content-Type": "application/json",
+    "Date": "Tue, 20 Oct 2026 02:52:03 GMT",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 200,
+    "message": "SUCCESS",
+    "data": {
+      "orderId": "47b96d83-e767-4c91-95dc-b17d043d95d5",
+      "status": "ABORTED",
+      "failureCode": "SERVICE_UNAVAILABLE",
+      "failureMessage": "운영자가 배송 생성 종료를 확인하고 주문 생성 시도를 종료했습니다.",
+      "order": null
+    }
+  }
+}
