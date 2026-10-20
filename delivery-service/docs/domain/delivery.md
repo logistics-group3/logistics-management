@@ -187,12 +187,16 @@ DeliveryStatus.from(routes)                                   // 구간 상태 �
 ### 4-2. 자동 배정 규칙 [SA] (SA 6.3)
 
 ```
-언제   = 배송 생성(I-09)이 커밋된 뒤 허브별 배정 작업이 비동기로 (결정 로그 27). 생성 때 구간 담당자는 비어 있다(배정 대기)
+언제   = 주문 확정(I-19)이 커밋된 뒤 허브별 배정 작업이 비동기로 (결정 로그 27·29). 생성(I-09) 때는 미확정이라 배정하지 않는다
 후보   = I-14 GET /internal/users/delivery-managers?hubId={구간 담당 허브}  → [{userId, slackId}]
 담당 건수 = delivery_db에서 manager_id = 후보 AND status IN (WAITING, MOVING) 인 구간 수
 배정   = 담당 건수가 가장 적은 후보, 동점이면 userId 순. 대기 구간을 오래된 배송 순으로 모아 차례로 고른다
 후보 0명 → 대기로 둔다. 30초 주기 작업이 다시 시도하고, MASTER가 D-04로 직접 배정할 수 있다. 주문은 실패하지 않는다
+         확정 뒤 60초가 지나도 0명이면 배송을 수동 지정 필요로 바꾸고 자동 배정은 손을 뗀다. order가 MASTER에게 알린다
+알림   = 배송의 대기 구간이 모두 채워지면(자동·D-04) order에 I-20 ASSIGNED. order가 담당자에게 DM을 보낸다
 ```
+- [구현] 왜 확정 뒤인가: order는 I-09 응답을 받은 뒤 주문을 커밋한다. 배송 저장 직후 배정하면 배정 완료가 주문 커밋보다 먼저 끝나 알림을 판단할 수 없고, 생성이 실패할 주문에도 담당자가 붙어 담당 건수에 섞인다(결정 로그 29)
+- [구현] "2번 더 시도"는 횟수 대신 확정 뒤 시간(60초, 주기 작업 30초면 2~3번째 시도)으로 센다. user 장애로 후보를 못 읽은 경우는 세지 않는다
 - 배정 작업은 허브마다 한 번에 하나만 돈다. 허브 잠금을 기다리지 않고 시도(`pg_try_advisory_xact_lock`)해서 못 잡으면 바로 끝낸다. 커밋 직후 신호는 허브마다 하나로 합친다(실행 중 + "끝나면 한 번 더")
 - I-14는 배정 작업 한 번에 그 허브로 한 번 부른다
 - 한 배송 안에서 집하·허브 이동은 같은 허브라 같은 사람이 뽑힐 수 있다. [구현] 두 번째 구간을 고를 때 첫 번째 배정을 담당 건수에 더해서 센다 (SA 예시도 집하·허브 이동 담당자가 같음)
@@ -267,10 +271,15 @@ sequenceDiagram
             D->>H: I-03 허브 경로 (예상 거리·시간)
         end
         D->>U: I-01 receiverManagerId → 수령인 Slack ID
-        D->>DB: 배송 + 구간 저장, 구간 담당자 비어 있음 (로컬 트랜잭션)
+        D->>DB: 배송 + 구간 저장, 구간 담당자 비어 있음, 미확정 (로컬 트랜잭션)
         D-->>O: 201 deliveryId, status
-        D-)D: 커밋 뒤 구간 담당 허브 배정 작업 깨움 (비동기)
     end
+    O->>O: 주문 저장·커밋
+    O->>D: I-19 주문 확정 (orderId 멱등)
+    D->>DB: confirmed_at 기록
+    D-->>O: 200
+    D-)D: 커밋 뒤 구간 담당 허브 배정 작업 깨움 (비동기)
+    D-)O: 배정 커밋 뒤 I-20 ASSIGNED (order가 담당자 DM)
     Note over O,D: 5xx·타임아웃 → order가 I-13(orderId)로 삭제 보상 후 503
     Note over D,DB: 배정 작업(허브마다 하나): I-14 후보 → 허브 try-lock → 대기 구간 배송 잠금(SKIP LOCKED) → 담당 건수 → 배정 → 커밋
 ```
@@ -381,8 +390,10 @@ erDiagram
 | pickup_address / delivery_address | VARCHAR(255) | NOT NULL | 집하지 / 배송지 |
 | recipient_name | VARCHAR(100) | NOT NULL | 기본값 요청업체명 |
 | recipient_slack_id | VARCHAR(50) | NULL | 요청업체 관리자 Slack ID (I-01) |
+| confirmed_at | TIMESTAMP | NULL | 주문 확정 시각(I-19). NULL이면 배정하지 않는다 (V5, 결정 로그 29) |
+| manual_assignment_requested_at | TIMESTAMP | NULL | 수동 지정 요청 시각. 값이 있으면 자동 배정이 건너뛴다 (V5) |
 
-인덱스: `status`, `supplier_company_id`, `receiver_company_id`, `departure_hub_id`, `destination_hub_id`, D-01 허브별 최신순 목록용 `(departure_hub_id, created_at DESC) INCLUDE (delivery_id) WHERE deleted_at IS NULL`(V4 `idx_p_deliveries_departure_hub_id_created_at`, 결정 로그 28)
+인덱스: `status`, `supplier_company_id`, `receiver_company_id`, `departure_hub_id`, `destination_hub_id`, D-01 허브별 최신순 목록용 `(departure_hub_id, created_at DESC) INCLUDE (delivery_id) WHERE deleted_at IS NULL`(V4 `idx_p_deliveries_departure_hub_id_created_at`, 결정 로그 28), 확정 유실 안전망용 `(created_at) WHERE confirmed_at IS NULL AND deleted_at IS NULL`(V5 `idx_p_deliveries_unconfirmed`)
 
 ### `p_delivery_routes` — 배송 구간 (배송 1건당 2~3건)
 | 컬럼 | 타입 | 제약 | 설명 |

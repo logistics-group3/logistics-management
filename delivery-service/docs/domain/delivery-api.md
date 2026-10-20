@@ -22,7 +22,8 @@
 ```mermaid
 flowchart LR
     C([클라이언트]) -->|D-01~05| G[Gateway] --> D[delivery-service]
-    O[order-service] -->|I-09~13| D
+    O[order-service] -->|I-09~13 · I-19| D
+    D -->|I-20 · I-21| O
     D -->|I-03| H[hub-service]
     D -->|I-01 · I-14| U[user-service]
 ```
@@ -39,6 +40,9 @@ flowchart LR
 | 제공·내부 | I-11 | `POST /internal/deliveries/{deliveryId}/cancel` | order (주문 취소) | [제안] |
 | 제공·내부 | I-12 | `POST /internal/deliveries/{deliveryId}/cancel-revert` | order (취소 보상) | [제안] |
 | 제공·내부 | I-13 | `DELETE /internal/deliveries/orders/{orderId}` | order (주문 삭제·생성 보상) | [제안] |
+| 제공·내부 | I-19 | `POST /internal/deliveries/orders/{orderId}/confirm` | order (주문 커밋 뒤 배송 확정) | [구현] 결정 로그 29 |
+| 사용 | I-20 | `POST /internal/orders/{orderId}/assignment-notifications` (order) | 배송 → order (배정 결과 알림) | [구현] 결정 로그 29 |
+| 사용 | I-21 | `GET /internal/orders/{orderId}/creation-result` (order) | 배송 → order (확정 유실 안전망) | [구현] 결정 로그 29 |
 | 사용 | I-01 | `GET /internal/users/{userId}` (user) | 배송 → user | [제안] |
 | 사용 | I-03 | `GET /internal/hub-routes?departureHubId=&arrivalHubId=` (hub) | 배송 → hub | [제안] |
 | 사용 | I-14 | `GET /internal/users/delivery-managers?hubId=` (user) | 배송 → user | [제안] |
@@ -403,14 +407,19 @@ order ──I-09──▶ delivery
                  2. 같은 허브?  아니면  I-03 (공급업체 허브 → 요청업체 허브)   ─▶ hub
                  3. I-01 (receiverManagerId → 수령인 Slack ID, user 장애면 NULL) ─▶ user
                  4. 배송 + 구간 2~3개 저장, 구간 담당자는 비어 있음 (한 로컬 트랜잭션)
-                 5. 201 { deliveryId, status: PICKUP_WAITING }
-                 6. 커밋 뒤 구간 담당 허브의 배정 작업을 깨움 (비동기, 응답을 기다리지 않음)
+                 5. 201 { deliveryId, status: PICKUP_WAITING }  (미확정, 배정하지 않음)
+order: 주문 저장·커밋
+order ──I-19──▶ delivery
+                 6. 배송 확정(confirmed_at) 커밋 → 200
+                 7. 커밋 뒤 구간 담당 허브의 배정 작업을 깨움 (비동기, 응답을 기다리지 않음)
 
-배정 작업 (허브마다 한 번에 하나, 결정 로그 27)
+배정 작업 (허브마다 한 번에 하나, 결정 로그 27·29)
                  a. I-14 (허브의 배송담당자 후보)                            ─▶ user
-                    후보 0명 → 대기로 둠. 30초 주기 작업이 다시 시도, MASTER D-04 수동 배정 가능
+                    후보 0명 → 대기로 둠. 30초 주기 작업이 다시 시도.
+                    확정 뒤 60초가 지난 대기 배송은 수동 지정 필요로 바꾸고 I-20 MANUAL_REQUIRED ─▶ order
                  b. 허브 잠금 시도(기다리지 않음). 못 잡으면 다른 작업이 처리 중 → 끝
-                 c. 대기 구간이 있는 배송을 오래된 순으로 잠금(SKIP LOCKED) → 담당 건수 한 번 → 차례로 배정 → 커밋
+                 c. 확정됐고 수동 지정이 아닌 대기 배송을 오래된 순으로 잠금(SKIP LOCKED) → 담당 건수 한 번 → 차례로 배정 → 커밋
+                 d. 커밋 뒤 대기 구간이 모두 채워진 배송마다 I-20 ASSIGNED                  ─▶ order (DM)
 ```
 | 단계 | 실패 | 배송이 돌려주는 것 | order가 하는 것 (SA 7.1) |
 |---|---|---|---|
@@ -419,6 +428,7 @@ order ──I-09──▶ delivery
 | 3 | 후보 0명 | 404 `DELIVERY_MANAGER_NOT_FOUND` | 보상 없이 404 (저장된 것 없음) |
 | 6 | DB 오류 | 500 | I-13 보상 후 503 |
 | a | user 장애 | 배송은 이미 성공. 구간이 대기로 남고 주기 작업이 다시 시도 | 없음 |
+| d | order 장애 | 배정은 이미 커밋. 알림은 다시 보내지 않는다(ADR 0016 7번) | 없음 |
 
 ## I-18 생성 실패·운영자 복구용 조건부 종료 (로컬 확장)
 
