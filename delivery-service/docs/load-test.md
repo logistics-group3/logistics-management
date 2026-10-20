@@ -6,12 +6,12 @@
 
 | 파일 | 역할 |
 |---|---|
-| `load-test/k6/delivery-create.js` | 쓰기 부하. `TARGET=delivery`(기본)는 배송 생성만, `TARGET=order`는 주문 생성부터 |
+| `load-test/k6/delivery-create.js` | 쓰기 부하. `TARGET=delivery`(기본)는 배송 생성 뒤 order 대신 주문 확정(I-19과 같은 처리)까지, `TARGET=order`는 주문 생성부터. 배정은 확정 뒤에 한다(결정 로그 29) |
 | `load-test/k6/delivery-read.js` | 읽기 부하. D-01 허브별 목록, D-01 배송담당자 목록, D-02 단건을 동시에 |
 | `infra/postgres/seed/delivery-e2e.sql` | 계정·업체·상품 시드(E2E와 같다) |
 | `infra/postgres/seed/delivery-load.sql` | 과거 배송 대량 데이터(기본 30만 건). 몇 달 운영한 DB를 흉내 낸다 |
 | `docker-compose.loadtest.yml` | delivery-service에 부하 테스트 API를 켜는 덧붙임 설정 |
-| `load-test/k6/fault-isolation.js`, `load-test/fault-isolation.sh` | 장애 격리 실험. 생성·조회를 동시에 보내고 중간에 user-service를 멈춘다([fault-isolation.md](fault-isolation.md)) |
+| `load-test/k6/fault-isolation.js`, `load-test/fault-isolation.sh` | 장애 격리 실험. 생성·조회를 동시에 보내고 중간에 user-service를 멈춘다([fault-isolation.md](fault-isolation.md)). `TARGET=delivery`는 생성 뒤 확정(`I-19 직접`)도 보낸다. `CONFIRM=0`이면 T08처럼 생성만 잰다(배정되지 않는다) |
 | `docker-compose.fault.yml` | 장애 격리 실험용 덧붙임 설정(Gateway 권한 캐시 10분, Tomcat 스레드 지표) |
 | `LoadTestDeliveryController` | `POST /api/v1/deliveries/load-test`. I-09와 같은 처리를 Gateway로 부른다(결정 로그 24) |
 
@@ -120,3 +120,29 @@ docker compose logs -f delivery-service
 | 날짜 | 실험 | 조건 | 생성 p95 / p99 (ms) | 생성 실패율 | dropped | D-01 허브별 p95 | D-01 담당자 p95 | D-02 p95 | 메모 |
 |---|---|---|---|---|---|---|---|---|---|
 | | 0 기준선 | PEAK_RATE=20, RATE=20, count=300000 | | | | | | | |
+
+## 8. 주문 → DM 끝단 처리량
+주문 접수(O-01)부터 배송담당자 DM까지 한 흐름의 처리량을 잰다. 접수 뒤 단계(주문 커밋 → I-19 확정 → 배정 → I-20 → DM)는 모두 비동기라 k6 응답 시간에는 접수까지만 나온다. 그래서 단계마다 DB 시각과 Slack 대역이 받은 시각을 주문 ID로 이어 붙여 잰다. 결과는 [T09](tasks/T09.md) 작업 기록에 있다.
+
+| 파일 | 역할 |
+|---|---|
+| `load-test/slack-stub/slack_stub.py` | Slack 대역. `users.lookupByEmail`·`conversations.open`·`chat.postMessage`와 채널 Webhook에 정상 응답하고 받은 시각을 기록한다. 실제 Slack은 호출 한도가 있어 우리 서비스 대신 Slack 한도를 재게 되고, 실제 사용자에게 DM이 간다 |
+| `docker-compose.order-dm.yml` | order의 Slack DM·Webhook 주소를 대역으로 돌리는 덧붙임 설정. 허용 이메일은 측정용 `.invalid` 주소만 |
+| `load-test/order-dm-seed.sql` | 서울 담당자 2명(dmgr1·2)에 측정용 Slack 이메일을 단다. 없으면 order가 DM을 건너뛴다 |
+| `load-test/k6/order-dm.js` | O-01을 일정한 초당 건수(`RATE`)로 보낸다 |
+| `load-test/order-dm.sh` | 예열 2회 → [쉼 → 측정 주문·배송·대역 기록 비우기 → 측정 → DM이 멈출 때까지 대기 → 집계] × `REPEAT` |
+| `load-test/order-dm-stats.sh` | 단계별 건수(어디서 빠졌는지), 단계별·끝단 지연, 10초 구간 처리량, 버림·실패 로그 건수 |
+
+```bash
+export COMPOSE_FILE=docker-compose.yml:docker-compose.loadtest.yml:docker-compose.fault.yml:docker-compose.order-dm.yml
+script/run.sh                                   # 모든 서비스가 뜬 뒤 아래 시드
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d logistics -v ON_ERROR_STOP=1' < infra/postgres/seed/delivery-e2e.sql
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d logistics -v ON_ERROR_STOP=1' < load-test/order-dm-seed.sql
+NAME=dm-base RATES="10 20 40 80" load-test/order-dm.sh
+# 결과: load-test/results/<NAME>-rate<r>-<n>-e2e.txt(끝단 집계), -stats.txt(10초마다 실행기·커넥션), .json(k6)
+```
+
+- 끝단 지연은 "접수 → 그 주문의 마지막 DM"이다. 같은 허브 배송은 구간 2개라 주문 1건에 DM 2건이 간다.
+- 처리량은 마지막 DM 시각 기준으로 센 초당 주문 수다. 접수 수와 같이 보면 따라가는지 밀리는지 보인다.
+- 대역 응답을 늦추려면 `STUB_LATENCY_MS=150 docker compose up -d slack-stub`(Slack API 호출마다 지연).
+- 대역을 만들며 겪은 것: order의 JDK HttpClient는 본문을 chunked로 보내 `Content-Length`만 읽으면 빈 본문이 된다(DM이 `INVALID_RESPONSE`로 실패). 또 Nagle을 끄지 않으면 호출마다 약 40ms가 붙어 배정 → DM이 211ms로 나왔다(끈 뒤 40ms). 대역 때문에 생긴 지연을 서비스 병목으로 읽지 않게 대역 자체를 먼저 확인한다.

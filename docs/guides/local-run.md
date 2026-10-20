@@ -92,6 +92,7 @@ docker compose stop hub-service          # 도커로 떠 있었다면 내린다
 | 이미 적용된 마이그레이션 수정, `infra/postgres/init.sh`, DB 비밀번호 | `script/run.sh --reset` (DB 데이터 삭제) |
 | 덧붙임 compose 파일로 설정 켜기(예: 배송 부하 테스트 API) | `COMPOSE_FILE=docker-compose.yml:docker-compose.loadtest.yml script/run.sh delivery-service`. 끌 때는 `COMPOSE_FILE` 없이 같은 명령. 절차는 `delivery-service/docs/load-test.md` |
 | 덧붙임 compose 파일 여러 개 합치기(예: 장애 격리 실험) | `COMPOSE_FILE=docker-compose.yml:docker-compose.loadtest.yml:docker-compose.fault.yml script/run.sh --reset`. 뒤 파일이 앞 파일의 설정을 덮어쓴 한 벌로 뜬다. 합친 결과는 `docker compose config`로 확인한다. `docker-compose.fault.yml`은 Gateway 권한 캐시를 1시간으로 늘리고 delivery·order의 Tomcat 스레드 지표를 켠다([장애 격리 실험](../../delivery-service/docs/fault-isolation.md) 5절). 구간 배정 배치 창은 `ASSIGNMENT_BATCH_WINDOW_MS`(기본 0)로 바꿔 띄운다(delivery 결정 로그 28) |
+| 주문 → DM 끝단 측정(Slack 대역) | 위 세 파일 뒤에 `docker-compose.order-dm.yml`을 붙인다. `slack-stub` 컨테이너(127.0.0.1:9900)가 함께 뜨고 order의 Slack DM·Webhook이 대역으로 간다. 실제 Slack으로는 보내지 않는다. 절차는 `delivery-service/docs/load-test.md` 8절 |
 
 - 교체 직후 몇 초 동안 Gateway가 503을 줄 수 있다. 새 인스턴스가 Eureka에 등록되고 Gateway가 목록을 다시 받을 때까지다(조회 주기 5초).
 - 옛 이미지 정리: 가끔 `docker image prune -f`

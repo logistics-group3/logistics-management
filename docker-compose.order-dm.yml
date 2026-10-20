@@ -1,0 +1,29 @@
+# 주문 → DM 끝단 측정용 덧붙임 설정(delivery-service/docs/load-test.md "주문 → DM 끝단 처리량").
+# order-service의 Slack DM·Webhook을 Slack 대역(load-test/slack-stub)으로 돌린다. 실제 Slack으로는 보내지 않는다.
+# 사용: export COMPOSE_FILE=docker-compose.yml:docker-compose.loadtest.yml:docker-compose.fault.yml:docker-compose.order-dm.yml
+# 대역 응답 지연: STUB_LATENCY_MS=150 docker compose up -d slack-stub
+services:
+  slack-stub:
+    image: python:3.12-alpine
+    command: ["python", "-u", "/app/slack_stub.py"]
+    volumes:
+      - ./load-test/slack-stub:/app:ro
+    environment:
+      STUB_LATENCY_MS: ${STUB_LATENCY_MS:-0}
+      STUB_TEAM_ID: TLOADTEST
+    ports:
+      - "127.0.0.1:9900:9900"
+    networks: [logistics-net]
+
+  order-service:
+    depends_on:
+      slack-stub:
+        condition: service_started
+    environment:
+      SLACK_WEBHOOK_URL: http://slack-stub:9900/webhook
+      SLACK_DM_ENABLED: "true"
+      SLACK_BOT_TOKEN: xoxb-loadtest-not-a-real-token
+      SLACK_DM_WORKSPACE_ID: TLOADTEST
+      SLACK_DM_API_BASE_URL: http://slack-stub:9900/api
+      # 측정용 주소만 허용한다. 실수로 실제 Slack을 가리켜도 실제 사용자에게 가지 않는다
+      SLACK_DM_ALLOWED_EMAILS: dmgr1@loadtest.invalid,dmgr2@loadtest.invalid
