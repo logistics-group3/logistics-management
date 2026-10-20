@@ -1,0 +1,19 @@
+package com.sparta.logistics.order.infrastructure.client;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
+import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.order.infrastructure.client.dto.DeliveryOrderStateResponse;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+class QualityAuditDeliveryStateTest {
+    @Test void bothStateReadersMustRejectContradictoryClosedState() {
+        UUID orderId = UUID.randomUUID();
+        DeliveryOrderStateClient state = mock(DeliveryOrderStateClient.class);
+        when(state.getByOrderId(orderId)).thenReturn(new DeliveryOrderStateResponse(orderId, "CLOSED", UUID.randomUUID(), "PICKUP_WAITING"));
+        DeliveryClientAdapter adapter = new DeliveryClientAdapter(mock(DeliveryCreateClient.class), mock(DeliveryDeleteClient.class),
+                mock(DeliveryCancelClient.class), mock(DeliveryCancelRevertClient.class), state);
+        assertThatThrownBy(() -> adapter.getCreationState(orderId)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> adapter.isCreationClosed(orderId))
+                .as("같은 I-17 결과를 읽는 두 경로의 모순 검증은 같아야 한다").isInstanceOf(BusinessException.class);
+    }
+}

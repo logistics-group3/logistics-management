@@ -1,0 +1,72 @@
+{
+  "measurement_date": "2026-10-19",
+  "verified_date": "2026-10-20",
+  "source_report": "docs/reviews/2026-10-19-order-load-test.md",
+  "source_report_branch": "perf/portfolio-load-test",
+  "source_report_revision": "ea11dd37cd7033d80f52b214dd9fd7263f902b37",
+  "source_results_directory": "load-test/results",
+  "environment": "개인 macOS PC, 12코어, Docker VM 메모리 7.6GiB, 서비스별 인스턴스 1개, 동일 PC에서 k6 실행",
+  "comparison": "같은 이미지에서 주문 접수 전 조기 거절을 끄고 켜서 비교",
+  "offered_requests_per_second": 640,
+  "offering_duration_seconds_per_run": 45,
+  "tps_definition": "202 응답을 받은 주문 수를 요청 투입 시간 45초로 나눈 값. k6가 전체 실행 시간으로 계산한 rate와 구분한다.",
+  "p95_definition": "http_req_duration{name:O-01 접수}의 p(95). 성공 접수와 거절 응답을 모두 포함하며 주문 완료 시간은 아니다.",
+  "comparisons": [
+    {
+      "round": 1,
+      "before_source": "ab-false-r1-640.json",
+      "after_source": "ab-true-r1-640.json",
+      "before_accepted_count": 9893,
+      "after_accepted_count": 12292,
+      "before_completed_count": 9893,
+      "after_completed_count": 12292,
+      "before_rejected_count": 18908,
+      "after_rejected_count": 16509,
+      "before_acceptance_tps": 219.84444444444443,
+      "after_acceptance_tps": 273.15555555555557,
+      "acceptance_tps_increase_percent": 24.249469321742655,
+      "before_accept_api_p95_ms": 82.355333,
+      "after_accept_api_p95_ms": 17.891875,
+      "accept_api_p95_decrease_percent": 78.27478276361289
+    },
+    {
+      "round": 2,
+      "before_source": "ab-false-r2-640.json",
+      "after_source": "ab-true-r2-640.json",
+      "before_accepted_count": 9319,
+      "after_accepted_count": 11600,
+      "before_completed_count": 9319,
+      "after_completed_count": 11600,
+      "before_rejected_count": 19482,
+      "after_rejected_count": 17201,
+      "before_acceptance_tps": 207.0888888888889,
+      "after_acceptance_tps": 257.77777777777777,
+      "acceptance_tps_increase_percent": 24.476875201201853,
+      "before_accept_api_p95_ms": 229.480084,
+      "after_accept_api_p95_ms": 19.211917,
+      "accept_api_p95_decrease_percent": 91.62806781960215
+    }
+  ],
+  "two_run_summary": {
+    "before_accepted_count": 19212,
+    "after_accepted_count": 23892,
+    "before_mean_acceptance_tps": 213.46666666666667,
+    "after_mean_acceptance_tps": 265.46666666666664,
+    "mean_acceptance_tps_increase_percent": 24.359775140537153
+  },
+  "limits": [
+    "2026-10-19의 로컬 실험 결과를 다시 읽고 계산했으며 이번 글쓰기 작업에서 부하를 재실행하지 않았다.",
+    "초당 640건을 모두 수용했다는 뜻이 아니다. 개선 후에도 용량 초과 요청을 거절했다.",
+    "두 비교는 활성 배송 구간이 쌓이고 DB 통계 갱신이 지연되는 측정 조건에서 수행됐다. 후속 현실적 데이터 조건에서 조기 거절 효과를 재측정한 결과는 없다.",
+    "원본 보고서는 같은 설정의 반복 변동을 약 15퍼센트로 기록했다. 두 차례 비교의 기술 통계이며 운영 용량이나 통계적 유의성을 뜻하지 않는다.",
+    "원본 JSON의 setup_data 등 인증 정보를 포함할 수 있는 내용은 이 요약에 복사하지 않았다."
+  ],
+  "source_availability": "별도 로컬 perf/portfolio-load-test 브랜치의 원본이다. 원본 커밋·보고서는 GitHub에 게시되지 않았고 이 문서 PR에는 인증 정보를 제외한 수치 요약을 포함한다.",
+  "source_report_sha256": "9a99406ec515b4987c83500457ad4b6ba57c7e3e9739a4e184aa5a51fbd5cf49",
+  "source_result_sha256": {
+    "ab-false-r1-640.json": "dca05ee7e0aca02541f09b75fc66becdabdbb344b37aeedd1bbf5b64899e0321",
+    "ab-true-r1-640.json": "ca16168ac9f7fdd35a877b31f890239d843771b360812cbeec8fefda28e38fbf",
+    "ab-false-r2-640.json": "8707c80f96d5157494e0388a4edcc2cc78e40c102ae0c5be8a0193f266c2fa0e",
+    "ab-true-r2-640.json": "36724ab18f02c470682d409b3be7b6140bf240cdbf99bea6cc0abb4b4c6b5cf7"
+  }
+}
