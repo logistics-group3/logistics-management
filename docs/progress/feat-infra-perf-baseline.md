@@ -1,51 +1,89 @@
 # feat/infra-perf-baseline
 
 ## 지금 하는 일
-캐시 도입 전 성능 측정 환경(k6, 전용 Compose) 구성과 시험 실행
+캐시 A2·B1·C1 개발 완료, 개발 후 측정(A0 재측정 포함) 대기
+
+## 한눈에 보기 (2026-10-20 기준)
+- 목적: Redis 캐시 후보 A·B·C를 하나씩 적용하며 같은 조건에서 측정해 성능 개선의 객관적 근거를 만든다. D는 2026-10-19 팀 회의에서 기각
+- 개발: 끝남(커밋 3개, 테스트·전체 빌드 통과). 캐시 설정 기본값은 모두 지금 동작과 같다
+- 측정: 개발 전 기준선 A1·BC0만 끝남. A0과 개발 후 A2·B1·C1은 PC 메모리 부족으로 멈춤
+- push·PR: 하지 않음. 사용자가 "개발과 측정이 끝난 뒤" 하기로 했다
+
+| 문서 | 내용 |
+|---|---|
+| `docs/reviews/performance/README.md` | 범위, 조건표, 측정 절차, 판정 기준, 목표 RPS 근거, 회차 목록(측정할 때마다 자동으로 한 줄 추가) |
+| `docs/reviews/performance/<회차>.md` | 회차별 보고서(k6 + Prometheus) |
+| `docs/guides/performance-test.md` | 측정 환경 구성과 실행 명령, 캐시 조건 변수 |
+| `docs/decisions/0019-redis-cache-measured-adoption.md` | 설계 결정(제안). "후속 결정"은 측정 후 작성 |
+| `docs/services/{gateway,user,hub,company,common}/README.md` | 협업 로그 GATEWAY-001, USER-003, HUB-002, COMPANY-003, COMMON-001(OPEN, 리뷰 대기) |
+| `docs/learning/kmh/qna/2026-10-19-redis-cache-candidates.md`, `...-performance-baseline-plan.md` | 후보 선정과 측정 계획의 배경 |
+
+## 측정 결과
+
+### 개발 전 (기준선, 커밋 a9a6630 이미지)
+| 조건 | 시나리오·RPS | p50 / p95 / p99 (ms, 3회) | 실패율 | 항목별 주 지표 |
+|---|---|---|---|---|
+| A1 Gateway local 60s | S1 150/s | 3.2~3.3 / 4.8~5.3 / 7.3~20.8 | 0% | 요청당 I-01 0.04, 권한 변경 반영 60,180~60,281ms |
+| BC0 캐시 없음 | S2 60/s | 11.5~12.0 / 14.9~18.4 / 20.4~73.5 | 0% | 요청당 I-03 0.94~0.95, company 호출 3.00, company 내부 API p95 1.2~1.4ms, hub API p95 1.4~2.0ms |
+| BC0 캐시 없음 | S3 200/s | 3.2 / 4.0~4.1 / 18.3~20.4 | 0% | hub API p95 1.5~1.6ms |
+| A0 Gateway TTL 0s | S1 150/s | 미완료(r1만: 4.6 / 6.1 / 87.2, 요청당 I-01 1.00, 권한 반영 6ms) | - | `.local/perf/a0-incomplete/` |
+
+### 개발 후
+아직 없다. 남은 조건: A0(기준선), A2, B1-local, B1-redis, C1.
+
+### 측정 과정에서 알게 된 것
+- 목표 RPS 탐색: S1 한계 200~400(Gateway CPU), S2 한계 80~120(order-service DB 커넥션 대기 최대 186, 120/s 실패율 50%), S3 한계 200~400. 고정 RPS는 S1 150, S2 60, S3 200
+- S2 한계가 캐시 대상이 아니라 order DB 커넥션 풀이라 C를 넣어도 최대 처리량은 크게 안 오를 수 있다
+- 새로 띄운 직후 첫 회차는 크게 나쁘다(A0 p95 2,340ms → 이후 5.6ms). 그래서 조건마다 예열 3분(버림)을 넣었다. 예열 없는 결과는 `.local/perf/cold-start-protocol-v1/`
+- C의 캐시 위치(company-service)는 order → company HTTP 호출 수(주문당 3회)를 줄이지 않는다. C의 주 지표는 company 내부 API 지연·자원이다
+
+## 개발 내용
+| 커밋 | 항목 | 바꾼 곳 | 켜는 법(기본) |
+|---|---|---|---|
+| `f3397e6` | A2 | gateway `RedisUserLookup`·`AuthConfig`·`AuthProperties.userCache`, user `UserService`가 `UserAuthChangedEvent` 발행 → `UserAuthChangedEventListener`(커밋 뒤) → `RedisUserAuthCache`, common-core `UserAuthCacheKeys`(`auth:user:{userId}`) | `AUTH_USER_CACHE=redis`(local). gateway·user 둘 다 같은 값 |
+| `3a5af81` | B1 | hub `HubCacheConfig`·`HubCacheProperties`·`HubCacheNames`, `HubQueryService`(H-02, I-02)·`HubRouteQueryService`(H-04, I-03)에 `@Cacheable` | `HUB_CACHE_TYPE=local|redis`(none) |
+| `a58e3f1` | C1 | company `CompanyCacheConfig`(트랜잭션 인식 프록시), I-07·I-08 `@Cacheable`, 업체 수정·삭제와 상품 수정·삭제에 `@CacheEvict` | `COMPANY_CACHE_TYPE=local|redis`(none) |
+
+- 설정은 `config-repo/{gateway,user,hub,company}-service.yml`. 각 서비스 `management.health.redis.enabled=false`
+- Redis는 팀 `docker-compose.yml`에 넣지 않았다. 측정 환경 `script/perf/compose.perf.yml`에만 있다(`redis:7.4.2`)
+- 테스트: common-core 2, gateway 31(`RedisUserLookupTest` 4), user 91(`RedisUserAuthCacheTest` 2, `UserServiceTest` 이벤트 검증), hub 66(`HubCacheIntegrationTest` 2, `HubRedisCacheIntegrationTest` 2), company 54(`CompanyCacheIntegrationTest` 3, `CompanyRedisCacheIntegrationTest` 1). `./gradlew build` 성공(2026-10-20, 2분 49초)
+- B·C의 캐시 설정 코드는 두 서비스에 비슷하게 있다. 채택하면 규칙대로 `common` 자동 설정으로 옮긴다(ADR 0019 검토한 대안)
 
 ## 진행 상태
-- [x] 측정 범위 확정: A(Gateway I-01), B(허브·경로), C(업체·상품). D(배송담당자 목록)는 2026-10-19 팀 회의에서 기각
-- [x] 결정(2026-10-19 kmh): B는 로컬 캐시와 Redis를 모두 비교한다. C는 수정 범위가 가장 작은 company-service 내부 조회 API에 둔다. 결과는 `.local/perf`와 `docs/reviews/performance/`에 함께 남긴다
-- [x] 측정 환경: `script/perf.sh`, `script/perf/compose.perf.yml`(프로젝트 `logistics-perf`, `.env.perf`, 컨테이너당 1 CPU·768MB, 추적 0.0, Slack 끔, `PERF_AUTH_CACHE_TTL`)
-- [x] k6 스크립트: `seed.js`, `s1-auth.js`(권한 변경 반영 시간 포함), `s2-order.js`, `s3-read.js`, `report.js`. 이미지 `grafana/k6:1.3.0`
-- [x] `script/perf.sh up` 성공(2026-10-19, Gateway 28080 로그인 401 응답 확인), `script/perf.sh seed` 성공(허브 17, 가입 요청 354, 배송담당자 지정 34, 업체 317, 상품 51)
-- [x] 기록 위치: `docs/reviews/performance/README.md`(범위·조건·판정 기준·회차 목록), `docs/guides/performance-test.md`(절차), `docs/README.md`·`docs/doc-map.tsv` 연결. `script/docs-check.sh` OK
-- [x] 시험 실행(2026-10-19, 모두 실패율 0%, dropped 0). 결과 원본은 `.local/perf/results/trial-*`
-  - S2 5/s 1m: p95 57.0ms, 요청당 I-01 0.59, I-03 0.96, order→company 2.99, company 내부 API p95 2.1ms
-  - S1 10/s 3m, TTL 60s: p95 12.1ms, 요청당 I-01 0.38, 권한 변경 반영 60,361ms(1회)
-  - S1 10/s 2m, TTL 0s: p95 13.9ms, 요청당 I-01 1.00. `AUTH_USERCACHETTL` 덮어쓰기 반영 확인
-  - S3 10/s 1m: p95 11.4ms
-  - publish: `docs/reviews/performance/`에 보고서와 목록 한 줄이 생기는 것을 확인한 뒤 확인용 기록은 지웠다
-- [x] 시험 실행 중 고친 것: Gateway `http_client_requests`는 라우트 프록시 지표라 I-01을 user-service 수신 수 − Feign I-01로 계산, Feign URL에 `/internal`이 없는 점 반영, company 내부 API p95 계산 오류 수정, hub API p95 열 추가
-- [x] 목표 RPS 결정(2026-10-19): S1 150, S2 60, S3 200. 근거 표는 `docs/reviews/performance/README.md` "목표 RPS". S2 한계(80~120)는 order-service DB 커넥션 대기
-- [x] S3를 단건 조회(H-02, H-04)로 변경, 시드에 경로 ID 추가, 보고서·목록에 캐시 설정 열 추가, 측정 환경에 Redis와 캐시 조건 변수 추가
-- [x] ADR 0019(Redis 캐시를 기본 꺼짐으로 넣고 측정으로 채택을 정한다) 제안
-- [x] 기준선 A1(S1), BC0(S2·S3) 각 3회(예열 회차 추가 절차, 2026-10-20). A1 p95 4.8~5.3ms·권한 반영 약 60.2초, BC0-S2 p95 14.9~18.4ms, BC0-S3 p95 4.0~4.1ms
-- [ ] 기준선 A0(S1) 3회: 메모리 부족으로 측정 묶음이 중단돼 r1만 있다(`.local/perf/a0-incomplete/`). 다시 재야 한다
-- [x] 개발 커밋(2026-10-20): A2 `f3397e6`(gateway·user·common-core), B1 `3a5af81`(hub), C1 `a58e3f1`(company). 모듈 테스트 common-core 2·gateway 31·user 91·hub 66·company 54 통과, `./gradlew build` 성공(2분 49초)
-- [ ] 측정: A0 재측정, A2, B1-local·B1-redis, C1. 메모리 부족(남은 메모리 약 1GB / 15.8GB)으로 측정 묶음이 중단돼 멈췄다. 메모리 압박 중 측정은 스왑이 섞여 비교 자료가 되지 않는다
-- [ ] 기준선 측정: A0, A1(S1), BC0(S2, S3) 각 3회
-- 면접 포인트: 성능 개선을 어떻게 증명했나(기준선, 하나씩 변경, 3회 중앙값과 편차), 왜 고정 도착률로 부하를 줬나
+- [x] 측정 환경·k6 스크립트·보고서·docs 기록 자동화(`script/perf.sh`, `script/perf/`)
+- [x] 목표 RPS 결정, S3 단건 조회로 변경, Redis·캐시 조건 변수 추가, ADR 0019 제안 (`a9a6630`)
+- [x] 기준선 A1·BC0 (`a7a92b4`)
+- [x] 개발 A2 `f3397e6`, B1 `3a5af81`, C1 `a58e3f1`
+- [ ] 기준선 A0 3회
+- [ ] 개발 후 측정: A2(S1), B1-local·B1-redis(S2, S3), C1(S2, B1에서 나은 쪽을 켠 상태)
+- [ ] ADR 0019 후속 결정, 채택 항목의 팀 Compose·`.env.example` 변경안, 협업 로그 리뷰
+- [ ] push·PR(사용자가 측정 완료 후 진행하기로 함)
+- 면접 포인트: 성능 개선을 어떻게 증명했나(기준선, 하나씩 변경, 예열 후 3회 중앙값과 편차), 왜 고정 도착률로 부하를 줬나, Redis 장애를 어떻게 격리했나
 
 ## 다음 단계
-1. 다른 프로그램(IDE, 브라우저, 개발용 `redis-stack-compose` 등)을 끄고 남은 메모리를 확보한다
-2. 측정 묶음 스크립트 `.local/perf/batch-measure.sh`(Git 제외)로 남은 조건을 잰다. 조건마다 down→up→예열 3분(버림)→5분×3회
-   - A0: `PERF_AUTH_CACHE_TTL=0s`, S1 150/s (`.local/perf/batch-redo-a0.sh`는 앞 묶음 PID를 기다리는 형태라 인자 없이 쓰려면 고쳐야 한다)
-   - A2: `.local/perf/batch-measure.sh a2` (PERF_AUTH_CACHE=redis)
-   - B1: `.local/perf/batch-measure.sh b1` (local과 redis 각각 S2 60/s, S3 200/s)
-   - C1: `B1_CHOICE=<local|redis> .local/perf/batch-measure.sh c1` (B1에서 나은 쪽을 켠 상태)
-3. 조건별 측정이 끝날 때마다 `docs/reviews/performance/` 결과를 측정 커밋으로 남긴다
-4. ADR 0019 "후속 결정"에 항목별 채택·기각을 적고, 채택 항목은 `docker-compose.yml`·`.env.example` 변경안을 팀 리뷰에 올린다
+1. 메모리를 확보한다. IDE·브라우저·개발용 `redis-stack-compose` 컨테이너 등을 끈다. 측정 환경은 컨테이너 합계 약 3GB를 쓴다
+2. `.local/perf/batch-measure.sh`(Git 제외, 이 PC에만 있음)로 조건별 측정을 돌린다. 조건마다 down → up → 30초 대기 → 예열 3분(버림) → 5분×3회. 결과는 `.local/perf/batch-<묶음>.txt`에 시간순으로 남는다
+   - A0: 스크립트에 `a0)` 묶음이 없다. `baseline` 묶음의 A0 부분을 떼어 `a0)` 묶음을 추가하거나 `.local/perf/batch-redo-a0.sh`의 PID 대기 줄을 지우고 쓴다
+   - A2: `.local/perf/batch-measure.sh a2`
+   - B1: `.local/perf/batch-measure.sh b1`
+   - C1: `B1_CHOICE=<local|redis> .local/perf/batch-measure.sh c1`
+   - 묶음 하나가 1~2시간 걸린다. 백그라운드로 돌리면 세션이 오래 쉬는 동안 Claude Code가 메모리 부족 시 작업을 멈출 수 있다
+3. 조건별로 끝날 때마다 `docs/reviews/performance/`의 새 보고서와 목록을 측정 커밋(`test(infra): ...`)으로 남긴다. 개발 커밋과 측정 커밋은 나눈다(사용자 요청)
+4. 회차 목록으로 판정한다(개선 폭이 같은 조건 3회 편차보다 작으면 차이 없음). ADR 0019 "후속 결정"에 항목별 채택·기각을 적는다
 
 ## 직접 해보기
-1. `script/perf.sh up` 실행. 확인: 마지막 줄에 `준비 완료: http://127.0.0.1:28080`
-2. `script/perf.sh seed` 실행. 확인: `시드 완료: 허브 17, 수령업체 300, 상품 51 ...`과 `.local/perf/data.json` 생성
-3. `script/perf.sh clean` 후 `RATE=5 DURATION=1m WARMUP=20s PUBLISH=0 script/perf.sh run s2 trial-s2` 실행. 확인: k6 요약 뒤에 보고서 표가 출력되고 `.local/perf/results/trial-s2/report.md`가 생긴다
-4. Grafana(http://127.0.0.1:23000)에서 측정 시간대의 그래프를 함께 본다
-5. 끝나면 `script/perf.sh down`
+1. `script/perf.sh down && PERF_HUB_CACHE=redis script/perf.sh up`. 확인: 마지막 줄 `준비 완료: http://127.0.0.1:28080`
+2. 데이터가 없으면 `script/perf.sh seed`. 확인: `시드 완료: 허브 17, 경로 272, 수령업체 300, 상품 51 ...`
+3. 예열: `RATE=200 DURATION=3m WARMUP=30s PUBLISH=0 PROBE_ROUNDS=0 script/perf.sh run s3 warm-B1-redis-s3`
+4. 측정: `RATE=200 script/perf.sh run s3 B1-redis-s3-r1`. 확인: `docs/reviews/performance/B1-redis-s3-r1.md` 생성, README 회차 목록에 캐시 설정 `hub=redis`인 줄 추가
+5. Grafana(http://127.0.0.1:23000), Prometheus(http://127.0.0.1:29090)에서 같은 시간대를 본다
+6. 끝나면 `script/perf.sh down`
 
 ## 메모
-- 이 PC에는 Python이 없다(Microsoft Store 별칭만 있음). 그래서 시드·보고서도 k6로 만들었다. 기존 `script/ui-test.sh`, `script/api-test.sh`는 Python이 필요하다
-- Gateway TTL은 환경 변수 `AUTH_USERCACHETTL`로 덮는다. Config Server 값보다 환경 변수가 우선한다(`config-repo/application.yml` 첫 주석). 실제 반영 여부는 S1 시험 실행의 권한 반영 시간으로 확인한다(미확인)
-- 관련 노트: `docs/learning/kmh/qna/2026-10-19-redis-cache-candidates.md`, `docs/learning/kmh/qna/2026-10-19-performance-baseline-plan.md`
-- Redis 도입(A2, B1-redis, C1)은 구현 시점에 ADR로 기록하고 `docker-compose.yml` 변경은 팀 전체 리뷰를 받는다
+- 이 PC에는 Python이 없다(Microsoft Store 별칭만 있음). 그래서 시드·보고서도 k6(Docker)로 만들었다. 기존 `script/ui-test.sh`, `script/api-test.sh`는 Python이 필요하다
+- 측정 환경 파일 `.env.perf`(비밀값 자동 생성, Git 제외)와 시드 결과 `.local/perf/data.json`, Postgres 볼륨 `logistics-perf_pgdata`가 남아 있다. `script/perf.sh reset`은 볼륨까지 지운다
+- Gateway TTL 덮어쓰기(`AUTH_USERCACHETTL`)는 반영을 확인했다(TTL 0s에서 요청당 I-01 1.00, 권한 반영 6ms)
+- Gateway의 I-01 WebClient 호출은 메트릭이 없다. 보고서는 user-service가 받은 I-01 − 다른 서비스의 Feign I-01로 계산한다
+- 측정 중 작업 트리의 코드를 바꾸지 않는다. 조건마다 `up --build`로 이미지를 다시 만들어 기준이 섞인다. Gradle도 돌리지 않는다(CPU 간섭)
+- TaskStop으로 멈춘 묶음 스크립트가 실제로는 계속 돌아 측정이 겹친 적이 있다(2026-10-19 23:47~00:08). 멈춘 뒤 `ps -ef | grep -E "batch|perf.sh"`와 `docker ps`로 k6 컨테이너가 남았는지 확인한다
+- Windows 작업 트리 파일 다수가 CRLF다. perl 한 줄 치환은 줄 끝 `\r` 때문에 안 맞을 수 있어 편집 도구를 쓴다
