@@ -223,9 +223,6 @@ public class Delivery extends BaseEntity {
         softDelete(username);
     }
 
-    private void addRoute(RouteType type, UUID departureHub, UUID arrivalHub, RouteInfo expected, ManagerAssigner assigner) {
-        UUID managerId = assigner.assign(type.managingHubId(departureHub, arrivalHub));
-        routes.add(new DeliveryRoute(this, routes.size() + 1, type, departureHub, arrivalHub, expected, managerId));
     /**
      * 자동 배정(SA 6.3). 이 허브가 담당하는 배정 대기 구간에 순번대로 담당자를 넣는다. 고를 때마다 assigner가 고른 사람의 건수를
      * 올리므로 같은 배송의 집하·허브 이동이 한 사람에게 몰리지 않는다. 이미 배정된 구간은 건너뛴다(멱등).
