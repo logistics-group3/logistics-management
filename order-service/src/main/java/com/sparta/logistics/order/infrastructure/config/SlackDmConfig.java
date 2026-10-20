@@ -1,8 +1,8 @@
 package com.sparta.logistics.order.infrastructure.config;
 
-import com.sparta.logistics.order.application.notification.DeliveryManagerDmService;
+import com.sparta.logistics.order.application.notification.AssignmentNotificationHandler;
 import com.sparta.logistics.order.application.notification.SlackDirectMessageGateway;
-import com.sparta.logistics.order.infrastructure.notification.AsyncDeliveryManagerDmSender;
+import com.sparta.logistics.order.infrastructure.notification.AsyncAssignmentNotificationSender;
 import com.sparta.logistics.order.infrastructure.notification.SlackDmClient;
 import com.sparta.logistics.order.infrastructure.notification.SlackDmProperties;
 import java.net.http.HttpClient;
@@ -29,8 +29,10 @@ public class SlackDmConfig {
         return new SlackDmClient(client, properties);
     }
 
+    /** I-20 배정 결과 알림(delivery 결정 로그 29). 배정 완료 DM은 주문 커밋 직후가 아니라 담당자 배정이 끝났을 때 보낸다. */
     @Bean
-    public AsyncDeliveryManagerDmSender deliveryManagerDmSender(SlackDmProperties properties, DeliveryManagerDmService service) {
-        return new AsyncDeliveryManagerDmSender(properties, service);
+    public AsyncAssignmentNotificationSender assignmentNotificationSender(SlackDmProperties properties,
+                                                                         AssignmentNotificationHandler handler) {
+        return new AsyncAssignmentNotificationSender(properties, handler);
     }
 }

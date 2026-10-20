@@ -148,21 +148,41 @@ public class OrderService {
         }
     }
 
-    /** 처리 단계. I-09 배송 생성 → 주문 저장 → 실패 시 보상. 결과나 원래 예외를 돌려주고, 진행 기록에도 남긴다. */
+    /**
+     * 처리 단계. I-09 배송 생성 → 주문 저장 → I-19 배송 확정, 실패 시 보상. 결과나 원래 예외를 돌려주고, 진행 기록에도 남긴다.
+     * 결과를 돌려준다는 것은 주문이 커밋됐다는 뜻이다(커밋 재확인 포함). 그때만 배송을 확정해 배정을 시작하게 한다.
+     */
     private OrderResult process(Creation creation) {
         OrderCreationAttempt attempt = creation.attempt();
         if (orderWriter.isRecoveryClaimed(attempt)) {
             throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION, "운영자 복구로 인계된 생성 작업입니다.");
         }
         UUID deliveryId = createDelivery(attempt, creation.deliveryCommand());
+        OrderResult result;
         try {
             CreateOrderCommand command = creation.command();
             Order order = Order.create(attempt.orderId(), creation.ordererId(), command.supplierCompanyId(),
                     command.receiverCompanyId(), command.productId(), creation.product().name(), creation.product().price(),
                     command.quantity(), deliveryId, command.requestNote());
-            return orderWriter.save(order, creation.supplierName(), creation.receiverName());
+            result = orderWriter.save(order, creation.supplierName(), creation.receiverName());
         } catch (RuntimeException exception) {
-            return handleCreationFailure(attempt, deliveryId, exception);
+            result = handleCreationFailure(attempt, deliveryId, exception);
+        }
+        confirmDelivery(attempt);
+        return result;
+    }
+
+    /**
+     * I-19 배송 확정(delivery 결정 로그 29). 주문 커밋 뒤에 보내야 배정 완료 알림(I-20)이 도착할 때 주문이 반드시 있다.
+     * Note: 실패해도 주문 결과를 바꾸지 않는다. 주문은 이미 커밋된 정상 주문이고, 확정은 orderId로 멱등이라 Feign이 응답 없는 실패를
+     * 다시 보낸다. 그래도 못 보내면 delivery 주기 작업이 미확정 배송을 I-21으로 물어 확정한다. 배정 결과는 기다리지 않는다.
+     */
+    private void confirmDelivery(OrderCreationAttempt attempt) {
+        try {
+            deliveryGateway.confirm(attempt.orderId());
+        } catch (RuntimeException exception) {
+            log.warn("배송 확정 실패: orderId={}, attemptId={}, cause={}",
+                    attempt.orderId(), attempt.attemptId(), exception.getClass().getSimpleName());
         }
     }
 

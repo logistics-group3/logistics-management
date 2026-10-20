@@ -26,6 +26,7 @@ public class DeliveryClientAdapter implements DeliveryGateway {
     private final DeliveryDeleteClient deleteClient;
     private final DeliveryCancelClient cancelClient;
     private final DeliveryCancelRevertClient cancelRevertClient;
+    private final DeliveryConfirmClient confirmClient;
     private final DeliveryOrderStateClient orderStateClient;
 
     @Override
@@ -35,6 +36,11 @@ public class DeliveryClientAdapter implements DeliveryGateway {
             throw new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE, "배송 생성 응답에 ID가 없습니다.");
         }
         return response.deliveryId();
+    }
+
+    @Override
+    public void confirm(UUID orderId) {
+        confirmClient.confirm(orderId);
     }
 
     @Override

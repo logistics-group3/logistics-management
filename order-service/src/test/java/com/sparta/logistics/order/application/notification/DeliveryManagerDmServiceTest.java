@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import com.sparta.logistics.order.application.event.OrderCreatedEvent;
-import com.sparta.logistics.order.application.event.DeliveryManagerDmEventListener;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
@@ -62,11 +61,13 @@ class DeliveryManagerDmServiceTest {
         verifyNoInteractions(messages);
     }
 
-    @Test @DisplayName("작업 제출 거절을 리스너 밖으로 전파하지 않는다")
+    @Test @DisplayName("I-20 작업 제출이 거절돼도 요청 처리 밖으로 전파하지 않는다(delivery는 다시 보내지 않는다)")
     void handlesQueueRejection() {
-        DeliveryManagerDmSender sender = mock(DeliveryManagerDmSender.class);
-        doThrow(new RejectedExecutionException()).when(sender).send(event);
-        new DeliveryManagerDmEventListener(sender).onOrderCreated(event);
+        AssignmentNotificationSender sender = mock(AssignmentNotificationSender.class);
+        AssignmentNotification notification = new AssignmentNotification(event.orderId(), event.deliveryId(), AssignmentNotification.Type.ASSIGNED);
+        doThrow(new RejectedExecutionException()).when(sender).send(notification);
+        new AssignmentNotificationService(sender).accept(notification);
+        verify(sender).send(notification);
     }
     private void targets(String status, List<UUID> ids) {
         when(directory.findTargets(event.deliveryId())).thenReturn(new NotificationDirectory.Targets(event.deliveryId(), event.orderId(), status, ids));

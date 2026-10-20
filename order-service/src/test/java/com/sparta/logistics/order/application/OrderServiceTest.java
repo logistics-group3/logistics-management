@@ -91,6 +91,7 @@ class OrderServiceTest {
         sequence.verify(orderWriter).start(any(), any());
         sequence.verify(deliveryGateway).create(delivery.capture());
         sequence.verify(orderWriter).save(order.capture(), eq(supplier.name()), eq(receiver.name()));
+        sequence.verify(deliveryGateway).confirm(order.getValue().getId());
 
         assertThat(result.orderId()).isNotNull().isEqualTo(order.getValue().getId());
         assertThat(result.ordererId()).isEqualTo(user.userId());
@@ -104,6 +105,19 @@ class OrderServiceTest {
         assertThat(delivery.getValue()).isEqualTo(new CreateDeliveryCommand(result.orderId(), supplier.companyId(),
                 receiver.companyId(), supplier.hubId(), receiver.hubId(), supplier.address(), receiver.address(),
                 receiver.name(), receiver.managerId()));
+        verify(deliveryGateway, never()).closeCreation(any());
+    }
+
+    @Test
+    @DisplayName("주문 커밋 뒤 배송 확정(I-19)이 실패해도 주문은 성공하고 배송을 지우지 않는다")
+    void confirmFailureKeepsOrder() {
+        stubSuccess();
+        willThrow(new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE)).given(deliveryGateway).confirm(any());
+
+        OrderResult result = service.create(user, "test-key", command);
+
+        assertThat(result.status()).isEqualTo(OrderStatus.ORDERED);
+        verify(deliveryGateway).confirm(result.orderId());
         verify(deliveryGateway, never()).closeCreation(any());
     }
 
@@ -287,7 +301,7 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("배송 성공 후 주문 저장 실패는 배송을 삭제하고 INTERNAL_SERVER_ERROR로 반환한다")
+    @DisplayName("배송 성공 후 주문 저장 실패는 배송을 확정하지 않고 생성 정리(I-18)하며 INTERNAL_SERVER_ERROR로 반환한다")
     void compensatesOrderSaveFailure() {
         stubDeliveryCreated();
         given(orderWriter.save(any(), any(), any())).willThrow(new DataIntegrityViolationException("DB 저장 실패"));
@@ -297,6 +311,7 @@ class OrderServiceTest {
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
         UUID orderId = captureCreatedOrderId();
         verify(deliveryGateway).closeCreation(orderId);
+        verify(deliveryGateway, never()).confirm(any());
     }
 
     @Test

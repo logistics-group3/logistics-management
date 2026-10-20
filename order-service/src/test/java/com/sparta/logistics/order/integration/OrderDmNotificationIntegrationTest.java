@@ -14,7 +14,6 @@ import com.sparta.logistics.order.application.CompanyReader;
 import com.sparta.logistics.order.application.DeliveryGateway;
 import com.sparta.logistics.order.application.dto.CompanyResult;
 import com.sparta.logistics.order.application.dto.ProductResult;
-import com.sparta.logistics.order.application.event.OrderCreatedEvent;
 import com.sparta.logistics.order.application.notification.NotificationDirectory;
 import com.sparta.logistics.order.support.DirectCreationExecutorConfig;
 import com.sparta.logistics.order.support.HttpStubServer;
@@ -34,7 +33,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -42,9 +40,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.config.enabled=false", "eureka.client.enabled=false", "spring.jpa.hibernate.ddl-auto=validate",
@@ -61,8 +57,6 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
     @Autowired TestRestTemplate http;
     @Autowired ObjectMapper mapper;
     @Autowired JdbcTemplate jdbc;
-    @Autowired ApplicationEventPublisher publisher;
-    @Autowired PlatformTransactionManager transactions;
     @Autowired @Qualifier("orderNotificationExecutor") ThreadPoolTaskExecutor executor;
     @MockitoBean CompanyReader companies;
     @MockitoBean DeliveryGateway deliveries;
@@ -90,8 +84,18 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
     }
     @AfterEach void finish() { awaitIdle(); }
 
-    @Test @DisplayName("DM은 DB 커밋 후 별도 스레드에서 실행되며 발송 응답 전에도 주문 접수 202를 돌려준다")
-    void sendsAfterCommitWithoutBlocking() throws Exception {
+    @Test @DisplayName("주문 생성만으로는 DM을 보내지 않고, 주문을 커밋한 뒤 배송을 확정(I-19)한다")
+    void creationConfirmsDeliveryWithoutDm() throws Exception {
+        UUID id = created(create(UUID.randomUUID().toString()));
+        awaitIdle();
+        verify(deliveries).confirm(id);
+        verifyNoInteractions(directory);
+        assertThat(SLACK.requests("POST", "/chat.postMessage")).isEmpty();
+    }
+
+    @Test @DisplayName("I-20 배정 완료는 202를 바로 돌려주고 DM은 트랜잭션 밖 별도 스레드에서 보낸다")
+    void assignedSendsDmWithoutBlocking() throws Exception {
+        UUID id = created(create(UUID.randomUUID().toString()));
         CountDownLatch entered = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         SLACK.reset(request -> {
@@ -102,26 +106,16 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
             return success(request);
         });
         try {
-            UUID id = created(create(UUID.randomUUID().toString()));
+            assertThat(notifyAssignment(id, deliveryId, "ASSIGNED").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
             assertThat(entered.await(3, TimeUnit.SECONDS)).isTrue();
             assertThat(release.getCount()).isEqualTo(1);
             assertThat(outsideTransaction).isTrue();
             var request = SLACK.requests("POST", "/chat.postMessage").get(0);
-            assertThat(mapper.readTree(request.body()).path("text").asText()).contains(id.toString(), "&lt;!channel&gt;");
+            assertThat(mapper.readTree(request.body()).path("text").asText()).contains(id.toString(), "공급", "수령", "&lt;!channel&gt;");
             for (String name : UserHeaders.ALL) assertThat(request.header(name)).isNull();
         } finally { release.countDown(); }
-    }
-
-    @Test @DisplayName("같은 Idempotency-Key 재요청은 같은 주문을 반환하고 DM을 다시 보내지 않는다")
-    void replayDoesNotNotifyAgain() throws Exception {
-        String key = UUID.randomUUID().toString();
-        UUID first = created(create(key));
-        ResponseEntity<String> replay = create(key);
-        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(mapper.readTree(replay.getBody()).path("data").path("orderId").asText()).isEqualTo(first.toString());
         awaitIdle();
         assertThat(SLACK.requests("POST", "/chat.postMessage")).hasSize(1);
-        verify(directory, times(1)).findTargets(deliveryId);
     }
 
     @Test @DisplayName("Slack 200/ok=false에도 주문은 유지되고 실패 로그에 토큰·이메일·응답 원문을 넣지 않는다")
@@ -129,20 +123,59 @@ class OrderDmNotificationIntegrationTest extends PostgresIntegrationTest {
         SLACK.reset(request -> request.path().endsWith("chat.postMessage")
                 ? Reply.json(200, "{\"ok\":false,\"error\":\"missing_scope\",\"private\":\"ui-test-dm-secret driver+test@example.com\"}") : success(request));
         UUID id = created(create(UUID.randomUUID().toString()));
+        notifyAssignment(id, deliveryId, "ASSIGNED");
         awaitIdle();
         assertThat(SLACK.requests("POST", "/chat.postMessage")).hasSize(1);
         assertThat(output.getAll()).contains(id.toString(), "PERMISSION_DENIED").doesNotContain("ui-test-dm-secret", "driver+test@example.com");
         verify(deliveries, never()).closeCreation(any());
     }
 
-    @Test @DisplayName("롤백한 트랜잭션과 트랜잭션 밖 이벤트는 DM을 발송하지 않는다")
-    void ignoresRollbackAndNoTransaction() {
-        var event = new OrderCreatedEvent(UUID.randomUUID(), "공급", "수령", "상품", 1, null, deliveryId);
-        new TransactionTemplate(transactions).executeWithoutResult(status -> { publisher.publishEvent(event); status.setRollbackOnly(); });
-        publisher.publishEvent(event);
+    @Test @DisplayName("주문이 취소됐거나 배송이 다르면 I-20가 와도 DM을 보내지 않는다")
+    void skipsCanceledOrOtherDelivery() throws Exception {
+        UUID canceled = created(create(UUID.randomUUID().toString()));
+        jdbc.update("UPDATE order_schema.p_orders SET status='CANCELED' WHERE order_id=?", canceled);
+        // 주문 1건 = 배송 1건(delivery_id 유니크)이라 두 번째 주문은 다른 배송을 받는다
+        given(deliveries.create(any())).willReturn(UUID.randomUUID());
+        UUID active = created(create(UUID.randomUUID().toString()));
+
+        assertThat(notifyAssignment(canceled, deliveryId, "ASSIGNED").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(notifyAssignment(active, UUID.randomUUID(), "ASSIGNED").getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         awaitIdle();
+
         verifyNoInteractions(directory);
-        assertThat(SLACK.requests("GET", "/")).isEmpty();
+        assertThat(SLACK.requests("POST", "/chat.postMessage")).isEmpty();
+    }
+
+    @Test @DisplayName("I-20 본문에 배송 ID나 종류가 없으면 400이다")
+    void rejectsInvalidNotification() {
+        ResponseEntity<String> response = http.postForEntity("/internal/orders/" + UUID.randomUUID() + "/assignment-notifications",
+                new HttpEntity<>(Map.of("type", "ASSIGNED"), jsonHeaders()), String.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test @DisplayName("I-21은 커밋된 주문이면 COMPLETED·ORDERED, 기록이 없으면 NONE을 돌려준다")
+    void creationResult() throws Exception {
+        UUID id = created(create(UUID.randomUUID().toString()));
+
+        JsonNode completed = mapper.readTree(http.getForObject("/internal/orders/" + id + "/creation-result", String.class));
+        JsonNode none = mapper.readTree(http.getForObject("/internal/orders/" + UUID.randomUUID() + "/creation-result", String.class));
+
+        assertThat(completed.path("result").asText()).isEqualTo("COMPLETED");
+        assertThat(completed.path("orderStatus").asText()).isEqualTo("ORDERED");
+        assertThat(completed.path("data").isMissingNode()).isTrue();
+        assertThat(none.path("result").asText()).isEqualTo("NONE");
+        assertThat(none.path("orderStatus").isNull()).isTrue();
+    }
+
+    private ResponseEntity<String> notifyAssignment(UUID orderId, UUID delivery, String type) {
+        return http.postForEntity("/internal/orders/" + orderId + "/assignment-notifications",
+                new HttpEntity<>(Map.of("deliveryId", delivery, "type", type), jsonHeaders()), String.class);
+    }
+
+    private static HttpHeaders jsonHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
     }
 
     private ResponseEntity<String> create(String key) {
