@@ -1,0 +1,10 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prom-ts025
+    type: prometheus
+    access: proxy
+    url: http://ts025-prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 1s
