@@ -1,7 +1,14 @@
 package com.sparta.logistics.gateway.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.channel.ChannelOption;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.cloud.client.loadbalancer.reactive.ReactorLoadBalancerExchangeFilterFunction;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +28,9 @@ public class AuthConfig {
     @Bean
     public UserLookup userLookup(WebClient.Builder webClientBuilder,
                                  ReactorLoadBalancerExchangeFilterFunction loadBalancer,
-                                 AuthProperties properties) {
+                                 AuthProperties properties,
+                                 ObjectProvider<ReactiveRedisConnectionFactory> redisConnectionFactory,
+                                 ObjectMapper objectMapper) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) properties.userLookupTimeout().toMillis())
                 .responseTimeout(properties.userLookupTimeout());
@@ -31,6 +40,21 @@ public class AuthConfig {
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
         UserServiceClient client = new UserServiceClient(webClient, properties.userLookupTimeout());
+        if (properties.userCache() == AuthProperties.UserCacheType.REDIS) {
+            return new RedisUserLookup(userSnapshotRedis(redisConnectionFactory.getObject(), objectMapper),
+                    client::fetch, properties.userCacheTtl());
+        }
         return new CachedUserLookup(client::fetch, properties.userCacheTtl());
+    }
+
+    /** 키는 문자열, 값은 UserSnapshot JSON. 타입 정보를 JSON에 넣지 않도록 값 타입을 고정한 직렬화기를 쓴다. */
+    private static ReactiveRedisTemplate<String, UserSnapshot> userSnapshotRedis(ReactiveRedisConnectionFactory factory,
+                                                                                 ObjectMapper objectMapper) {
+        Jackson2JsonRedisSerializer<UserSnapshot> value = new Jackson2JsonRedisSerializer<>(objectMapper, UserSnapshot.class);
+        RedisSerializationContext<String, UserSnapshot> context = RedisSerializationContext
+                .<String, UserSnapshot>newSerializationContext(new StringRedisSerializer())
+                .value(value)
+                .build();
+        return new ReactiveRedisTemplate<>(factory, context);
     }
 }

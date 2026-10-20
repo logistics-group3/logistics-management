@@ -9,6 +9,8 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'com.github.ben-manes.caffeine:caffeine'
+    // 권한 재확인 캐시를 Redis로 둘 때(auth.user-cache=redis). 기본은 Caffeine 로컬 캐시라 Redis 없이도 뜬다
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
     implementation "org.springdoc:springdoc-openapi-starter-webflux-ui:${springdocVersion}"
     implementation 'org.springframework.boot:spring-boot-starter-security'
     // JWT 검증(ReactiveJwtDecoder, Nimbus). 발급은 user-service가 JJWT로 한다

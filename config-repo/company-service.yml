@@ -2,6 +2,10 @@ server:
   port: 8083
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/logistics?currentSchema=company_schema
     username: company_app
@@ -13,3 +17,15 @@ spring:
   flyway:
     # 마이그레이션 이력 테이블(flyway_schema_history)과 테이블을 이 서비스 스키마에 만든다
     schemas: company_schema
+
+company:
+  cache:
+    # 조회 캐시 저장소 none(기본)|local|redis. 성능 측정 항목 C의 조건을 바꿀 때 COMPANY_CACHE_TYPE으로 준다.
+    type: ${COMPANY_CACHE_TYPE:none}
+    ttl: ${COMPANY_CACHE_TTL:10m}
+
+# Redis는 company.cache.type=redis일 때만 쓴다. 기본(none)에서 Redis가 없다고 health가 DOWN이 되지 않게 끈다.
+management:
+  health:
+    redis:
+      enabled: false

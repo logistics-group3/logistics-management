@@ -12,6 +12,8 @@ import com.sparta.logistics.company.domain.CompanyRepository;
 import com.sparta.logistics.company.domain.ProductRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -45,6 +47,7 @@ public class CompanyService {
      * Note: 허브·사용자 확인(원격 호출)은 트랜잭션 밖에서 먼저 하고, 변경만 짧은 트랜잭션으로 한다.
      * 그 사이 업체가 삭제되거나 관리자가 바뀔 수 있어 트랜잭션 안에서 다시 조회하고 검사한다.
      */
+    @CacheEvict(cacheNames = CompanyCacheNames.INTERNAL_COMPANY, key = "#companyId")
     public CompanyResult update(UserContext user, UUID companyId, UpdateCompanyCommand command) {
         user.validateSelfOrMaster(getCompany(companyId).getManagerId());
         if (command.managerId() != null) {
@@ -69,6 +72,11 @@ public class CompanyService {
     }
 
     /** C-05 업체 삭제. 업체와 소속 상품을 한 로컬 트랜잭션에서 논리 삭제한다(SA 7.5). */
+    // Note: 소속 상품도 함께 삭제되는데 상품 키는 상품 ID라 업체 ID로 고를 수 없다. 업체 삭제는 드물어 상품 캐시를 모두 비운다.
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CompanyCacheNames.INTERNAL_COMPANY, key = "#companyId"),
+            @CacheEvict(cacheNames = CompanyCacheNames.INTERNAL_PRODUCT, allEntries = true)
+    })
     @Transactional
     public void delete(UserContext user, UUID companyId) {
         Company company = companyRepository.findByIdForUpdate(companyId)

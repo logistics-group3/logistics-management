@@ -7,11 +7,13 @@ import com.sparta.logistics.user.application.dto.ChangeRoleCommand;
 import com.sparta.logistics.user.application.dto.HubInfo;
 import com.sparta.logistics.user.application.dto.UpdateUserCommand;
 import com.sparta.logistics.user.application.dto.UserResult;
+import com.sparta.logistics.user.application.event.UserAuthChangedEvent;
 import com.sparta.logistics.user.domain.User;
 import com.sparta.logistics.user.domain.UserErrorCode;
 import com.sparta.logistics.user.domain.UserRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher events;
 
     /** U-06 사용자 정보 수정. 배송담당자의 소속은 바꿀 수 없다(user 결정 0001). */
     @Transactional
@@ -53,6 +56,8 @@ public class UserService {
             }
             user.assignDeliveryManager(hub.hubId(), hub.name());
         }
+        // role·배송담당 여부는 Gateway 권한 재확인(I-01) 값이다. 커밋 뒤 Gateway 캐시를 지운다(UserAuthChangedEventListener).
+        events.publishEvent(new UserAuthChangedEvent(userId));
         return UserResult.from(user);
     }
 
@@ -63,6 +68,7 @@ public class UserService {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST, "자기 자신은 삭제할 수 없습니다.");
         }
         findUser(userId).softDelete(master.username());
+        events.publishEvent(new UserAuthChangedEvent(userId));
     }
 
     private User findUser(UUID userId) {

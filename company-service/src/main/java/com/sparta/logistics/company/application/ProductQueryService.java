@@ -9,6 +9,7 @@ import com.sparta.logistics.company.domain.ProductRepository;
 import com.sparta.logistics.company.domain.ProductSearchCondition;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,8 @@ public class ProductQueryService {
         return ProductResult.from(product);
     }
 
-    /** I-08 상품 조회(order 호출). 삭제된 상품은 조회되지 않아 404다. */
+    /** I-08 상품 조회(order 호출). 삭제된 상품은 조회되지 않아 404다. 상품 수정·삭제와 업체 삭제가 키를 지운다(성능 측정 항목 C). */
+    @Cacheable(CompanyCacheNames.INTERNAL_PRODUCT)
     public InternalProductResult getInternalProduct(UUID productId) {
         return InternalProductResult.from(loadProduct(productId));
     }
