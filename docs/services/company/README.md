@@ -52,3 +52,16 @@ I-07·I-08 구현 전 [주문 연동 실패 계약](../order/integration-contrac
 - 요청: 제공 API가 준비되면 구현 위치와 실제 연동 결과를 남긴다. 기존 SA 계약의 구현 확인 요청이며 새 응답 필드를 임의로 추가하라는 요청은 아니다.
 - PR 준비 확인: dev `1384a5d`의 InternalCompanyResponse·InternalProductResponse를 대조해 요청 필드와 Long 원화 가격 계약이 일치함을 확인했다. 실제 HTTP 연동·권한·오류 응답 검증은 아직 별도 확인 대상이다.
 - 결정: 담당자 확인 대기. order 작성만으로 DECIDED·DONE 처리하지 않는다.
+
+### COMPANY-002 재고 초기화(I-04) 호출 요청과 hub의 I-07·I-08 호출 알림
+- 상태: OPEN
+- 작성: hub / 최승근 / 2026-10-19 (2026-10-20: hub의 I-07 호출과 업체 관리자 입고 내용 추가)
+- 관련: hub I-04·H-06, SA 5.3·6.3·6.5, [hub ADR 0003](../hub/decisions/0003-stock-allocation-supplier-hub-only.md)
+- 내용:
+  - I-04: hub-service가 재고 고도화(`feat/hub-adv`)로 `POST /internal/stocks`(요청 `hubId, productId`, 응답 `hubStockId, quantity`)를 구현했다. 상품 생성 시 업체 관리 허브에 호출해 수량 0 재고를 만들어야 한다. 이미 있으면 기존 값을 반환하므로 재호출해도 된다.
+  - I-08: hub는 H-06 입고 때 `GET /internal/products/{productId}`를 호출한다. MASTER 입고는 재고 레코드가 없을 때만, 업체 관리자 입고는 매번 호출한다.
+  - I-07: 업체 관리자 입고는 `GET /internal/companies/{companyId}`도 호출해 `managerId`와 `hubId`로 권한을 판단한다. company 응답은 바꾸지 않았다.
+  - 두 API의 호출자에 hub가 추가되고 company↔hub 양방향 호출이 된다.
+- 요청: (1) I-04 호출 시점(상품 생성, 기존 상품 보정 여부)을 정해 달라. (2) hub가 I-07·I-08을 호출해도 되는지 확인해 달라. 구현 전이라 company 코드는 바꾸지 않았다.
+- 결정:
+
