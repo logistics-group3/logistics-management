@@ -83,3 +83,6 @@
 | 2026-10-20 | [B1-redis-s3-r1](B1-redis-s3-r1.md) | s3 | auth=local/60s hub=redis company=none | 200 | 200.00 | 0.00% | 2.6 | 3.3 | 22.5 | 0.00 | 0.00 | 0.00 | - | 1.0 | - | 1a0056d |
 | 2026-10-20 | [B1-redis-s3-r2](B1-redis-s3-r2.md) | s3 | auth=local/60s hub=redis company=none | 200 | 200.00 | 0.00% | 2.6 | 3.2 | 9.4 | 0.00 | 0.00 | 0.00 | - | 1.0 | - | 1a0056d |
 | 2026-10-20 | [B1-redis-s3-r3](B1-redis-s3-r3.md) | s3 | auth=local/60s hub=redis company=none | 200 | 200.03 | 0.00% | 2.6 | 3.3 | 8.7 | 0.00 | 0.00 | 0.00 | - | 1.0 | - | 1a0056d |
+| 2026-10-20 | [C1-s2-r1](C1-s2-r1.md) | s2 | auth=local/60s hub=local company=redis | 60 | 60.00 | 0.00% | 11.1 | 14.2 | 17.3 | 0.08 | 0.94 | 3.00 | 1.0 | 1.0 | - | 96d9ab3 |
+| 2026-10-20 | [C1-s2-r2](C1-s2-r2.md) | s2 | auth=local/60s hub=local company=redis | 60 | 60.00 | 0.00% | 10.5 | 13.2 | 15.2 | 0.08 | 0.94 | 3.00 | 1.0 | 1.0 | - | 96d9ab3 |
+| 2026-10-20 | [C1-s2-r3](C1-s2-r3.md) | s2 | auth=local/60s hub=local company=redis | 60 | 60.00 | 0.00% | 10.7 | 13.1 | 15.0 | 0.08 | 0.94 | 3.00 | 1.0 | 1.0 | - | 96d9ab3 |
