@@ -4,7 +4,7 @@
 주문 확정 뒤 배정과 배정 결과 알림(I-19·I-20·I-21)을 delivery·order에 구현하고 커밋했다. 정본은 `delivery-service/docs/tasks/T09.md`, 근거는 결정 로그 29, 계층별 진행은 `docs/services/delivery/notes.md` "T09". 다음은 부하 측정 단계 4 → dev PR.
 
 ## 진행 상태
-- [x] 브랜치: `origin/dev`(97ed81f) 위로 옮김(2026-10-20). T08은 #25로 dev에 merge. 임시 커밋은 풀어서 아래 다섯 커밋으로 나눴다(push 안 함). 옮기기 전 상태는 `backup/T09-before-rebase`
+- [x] 브랜치: `origin/dev`(0b4df55, hub #28 포함) 위로 옮김(2026-10-20). hub가 ORDER-002를 먼저 써서 T09 리뷰 요청은 ORDER-003. T08은 #25로 dev에 merge. 임시 커밋은 풀어서 아래 다섯 커밋으로 나눴다(push 안 함). 옮기기 전 상태는 `backup/T09-before-rebase`
 - [x] 흐름 결정(사용자): 주문 확정 → 배정 → 후보 0명이 확정 뒤 60초 넘으면 수동 지정 전환(자동 배정 중단) → MASTER 채널 Webhook → 배정 완료 I-20 → order DM. Slack은 order만. 기본값(60초, 채널 Webhook, 업체명 재조회) 승인
 - [x] delivery 구현·테스트 115개 통과, order 구현·테스트 471개 통과, `./gradlew build` 통과, `script/docs-check.sh` OK, `script/error-codes-check.sh` 통과(2026-10-20)
 - [x] 문서: 결정 로그 29(구현하며 정한 것 포함), T09.md, delivery·order README 계약, ORDER-003(OPEN, Junhyun 리뷰 요청), ADR 0016 갱신, `delivery-api.md`·`delivery.md`, Slack DM 가이드, `load-test.md`, 구현 노트
