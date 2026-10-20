@@ -65,7 +65,13 @@ P-01·C-05는 업체 잠금 획득 후 활성 상태와 기존 관리자 권한�
 - 결정: 사용자가 상세 계획을 확인하고 같은 feat/delivery-T07 브랜치에서 수정·PR 생성을 요청했다. CompanyJpaRepository.findByIdForUpdate에 PESSIMISTIC_WRITE를 적용하고 두 서비스의 기존 트랜잭션이 같은 업체 잠금을 공유한다. 일반 검색·상세 조회에는 잠금을 추가하지 않는다.
 - 결과: [#15 구현·검증 기록](../../reviews/2026-10-19-issue-15-verification.md). COMPANY-001의 내부 조회 계약 검토나 다른 수정·삭제 경쟁을 함께 완료한 것은 아니다.
 
-### COMPANY-003 재고 초기화(I-04) 호출 요청과 hub의 I-07·I-08 호출 알림
+### COMPANY-003 업체·상품 내부 조회 캐시(company.cache.type)
+- 상태: OPEN (성능 측정용 로컬 구현, 제공 담당자 리뷰 대기)
+- 작성: kmh / 2026-10-19
+- 내용: I-07, I-08에 `@Cacheable`을 붙였다. 업체 수정은 업체 키를, 상품 수정·삭제는 상품 키를, 업체 삭제는 업체 키와 상품 캐시 전체를 지운다. 트랜잭션 인식 프록시로 감싸 삭제가 커밋 뒤에 일어난다. `company.cache.type`(`COMPANY_CACHE_TYPE`) 기본 `none`은 지금과 같다.
+- 관련: [ADR 0019](../../decisions/0019-redis-cache-measured-adoption.md), [측정 기록](../../reviews/performance/README.md) C1 조건.
+
+### COMPANY-004 재고 초기화(I-04) 호출 요청과 hub의 I-07·I-08 호출 알림
 - 상태: OPEN
 - 작성: hub / 최승근 / 2026-10-19 (2026-10-20: hub의 I-07 호출과 업체 관리자 입고 내용 추가)
 - 관련: hub I-04·H-06, SA 5.3·6.3·6.5, [hub ADR 0003](../hub/decisions/0003-stock-allocation-supplier-hub-only.md)

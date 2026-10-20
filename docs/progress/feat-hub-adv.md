@@ -1,7 +1,7 @@
 # feat/hub-adv
 
 ## 지금 하는 일
-hub-service 재고 관리 고도화(SA v2.0 5.3·6.3·6.5·7.3·7.4 기준): 구현과 검증을 마쳤고 company·order 담당자 답변(COMPANY-002, ORDER-002)을 기다린다. 업체 관리자 입고 권한(H-06)을 2026-10-20에 추가했다.
+hub-service 재고 관리 고도화(SA v2.0 5.3·6.3·6.5·7.3·7.4 기준): 구현과 검증을 마쳤고 company·order 담당자 답변(COMPANY-004, ORDER-002)을 기다린다. 업체 관리자 입고 권한(H-06)을 2026-10-20에 추가했다.
 
 ## 진행 상태
 - 기본 범위(H-01~H-04, I-02, I-03, 시드 허브 17개·경로 272건)는 `dev`에 병합돼 있다. 상세 기록은 [`feat-hub-crud.md`](feat-hub-crud.md), [`feat-hub-query.md`](feat-hub-query.md)에 있다.
@@ -17,7 +17,7 @@ hub-service 재고 관리 고도화(SA v2.0 5.3·6.3·6.5·7.3·7.4 기준): 구
 - [x] 에러 코드: `STOCK_INSUFFICIENT`(409)를 `HubErrorCode`와 `docs/error-codes.md`에 추가했다(복원 뒤 재할당 거부용 `STOCK_ALREADY_RESTORED`(409)는 2026-10-20에 더했다). `PRODUCT_NOT_FOUND`·`COMPANY_NOT_FOUND`는 company 코드를 Feign으로 전달받고 `SERVICE_UNAVAILABLE`은 공통 코드다. `script/error-codes-check.sh` 통과(2026-10-19).
 - [x] 구현(2026-10-19): V4 마이그레이션, `HubStock`·`HubStockHistory`, 저장소, `StockService`·`StockRegistrationService`·`StockQueryService`, `ProductClient`(company I-08), `HubStockController`(H-05, H-06), `InternalStockController`(I-04~I-06). 도메인 6, 서비스 단위 23, MVC 16, PostgreSQL 통합 9, 동시성 통합 4개를 추가했고 `:hub-service:test` 전체가 통과했다.
 - [x] 동시성 실측: 재고 10개에 20건 동시 할당 시 정확히 10건 성공, 같은 주문 동시 10건은 1회 차감, 20건 동시 입고 합계 100, 같은 주문 동시 복원 10건은 1회 복원. 락을 일부러 뺐을 때 실패하는지는 확인하지 않았다(2026-10-20에 확인함, 아래 "남은 검증 수행").
-- [x] 문서 갱신: `docs/services/hub/README.md` 제공 API·호출·구현 현황, `notes.md`, ADR 0003, company·order 협업 로그 요청(COMPANY-002, ORDER-002, OPEN). `script/docs-check.sh` 통과.
+- [x] 문서 갱신: `docs/services/hub/README.md` 제공 API·호출·구현 현황, `notes.md`, ADR 0003, company·order 협업 로그 요청(COMPANY-004, ORDER-002, OPEN). `script/docs-check.sh` 통과.
 - [x] 실제 기동·호출 확인(2026-10-19): `./gradlew build` 성공(BUILD SUCCESSFUL, 테스트 XML 집계 824개 중 실패·오류·skip 0). `script/run.sh hub-service company-service user-service gateway-service`로 기동했고 Flyway가 V4를 적용했다(스키마 v3→v4).
   - Gateway(8080) 경유 H-06: MASTER 입고 200(재고 행 없음 → company I-08 호출 성공, 50→55), 없는 상품 404 `PRODUCT_NOT_FOUND`, 수량 0 400, 없는 허브 404 `HUB_NOT_FOUND`, USER 403 `FORBIDDEN`. H-05: `productId` 필터·`quantity` 정렬 200, 토큰 없음 401, USER 조회 200. `/internal/**`은 Gateway에서 404.
   - 컨테이너 안(user-service에서 `hub-service:8082` 호출) I-04~I-06: I-04 멱등, I-05 40 할당 후 같은 주문 재요청은 같은 결과, 부족·재고 행 없음 409 `STOCK_INSUFFICIENT`, I-06 복원 40 후 재복원 0, 이력 없는 주문 0.
@@ -37,7 +37,7 @@ hub-service 재고 관리 고도화(SA v2.0 5.3·6.3·6.5·7.3·7.4 기준): 구
     - 하지 않은 것: 여러 허브·여러 상품이 섞인 혼합 부하, 더 높은 동시성, order·company의 실제 I-04~I-06 호출(두 서비스에 호출 코드가 없다). 로컬 DB에 부산 허브 재고 확인용 행이 남아 있다.
   - [x] H-06 입고 권한 확장(2026-10-20, 사용자 결정): MASTER에 더해 상품 업체의 관리자(`Company.managerId`)도 입고한다. 근거는 [ADR 0003](../services/hub/decisions/0003-stock-allocation-supplier-hub-only.md)의 입고 권한 절(제안, SA와 다름)이다.
     - 구현: 컨트롤러의 `@RequireRole`을 없애고 `StockRegistrationService.inbound(user, command)`가 판단한다. 업체 관리자는 company I-08(`companyId`)·I-07(`managerId`, `hubId`)을 호출해 본인이고 업체 소속 허브일 때만 허용하며 아니면 403 `FORBIDDEN`이다. MASTER는 허브 제한이 없다. company 코드는 바꾸지 않았다.
-    - 결정: company 호출 2회(I-08, I-07)는 줄이지 않는다(사용자 결정). I-08에 `managerId`·`hubId`를 넣는 안은 상품 API의 책임을 흐려 채택하지 않았고 COMPANY-003 요청은 쓰지 않았다.
+    - 결정: company 호출 2회(I-08, I-07)는 줄이지 않는다(사용자 결정). I-08에 `managerId`·`hubId`를 넣는 안은 상품 API의 책임을 흐려 채택하지 않았고 company 협업 로그에는 이 안의 요청을 남기지 않았다.
     - 테스트: `CompanyServiceClientIntegrationTest`(company I-07·I-08 응답 필드, 404 코드 전달, 5xx는 503)와 I-07 타임아웃 테스트, 서비스 단위 테스트(업체 관리자 허용·거절, 재고 행이 있어도 company 확인, company 장애)를 더했다. `:hub-service:test` 138개 통과.
     - 생성 경합: `HubStockCreationRaceIntegrationTest`로 재고 행이 없을 때 동시 입고·초기화 10건이 모두 성공하고 행이 하나임을 확인했다. 재시도를 일부러 껐을 때 두 테스트가 실패함을 확인하고 원복했다. `StockService.restore`의 null 분기와 `Note:` 주석 일부를 정리했다. `:hub-service:test` 140개 통과.
     - 실제 기동 확인(2026-10-20): `script/run.sh hub-service`로 hub 이미지만 다시 빌드해 띄우고 Gateway(8080)로 호출했다. 확인용 사용자 USER 둘(`mgrusr20`, `othusr20`), 업체 `mgrco20`(관리자 `mgrusr20`, 허브 A), 상품 `mgrprod20`을 만들었다.
@@ -53,7 +53,7 @@ hub-service 재고 관리 고도화(SA v2.0 5.3·6.3·6.5·7.3·7.4 기준): 구
 ## 다음 단계
 1. (완료) 호출 방식·할당 범위 결정, V4·domain·infrastructure·application·presentation 구현, 문서와 협업 로그 요청.
 2. (완료) 실제 기동과 호출 확인. 결과는 위 진행 상태에 있다. 복원 뒤 재할당 결함은 A안(409 거부)으로 처리했다.
-3. company·order 담당자 답변(COMPANY-002, ORDER-002)을 받아 `DECIDED`가 되면 README의 호출 현황을 갱신한다. 프런트가 쓰는 API 변경은 없지만 전체 빌드를 요청받으면 `docs/guides/full-build.md`의 프런트 검증도 한다.
+3. company·order 담당자 답변(COMPANY-004, ORDER-002)을 받아 `DECIDED`가 되면 README의 호출 현황을 갱신한다. 프런트가 쓰는 API 변경은 없지만 전체 빌드를 요청받으면 `docs/guides/full-build.md`의 프런트 검증도 한다.
 4. 허브 간 이동 연동(ADR 0003의 한계)은 팀이 정하면 다시 본다.
 
 ## 직접 해보기

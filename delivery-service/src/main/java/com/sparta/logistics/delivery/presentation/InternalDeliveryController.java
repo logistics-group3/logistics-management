@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -83,5 +84,13 @@ public class InternalDeliveryController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteByOrderId(@PathVariable UUID orderId) {
         deliveryService.deleteByOrderId(orderId);
+    }
+
+    @Operation(summary = "I-18 주문 생성 실패 배송 조건부 종료")
+    @DeleteMapping("/orders/{orderId}/creation")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void closeCreation(@PathVariable UUID orderId,
+            @RequestParam(required = false) UUID expectedDeliveryId) {
+        deliveryService.closeCreation(orderId, expectedDeliveryId);
     }
 }

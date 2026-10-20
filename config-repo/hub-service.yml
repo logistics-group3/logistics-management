@@ -2,6 +2,10 @@ server:
   port: 8082
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/logistics?currentSchema=hub_schema
     username: hub_app
@@ -25,3 +29,15 @@ spring:
             # 입고 때 company 조회(I-08, 업체 관리자 입고는 I-07도)를 기다린다. 재시도 3회와 곱해져 길어지지 않게 공통 20초보다 줄인다.
             connect-timeout: 1000
             read-timeout: 2000
+
+hub:
+  cache:
+    # 조회 캐시 저장소 none(기본)|local|redis. 성능 측정 항목 B의 조건을 바꿀 때 HUB_CACHE_TYPE으로 준다.
+    type: ${HUB_CACHE_TYPE:none}
+    ttl: ${HUB_CACHE_TTL:10m}
+
+# Redis는 hub.cache.type=redis일 때만 쓴다. 기본(none)에서 Redis가 없다고 health가 DOWN이 되지 않게 끈다.
+management:
+  health:
+    redis:
+      enabled: false

@@ -7,6 +7,7 @@ import com.sparta.logistics.hub.domain.HubErrorCode;
 import com.sparta.logistics.hub.domain.HubRouteRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class HubRouteQueryService {
     }
 
     /** I-03 내부 경로 조회. 출발·도착 허브 쌍의 경로 1건을 돌려주고, 없으면 404 HUB_ROUTE_NOT_FOUND다. 같은 허브 쌍도 경로가 없으므로 같은 오류다. */
+    @Cacheable(cacheNames = HubCacheNames.INTERNAL_HUB_ROUTE, key = "#departureHubId + ':' + #arrivalHubId")
     public InternalHubRouteResult getInternalHubRoute(UUID departureHubId, UUID arrivalHubId) {
         return hubRouteRepository.findByDepartureHubIdAndArrivalHubId(departureHubId, arrivalHubId)
                 .map(InternalHubRouteResult::from)
@@ -32,6 +34,7 @@ public class HubRouteQueryService {
     }
 
     /** H-04 경로 단건 조회. 논리 삭제된 경로는 @SQLRestriction으로 조회되지 않아 404 HUB_ROUTE_NOT_FOUND가 된다. */
+    @Cacheable(HubCacheNames.HUB_ROUTE)
     public HubRouteResult getHubRoute(UUID hubRouteId) {
         return hubRouteRepository.findById(hubRouteId)
                 .map(HubRouteResult::from)

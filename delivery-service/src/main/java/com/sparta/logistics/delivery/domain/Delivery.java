@@ -84,8 +84,8 @@ public class Delivery extends BaseEntity {
     private List<DeliveryRoute> routes = new ArrayList<>();
 
     /**
-     * I-09 배송 생성. 같은 허브면 집하·업체 배송 2구간, 다르면 집하·허브 이동·업체 배송 3구간을 만들고(ADR 0003)
-     * 구간마다 담당자를 배정한다. 어느 구간이든 후보가 없으면 저장 전에 DELIVERY_MANAGER_NOT_FOUND.
+     * I-09 배송 생성. 같은 허브면 집하·업체 배송 2구간, 다르면 집하·허브 이동·업체 배송 3구간을 만든다(ADR 0003).
+     * 구간은 담당자 없이 만들고, 담당자는 허브별 배정 작업이 assignPendingRoutes로 채운다(결정 로그 27).
      *
      * @param hubTransferExpected 허브 이동 구간의 예상 거리·시간(I-03). 같은 허브면 쓰지 않는다
      */
@@ -93,7 +93,7 @@ public class Delivery extends BaseEntity {
                                   UUID departureHubId, UUID destinationHubId,
                                   String pickupAddress, String deliveryAddress,
                                   String recipientName, String recipientSlackId,
-                                  RouteInfo hubTransferExpected, ManagerAssigner assigner) {
+                                  RouteInfo hubTransferExpected) {
         Delivery delivery = new Delivery();
         delivery.orderId = orderId;
         delivery.supplierCompanyId = supplierCompanyId;
@@ -105,11 +105,11 @@ public class Delivery extends BaseEntity {
         delivery.recipientName = recipientName;
         delivery.recipientSlackId = recipientSlackId;
 
-        delivery.addRoute(RouteType.PICKUP, null, departureHubId, null, assigner);
+        delivery.addRoute(RouteType.PICKUP, null, departureHubId, null);
         if (!delivery.isSameHub()) {
-            delivery.addRoute(RouteType.HUB_TRANSFER, departureHubId, destinationHubId, hubTransferExpected, assigner);
+            delivery.addRoute(RouteType.HUB_TRANSFER, departureHubId, destinationHubId, hubTransferExpected);
         }
-        delivery.addRoute(RouteType.LAST_MILE, destinationHubId, null, null, assigner);
+        delivery.addRoute(RouteType.LAST_MILE, destinationHubId, null, null);
         delivery.status = DeliveryStatus.PICKUP_WAITING;
         return delivery;
     }
@@ -213,9 +213,40 @@ public class Delivery extends BaseEntity {
         routes.forEach(route -> route.softDelete(username));
     }
 
-    private void addRoute(RouteType type, UUID departureHub, UUID arrivalHub, RouteInfo expected, ManagerAssigner assigner) {
-        UUID managerId = assigner.assign(type.managingHubId(departureHub, arrivalHub));
-        routes.add(new DeliveryRoute(this, routes.size() + 1, type, departureHub, arrivalHub, expected, managerId));
+    /** I-18 생성 실패 정리. 출발과 같은 배송 행 잠금 안에서 검사한 뒤에만 삭제한다. */
+    public void closeCreation(UUID expectedDeliveryId, String username) {
+        if ((expectedDeliveryId != null && !expectedDeliveryId.equals(id))
+                || status != DeliveryStatus.PICKUP_WAITING
+                || routes.stream().anyMatch(route -> route.getStatus() != RouteStatus.WAITING)) {
+            throw new BusinessException(CommonErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        softDelete(username);
+    }
+
+    /**
+     * 자동 배정(SA 6.3). 이 허브가 담당하는 배정 대기 구간에 순번대로 담당자를 넣는다. 고를 때마다 assigner가 고른 사람의 건수를
+     * 올리므로 같은 배송의 집하·허브 이동이 한 사람에게 몰리지 않는다. 이미 배정된 구간은 건너뛴다(멱등).
+     *
+     * @return 이번에 담당자를 넣은 구간 수
+     */
+    public int assignPendingRoutes(UUID managingHubId, ManagerAssigner assigner) {
+        int assigned = 0;
+        for (DeliveryRoute route : routes) {
+            if (route.getManagingHubId().equals(managingHubId) && route.isAwaitingManager()
+                    && route.assignManager(assigner.assign(managingHubId))) {
+                assigned++;
+            }
+        }
+        return assigned;
+    }
+
+    /** 배정 대기 구간이 하나도 없다. 취소된 구간은 배정하지 않으므로 대기로 세지 않는다. */
+    public boolean hasNoRouteAwaitingManager() {
+        return routes.stream().noneMatch(DeliveryRoute::isAwaitingManager);
+    }
+
+    private void addRoute(RouteType type, UUID departureHub, UUID arrivalHub, RouteInfo expected) {
+        routes.add(new DeliveryRoute(this, routes.size() + 1, type, departureHub, arrivalHub, expected));
     }
 
     private void refreshStatus() {

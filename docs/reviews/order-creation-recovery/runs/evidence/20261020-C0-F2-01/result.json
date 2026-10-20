@@ -1,0 +1,75 @@
+{
+  "kind": "C0-F2",
+  "runId": "20261020-C0-F2-01",
+  "startedAt": "2026-10-20T11:18:58.002014+09:00",
+  "orderId": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+  "verdict": "PASS_CONTROL",
+  "before": {
+    "creation": {
+      "attempt_id": "13d486c1-83c7-4750-b66c-d26fbb70be78",
+      "order_id": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+      "status": "PROCESSING",
+      "delivery_id": null,
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:18:58.261838",
+      "updated_at": "2026-10-20T11:18:58.261838",
+      "deleted_at": null
+    },
+    "allOrders": 0,
+    "activeOrders": 0,
+    "allDeliveries": 1,
+    "activeDeliveries": 1,
+    "deliveries": [
+      {
+        "delivery_id": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+        "order_id": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+        "status": "PICKUP_WAITING",
+        "deleted_at": null
+      }
+    ],
+    "activeRoutes": 2,
+    "closures": 0,
+    "i17": {
+      "orderId": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+      "state": "ACTIVE",
+      "deliveryId": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+      "status": "PICKUP_WAITING"
+    }
+  },
+  "after": {
+    "creation": {
+      "attempt_id": "13d486c1-83c7-4750-b66c-d26fbb70be78",
+      "order_id": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+      "status": "COMPLETED",
+      "delivery_id": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:18:58.261838",
+      "updated_at": "2026-10-20T11:18:58.891688",
+      "deleted_at": null
+    },
+    "allOrders": 1,
+    "activeOrders": 1,
+    "allDeliveries": 1,
+    "activeDeliveries": 1,
+    "deliveries": [
+      {
+        "delivery_id": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+        "order_id": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+        "status": "PICKUP_WAITING",
+        "deleted_at": null
+      }
+    ],
+    "activeRoutes": 2,
+    "closures": 0,
+    "i17": {
+      "orderId": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+      "state": "ACTIVE",
+      "deliveryId": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+      "status": "PICKUP_WAITING"
+    }
+  },
+  "replayStatus": 201,
+  "endedAt": "2026-10-20T11:18:59.336275+09:00"
+}

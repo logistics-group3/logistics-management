@@ -12,6 +12,7 @@ import com.sparta.logistics.company.domain.Product;
 import com.sparta.logistics.company.domain.ProductRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ public class ProductService {
     }
 
     /** P-04 상품 수정. 기존 주문은 가격 스냅샷을 갖고 있어 영향이 없다. */
+    @CacheEvict(cacheNames = CompanyCacheNames.INTERNAL_PRODUCT, key = "#productId")
     @Transactional
     public ProductResult update(UserContext user, UUID companyId, UUID productId, UpdateProductCommand command) {
         Product product = getProductOfCompany(companyId, productId);
@@ -43,6 +45,7 @@ public class ProductService {
     }
 
     /** P-05 상품 삭제. 삭제 후 I-08은 404를 돌려줘 주문할 수 없다. */
+    @CacheEvict(cacheNames = CompanyCacheNames.INTERNAL_PRODUCT, key = "#productId")
     @Transactional
     public void delete(UserContext user, UUID companyId, UUID productId) {
         Product product = getProductOfCompany(companyId, productId);

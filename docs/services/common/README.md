@@ -15,7 +15,7 @@
 | 패키지 | 구성 | 바꾸면 영향 |
 |---|---|---|
 | `common-core` `response`, `exception` | `ApiResponse`, `ErrorResponse`, `ErrorCode`, `CommonErrorCode`, `BusinessException` | 모든 응답 형식(SA 6.1). gateway도 같은 형식을 쓴다 |
-| `common-core` `auth` | `Role`, `UserHeaders`(`X-User-*` 이름) | gateway와 서비스의 헤더 계약 |
+| `common-core` `auth` | `Role`, `UserHeaders`(`X-User-*` 이름), `UserAuthCacheKeys`(Gateway Redis 권한 캐시 키, ADR 0019) | gateway와 서비스의 헤더 계약, gateway·user의 권한 캐시 키 |
 | `common` `autoconfigure` | 조건부 자동 설정 6개(ADR 0009). 끄기 `common.<묶음>.enabled=false` | 서비스 기동 시 등록되는 공통 빈 |
 | `common` `auth` | `@CurrentUser UserContext`, `@RequireRole`, 소유자 검증(`validateSelfOrMaster` 등) | 인증·인가 |
 | `common` `entity` | `BaseEntity`(Audit 6컬럼, `softDelete`) | 모든 테이블의 Audit 컬럼(SA 5.1) |
@@ -32,4 +32,8 @@
 
 작성 규칙은 [서비스 협업 창구](../README.md#협업-로그-규칙)를 따른다. ID는 `COMMON-{번호}`다.
 
-아직 기록이 없다.
+### COMMON-001 common-core에 Gateway 권한 캐시 키 규칙(UserAuthCacheKeys) 추가
+- 상태: OPEN (성능 측정용 로컬 구현, 팀 전체 리뷰 대기)
+- 작성: kmh / 2026-10-19
+- 내용: Gateway가 Redis에 저장하고 user-service가 지우는 키(`auth:user:{userId}`)를 한 곳에 둔다. 의존성 추가 없는 상수·정적 메서드다.
+- 관련: [ADR 0019](../../decisions/0019-redis-cache-measured-adoption.md), GATEWAY-001, USER-003.

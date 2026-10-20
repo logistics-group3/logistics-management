@@ -1,0 +1,163 @@
+{
+  "at": "2026-10-20T11:21:21.077321+09:00",
+  "cases": [
+    {
+      "runId": "20261020-C0-F1-02",
+      "kind": "C0-F1",
+      "verdict": "PASS_CONTROL",
+      "orderId": "0729cfaa-86e4-46c9-a87e-6cc6246446c5",
+      "attemptId": "83e80233-a583-4910-b0a6-42da60226248",
+      "final": {
+        "creation": {
+          "attempt_id": "83e80233-a583-4910-b0a6-42da60226248",
+          "order_id": "0729cfaa-86e4-46c9-a87e-6cc6246446c5",
+          "status": "COMPLETED",
+          "delivery_id": "eaac8cd8-9496-4c5d-a625-232365fbacc2",
+          "failure_reason": null,
+          "failure_code": null,
+          "created_at": "2026-10-20T11:18:32.909337",
+          "updated_at": "2026-10-20T11:18:34.360798",
+          "deleted_at": null
+        },
+        "allOrders": 1,
+        "activeOrders": 1,
+        "allDeliveries": 1,
+        "activeDeliveries": 1,
+        "deliveries": [
+          {
+            "delivery_id": "eaac8cd8-9496-4c5d-a625-232365fbacc2",
+            "order_id": "0729cfaa-86e4-46c9-a87e-6cc6246446c5",
+            "status": "PICKUP_WAITING",
+            "deleted_at": null
+          }
+        ],
+        "activeRoutes": 2,
+        "closures": 0,
+        "i17": {
+          "orderId": "0729cfaa-86e4-46c9-a87e-6cc6246446c5",
+          "state": "ACTIVE",
+          "deliveryId": "eaac8cd8-9496-4c5d-a625-232365fbacc2",
+          "status": "PICKUP_WAITING"
+        }
+      },
+      "replayStatus": 201
+    },
+    {
+      "runId": "20261020-C0-F2-01",
+      "kind": "C0-F2",
+      "verdict": "PASS_CONTROL",
+      "orderId": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+      "attemptId": "13d486c1-83c7-4750-b66c-d26fbb70be78",
+      "final": {
+        "creation": {
+          "attempt_id": "13d486c1-83c7-4750-b66c-d26fbb70be78",
+          "order_id": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+          "status": "COMPLETED",
+          "delivery_id": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+          "failure_reason": null,
+          "failure_code": null,
+          "created_at": "2026-10-20T11:18:58.261838",
+          "updated_at": "2026-10-20T11:18:58.891688",
+          "deleted_at": null
+        },
+        "allOrders": 1,
+        "activeOrders": 1,
+        "allDeliveries": 1,
+        "activeDeliveries": 1,
+        "deliveries": [
+          {
+            "delivery_id": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+            "order_id": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+            "status": "PICKUP_WAITING",
+            "deleted_at": null
+          }
+        ],
+        "activeRoutes": 2,
+        "closures": 0,
+        "i17": {
+          "orderId": "7d9d35bf-dc64-4722-904d-509f40a1f89c",
+          "state": "ACTIVE",
+          "deliveryId": "3fb5a401-a84d-4c4c-a930-f29e37bd43d6",
+          "status": "PICKUP_WAITING"
+        }
+      },
+      "replayStatus": 201
+    },
+    {
+      "runId": "20261020-F1-01",
+      "kind": "F1",
+      "verdict": "REPRODUCED",
+      "orderId": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+      "attemptId": "7f339019-ee6e-4525-8062-eb3dc6fd8760",
+      "final": {
+        "creation": {
+          "attempt_id": "7f339019-ee6e-4525-8062-eb3dc6fd8760",
+          "order_id": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+          "status": "PROCESSING",
+          "delivery_id": null,
+          "failure_reason": null,
+          "failure_code": null,
+          "created_at": "2026-10-20T11:19:14.692113",
+          "updated_at": "2026-10-20T11:19:14.692113",
+          "deleted_at": null
+        },
+        "allOrders": 0,
+        "activeOrders": 0,
+        "allDeliveries": 0,
+        "activeDeliveries": 0,
+        "deliveries": [],
+        "activeRoutes": 0,
+        "closures": 0,
+        "i17": {
+          "orderId": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+          "state": "NONE",
+          "deliveryId": null,
+          "status": null
+        }
+      },
+      "replayStatus": 202
+    },
+    {
+      "runId": "20261020-F2-01",
+      "kind": "F2",
+      "verdict": "REPRODUCED",
+      "orderId": "8cdebc87-7eb6-4b80-a631-928f6e719d0c",
+      "attemptId": "7f1db3b3-8258-4eb4-904b-492a89cec526",
+      "final": {
+        "creation": {
+          "attempt_id": "7f1db3b3-8258-4eb4-904b-492a89cec526",
+          "order_id": "8cdebc87-7eb6-4b80-a631-928f6e719d0c",
+          "status": "PROCESSING",
+          "delivery_id": null,
+          "failure_reason": null,
+          "failure_code": null,
+          "created_at": "2026-10-20T11:20:07.039366",
+          "updated_at": "2026-10-20T11:20:07.039366",
+          "deleted_at": null
+        },
+        "allOrders": 0,
+        "activeOrders": 0,
+        "allDeliveries": 1,
+        "activeDeliveries": 1,
+        "deliveries": [
+          {
+            "delivery_id": "9b002617-5583-4567-ad5c-b6aad001a300",
+            "order_id": "8cdebc87-7eb6-4b80-a631-928f6e719d0c",
+            "status": "PICKUP_WAITING",
+            "deleted_at": null
+          }
+        ],
+        "activeRoutes": 2,
+        "closures": 0,
+        "i17": {
+          "orderId": "8cdebc87-7eb6-4b80-a631-928f6e719d0c",
+          "state": "ACTIVE",
+          "deliveryId": "9b002617-5583-4567-ad5c-b6aad001a300",
+          "status": "PICKUP_WAITING"
+        }
+      },
+      "replayStatus": 202
+    }
+  ],
+  "businessCodeChanges": false
+}

@@ -106,7 +106,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
-        verify(deliveryGateway).deleteByOrderId(createdOrderId.get());
+        verify(deliveryGateway).closeCreation(createdOrderId.get());
         assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, createdOrderId.get()))
                 .isEqualTo("ABORTED");
         assertThat(orderRepository.findById(existing.getId())).isPresent();
@@ -134,7 +134,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode").isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR);
 
-            verify(deliveryGateway).deleteByOrderId(createdOrderId.get());
+            verify(deliveryGateway).closeCreation(createdOrderId.get());
             assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, createdOrderId.get()))
                     .isEqualTo("ABORTED");
             assertThat(orderRepository.findById(existing.getId())).isPresent();
@@ -204,7 +204,7 @@ class OrderCreationIntegrationTest extends PostgresIntegrationTest {
             assertThat(jdbcTemplate.queryForObject("SELECT status FROM order_schema.p_order_creations WHERE order_id=?", String.class, createdOrderId.get()))
                     .isEqualTo("PROCESSING");
             return null;
-        }).given(deliveryGateway).deleteByOrderId(any());
+        }).given(deliveryGateway).closeCreation(any());
     }
 
     private CreateOrderCommand command(String requestNote) {

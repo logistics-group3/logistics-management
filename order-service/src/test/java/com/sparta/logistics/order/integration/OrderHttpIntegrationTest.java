@@ -583,7 +583,7 @@ class OrderHttpIntegrationTest extends PostgresIntegrationTest {
                 .path("orderId").asText());
         assertThat(STUB.requests("DELETE", "/internal/deliveries/orders/"))
                 .hasSize(attempts).allSatisfy(request -> {
-                    assertThat(request.path()).isEqualTo("/internal/deliveries/orders/" + orderId);
+                    assertThat(request.path()).isEqualTo("/internal/deliveries/orders/" + orderId + "/creation");
                     assertThat(request.header(UserHeaders.USER_ID)).isEqualTo(userId.toString());
                 });
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_schema.p_orders WHERE order_id = ?",

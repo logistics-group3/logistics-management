@@ -1,0 +1,9 @@
+{
+  "reason": "실험 주문 JVM OOMKilled=true, 공유 VM 7.748GiB",
+  "businessSettingsChanged": false,
+  "testOnly": true,
+  "options": "-Xms32m -Xmx128m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=64m -Xss512k -XX:ActiveProcessorCount=2",
+  "orderOptions": "-Xms32m -Xmx192m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=64m -Xss512k -XX:ActiveProcessorCount=2 -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005",
+  "normalServiceLimit": "448m",
+  "orderLimit": "512m"
+}

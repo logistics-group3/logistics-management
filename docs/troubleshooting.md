@@ -270,3 +270,13 @@
 - 해결: delivery `build.gradle`에 `resilience4j-bom:2.3.0`을 dependencyManagement로 가져와 resilience4j 모듈 버전을 한 번에 맞췄다. 의존성에는 버전을 적지 않는다.
 - 배운 점: 여러 모듈로 나뉜 라이브러리는 한 모듈만 버전을 올리지 말고 BOM으로 맞춘다. 확인: `./gradlew :delivery-service:dependencies --configuration runtimeClasspath | grep resilience4j`
 
+
+### TS-031 격리 프로젝트의 주문 장애 실험이 의도한 종료 전에 OOM으로 중단됨
+
+- 서비스·작성: order 장애 재현 도구 / Junhyun An 작업 / 2026-10-20.
+- 문제: 구현 후 F2-01에서 `docker kill`이 container is not running으로 실패했다. inspect의 OOMKilled=true·exit 137과 Docker oom 이벤트를 확인했다. 의도한 SIGKILL 실험으로 세지 않고 판정 제외했다.
+- 원인: Docker VM의 물리 메모리는 7.748GiB였으며 기존 UI 스택과 새 실험 스택이 자원을 공유했다. 실험 JVM의 커널 OOM 종료는 확인했다. 기존 UI 컨테이너 일부의 짧아진 uptime도 관찰했지만 해당 재시작의 원인과 정확한 기여 프로세스는 확인하지 못했다.
+- 해결: 전용 프로젝트만 내려 메모리를 확보했다. 로컬 override에서 전용 일반 JVM의 heap 128MiB·컨테이너 448MiB, order heap 192MiB·컨테이너 512MiB, 메타스페이스 160MiB·코드 캐시 64MiB·CPU 수 2·스택 512KiB로 제한하고 자동 재시작을 껐다. 기본 Compose·기존 UI 설정·업무 시간 제한은 바꾸지 않았다.
+- 확인: 새 runId의 C0-F1-02·C0-F2-02와 AFTER-F1-02·AFTER-F2-02를 다시 실행해 정상 대조군과 실제 종료·복구를 확인했다. 두 의도한 종료는 OOMKilled=false·exit 137이었다. 기존 컨테이너 12개 ID·현재 실행 상태와 전용 볼륨 보존을 확인했다. 기존 환경에 영향이 없었다고 주장하지 않는다.
+- 배운 점: Compose 프로젝트·볼륨·포트를 나눠도 VM 메모리는 공유된다. 환경 조정 전후를 구분하고, 이번 비교는 데이터 상태와 안전한 복구의 비교로 한정한다. 처리 시간·처리량의 성능 비교로 사용하지 않는다.
+- 근거: [복구 전후 결과](reviews/order-creation-recovery/2026-10-20-implementation-results.md), `.local/recovery-experiments/implementation-F2-interruption-audit/`와 `implementation-memory-containment/`의 명령·inspect·Docker 이벤트.

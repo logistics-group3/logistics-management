@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hubId": "6f39d519-4947-4a95-a454-58c25728f388",
+  "driverId": "adf8fe49-fa55-425b-9150-83d93c702e1c",
+  "masterId": "64f60607-c657-40fc-9218-fa5b187fa5b1",
+  "command": {
+    "supplierCompanyId": "2e2f0558-072e-42fd-959b-17eded69c600",
+    "receiverCompanyId": "5f73664d-3f5f-4c31-a1e0-b899469b92c4",
+    "productId": "cae5e184-b9db-4f0d-be47-db3cfcb594ea",
+    "quantity": 2
+  }
+}

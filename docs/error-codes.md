@@ -59,6 +59,6 @@
 |---|---|---|---|
 | `DELIVERY_NOT_FOUND` | 404 | 배송이 없음 | 구현 |
 | `DELIVERY_ROUTE_NOT_FOUND` | 404 | 배송 구간이 없음 | 구현 |
-| `DELIVERY_MANAGER_NOT_FOUND` | 404 | 배정할 배송담당자가 없음, 재배정 대상이 배송담당자가 아님 | 구현 |
+| `DELIVERY_MANAGER_NOT_FOUND` | 404 | 재배정(D-04) 대상이 없거나 배송담당자가 아님. 배송 생성(I-09)은 후보가 없어도 성공하고 구간이 배정 대기로 남는다(delivery 결정 로그 27) | 구현 |
 | `MANAGER_HUB_MISMATCH` | 400 | 재배정할 배송담당자의 소속 허브가 구간 담당 허브와 다름 | 구현 |
 | `DELIVERY_CREATION_CLOSED` | 409 | 이미 종료된 배송 생성 시도(I-13이 종료 표시를 남긴 orderId)의 I-09 | 구현 |

@@ -1,0 +1,156 @@
+{
+  "kind": "F2",
+  "runId": "20261020-AFTER-F2-02",
+  "startedAt": "2026-10-20T11:48:09.736777+09:00",
+  "orderId": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+  "observationWindowSeconds": 10,
+  "afterRecovery": {
+    "creation": {
+      "attempt_id": "f7ec73c8-a713-471b-9198-1fdf41289e77",
+      "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+      "status": "ABORTED",
+      "delivery_id": null,
+      "failure_reason": null,
+      "failure_code": "SERVICE_UNAVAILABLE",
+      "created_at": "2026-10-20T11:48:09.987234",
+      "updated_at": "2026-10-20T11:48:29.070881",
+      "deleted_at": null
+    },
+    "allOrders": 0,
+    "activeOrders": 0,
+    "allDeliveries": 1,
+    "activeDeliveries": 0,
+    "deliveries": [
+      {
+        "delivery_id": "b3bbf724-c63b-4b70-bcab-82e837e557e2",
+        "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+        "status": "PICKUP_WAITING",
+        "deleted_at": "2026-10-20T11:48:29.044552"
+      }
+    ],
+    "activeRoutes": 0,
+    "closures": 1,
+    "i17": {
+      "orderId": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+      "state": "CLOSED",
+      "deliveryId": null,
+      "status": null
+    }
+  },
+  "recoveryResult": {
+    "recoveryId": "5ce3af21-beb3-5b8f-8967-76a1356ce2c6",
+    "orderId": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+    "attemptId": "f7ec73c8-a713-471b-9198-1fdf41289e77",
+    "status": "COMPLETED",
+    "executionId": "077d7879-9cc5-4eb8-9a69-3287c4d8761a",
+    "message": "배송 생성 종료와 주문 부재를 확인해 ABORTED로 종료했습니다.",
+    "events": [
+      {
+        "step": "CLAIMED",
+        "detail": "status=PROCESSING, failureReason=null, deliveryId=null",
+        "executionId": "077d7879-9cc5-4eb8-9a69-3287c4d8761a",
+        "occurredAt": "2026-10-20T11:48:28.89605",
+        "actor": "recmaster"
+      },
+      {
+        "step": "OBSERVED",
+        "detail": "DeliveryCreationState[orderId=51619fc7-25d1-4add-8787-6c665da4ea0c, state=ACTIVE, deliveryId=b3bbf724-c63b-4b70-bcab-82e837e557e2, status=PICKUP_WAITING]",
+        "executionId": "077d7879-9cc5-4eb8-9a69-3287c4d8761a",
+        "occurredAt": "2026-10-20T11:48:28.998165",
+        "actor": "recmaster"
+      },
+      {
+        "step": "CLOSE_REQUESTED",
+        "detail": "DeliveryCreationState[orderId=51619fc7-25d1-4add-8787-6c665da4ea0c, state=ACTIVE, deliveryId=b3bbf724-c63b-4b70-bcab-82e837e557e2, status=PICKUP_WAITING]",
+        "executionId": "077d7879-9cc5-4eb8-9a69-3287c4d8761a",
+        "occurredAt": "2026-10-20T11:48:29.001109",
+        "actor": "recmaster"
+      },
+      {
+        "step": "VERIFIED",
+        "detail": "DeliveryCreationState[orderId=51619fc7-25d1-4add-8787-6c665da4ea0c, state=CLOSED, deliveryId=null, status=null]",
+        "executionId": "077d7879-9cc5-4eb8-9a69-3287c4d8761a",
+        "occurredAt": "2026-10-20T11:48:29.066269",
+        "actor": "recmaster"
+      },
+      {
+        "step": "COMPLETED",
+        "detail": "주문 없음·배송 CLOSED를 확인했다. 생성 시도를 ABORTED로 종료했다.",
+        "executionId": "077d7879-9cc5-4eb8-9a69-3287c4d8761a",
+        "occurredAt": "2026-10-20T11:48:29.070618",
+        "actor": "recmaster"
+      }
+    ]
+  },
+  "recoveredReplayStatus": 409,
+  "recoveryReplayIdempotent": true,
+  "verdict": "RECOVERED",
+  "before": {
+    "creation": {
+      "attempt_id": "f7ec73c8-a713-471b-9198-1fdf41289e77",
+      "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+      "status": "PROCESSING",
+      "delivery_id": null,
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:48:09.987234",
+      "updated_at": "2026-10-20T11:48:09.987234",
+      "deleted_at": null
+    },
+    "allOrders": 0,
+    "activeOrders": 0,
+    "allDeliveries": 1,
+    "activeDeliveries": 1,
+    "deliveries": [
+      {
+        "delivery_id": "b3bbf724-c63b-4b70-bcab-82e837e557e2",
+        "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+        "status": "PICKUP_WAITING",
+        "deleted_at": null
+      }
+    ],
+    "activeRoutes": 2,
+    "closures": 0,
+    "i17": {
+      "orderId": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+      "state": "ACTIVE",
+      "deliveryId": "b3bbf724-c63b-4b70-bcab-82e837e557e2",
+      "status": "PICKUP_WAITING"
+    }
+  },
+  "after": {
+    "creation": {
+      "attempt_id": "f7ec73c8-a713-471b-9198-1fdf41289e77",
+      "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+      "status": "PROCESSING",
+      "delivery_id": null,
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:48:09.987234",
+      "updated_at": "2026-10-20T11:48:09.987234",
+      "deleted_at": null
+    },
+    "allOrders": 0,
+    "activeOrders": 0,
+    "allDeliveries": 1,
+    "activeDeliveries": 1,
+    "deliveries": [
+      {
+        "delivery_id": "b3bbf724-c63b-4b70-bcab-82e837e557e2",
+        "order_id": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+        "status": "PICKUP_WAITING",
+        "deleted_at": null
+      }
+    ],
+    "activeRoutes": 2,
+    "closures": 0,
+    "i17": {
+      "orderId": "51619fc7-25d1-4add-8787-6c665da4ea0c",
+      "state": "ACTIVE",
+      "deliveryId": "b3bbf724-c63b-4b70-bcab-82e837e557e2",
+      "status": "PICKUP_WAITING"
+    }
+  },
+  "replayStatus": 202,
+  "endedAt": "2026-10-20T11:48:29.415864+09:00"
+}

@@ -6,6 +6,8 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
+| 0019 | [주문 생성 운영자 복구와 배송 조건부 종료](0019-order-creation-operator-recovery.md) | 로컬 구현 채택·팀 리뷰 대기 | 2026-10-20 |
+| 0019 | [Redis 캐시를 기본 꺼짐으로 넣고 측정으로 채택을 정한다](0019-redis-cache-measured-adoption.md) | 제안 | 2026-10-19 |
 | 0018 | [메트릭 수집: Prometheus + Grafana 도입](0018-metrics-prometheus-grafana.md) | 제안 | 2026-10-16 |
 | 0017 | [분산 추적: Micrometer Tracing + Zipkin 도입](0017-distributed-tracing-micrometer-zipkin.md) | 제안 | 2026-10-16 |
 | 0016 | [주문 커밋 후 배송담당자 이메일로 Slack DM 발송](0016-delivery-manager-slack-dm.md) | 제안 | 2026-10-15 |

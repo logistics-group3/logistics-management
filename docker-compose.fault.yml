@@ -8,6 +8,8 @@ services:
   delivery-service:
     environment:
       SERVER_TOMCAT_MBEANREGISTRY_ENABLED: "true"
+      # 구간 배정 배치 창(ms, 기본 0). 창 크기별 비교: ASSIGNMENT_BATCH_WINDOW_MS=200 docker compose up -d delivery-service
+      DELIVERY_ASSIGNMENT_BATCH_WINDOW_MS: ${ASSIGNMENT_BATCH_WINDOW_MS:-0}
   order-service:
     environment:
       # 주문 경로 실험(S2)에서 order의 스레드 고갈을 본다

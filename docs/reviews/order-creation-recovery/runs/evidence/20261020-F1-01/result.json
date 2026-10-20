@@ -1,0 +1,62 @@
+{
+  "kind": "F1",
+  "runId": "20261020-F1-01",
+  "startedAt": "2026-10-20T11:19:14.431128+09:00",
+  "orderId": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+  "observationWindowSeconds": 10,
+  "verdict": "REPRODUCED",
+  "before": {
+    "creation": {
+      "attempt_id": "7f339019-ee6e-4525-8062-eb3dc6fd8760",
+      "order_id": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+      "status": "PROCESSING",
+      "delivery_id": null,
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:19:14.692113",
+      "updated_at": "2026-10-20T11:19:14.692113",
+      "deleted_at": null
+    },
+    "allOrders": 0,
+    "activeOrders": 0,
+    "allDeliveries": 0,
+    "activeDeliveries": 0,
+    "deliveries": [],
+    "activeRoutes": 0,
+    "closures": 0,
+    "i17": {
+      "orderId": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+      "state": "NONE",
+      "deliveryId": null,
+      "status": null
+    }
+  },
+  "after": {
+    "creation": {
+      "attempt_id": "7f339019-ee6e-4525-8062-eb3dc6fd8760",
+      "order_id": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+      "status": "PROCESSING",
+      "delivery_id": null,
+      "failure_reason": null,
+      "failure_code": null,
+      "created_at": "2026-10-20T11:19:14.692113",
+      "updated_at": "2026-10-20T11:19:14.692113",
+      "deleted_at": null
+    },
+    "allOrders": 0,
+    "activeOrders": 0,
+    "allDeliveries": 0,
+    "activeDeliveries": 0,
+    "deliveries": [],
+    "activeRoutes": 0,
+    "closures": 0,
+    "i17": {
+      "orderId": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+      "state": "NONE",
+      "deliveryId": null,
+      "status": null
+    }
+  },
+  "replayStatus": 202,
+  "endedAt": "2026-10-20T11:19:37.903332+09:00"
+}

@@ -1,0 +1,53 @@
+{
+  "start": "2026-10-20T11:52:02.068488+09:00",
+  "end": "2026-10-20T11:52:02.118943+09:00",
+  "method": "GET",
+  "url": "http://127.0.0.1:28080/api/v1/companies?size=50",
+  "requestBody": null,
+  "idempotencyKey": null,
+  "status": 200,
+  "responseHeaders": {
+    "transfer-encoding": "chunked",
+    "Content-Type": "application/json",
+    "Date": "Tue, 20 Oct 2026 02:52:02 GMT",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 200,
+    "message": "SUCCESS",
+    "data": {
+      "content": [
+        {
+          "companyId": "5f73664d-3f5f-4c31-a1e0-b899469b92c4",
+          "name": "복구실험 수령업체",
+          "hubId": "6f39d519-4947-4a95-a454-58c25728f388",
+          "address": "서울특별시 복구실험 테스트 주소",
+          "managerId": "64f60607-c657-40fc-9218-fa5b187fa5b1",
+          "createdAt": "2026-10-20T11:17:33.601633",
+          "updatedAt": "2026-10-20T11:17:33.601633"
+        },
+        {
+          "companyId": "2e2f0558-072e-42fd-959b-17eded69c600",
+          "name": "복구실험 공급업체",
+          "hubId": "6f39d519-4947-4a95-a454-58c25728f388",
+          "address": "서울특별시 복구실험 테스트 주소",
+          "managerId": "64f60607-c657-40fc-9218-fa5b187fa5b1",
+          "createdAt": "2026-10-20T11:17:33.46573",
+          "updatedAt": "2026-10-20T11:17:33.46573"
+        }
+      ],
+      "page": 0,
+      "size": 50,
+      "totalElements": 2,
+      "totalPages": 1,
+      "sort": "createdAt,DESC"
+    }
+  }
+}
