@@ -71,3 +71,9 @@
 | 2026-10-20 | [A2-s1-r1](A2-s1-r1.md) | s1 | auth=redis/60s hub=none company=none | 150 | 150.00 | 0.00% | 3.4 | 5.6 | 24.5 | 0.04 | 0.00 | 0.00 | - | - | 6 | d3fbc49 |
 | 2026-10-20 | [A2-s1-r2](A2-s1-r2.md) | s1 | auth=redis/60s hub=none company=none | 150 | 150.00 | 0.00% | 3.4 | 5.3 | 6.9 | 0.04 | 0.00 | 0.00 | - | - | 4 | d3fbc49 |
 | 2026-10-20 | [A2-s1-r3](A2-s1-r3.md) | s1 | auth=redis/60s hub=none company=none | 150 | 150.00 | 0.00% | 3.4 | 5.1 | 6.6 | 0.04 | 0.00 | 0.00 | - | - | 4 | d3fbc49 |
+| 2026-10-20 | [B1-local-s2-r1](B1-local-s2-r1.md) | s2 | auth=local/60s hub=local company=none | 60 | 60.00 | 0.00% | 11.6 | 14.6 | 17.4 | 0.08 | 0.94 | 3.00 | 1.0 | 1.0 | - | 56fb6ef |
+| 2026-10-20 | [B1-local-s2-r2](B1-local-s2-r2.md) | s2 | auth=local/60s hub=local company=none | 60 | 60.00 | 0.00% | 11.2 | 13.9 | 16.4 | 0.08 | 0.94 | 3.00 | 1.0 | 1.0 | - | 56fb6ef |
+| 2026-10-20 | [B1-local-s2-r3](B1-local-s2-r3.md) | s2 | auth=local/60s hub=local company=none | 60 | 60.00 | 0.00% | 11.0 | 13.6 | 15.8 | 0.08 | 0.94 | 3.00 | 1.0 | 1.0 | - | 56fb6ef |
+| 2026-10-20 | [B1-local-s3-r1](B1-local-s3-r1.md) | s3 | auth=local/60s hub=local company=none | 200 | 200.00 | 0.00% | 2.3 | 2.8 | 9.9 | 0.00 | 0.00 | 0.00 | - | 1.0 | - | 56fb6ef |
+| 2026-10-20 | [B1-local-s3-r2](B1-local-s3-r2.md) | s3 | auth=local/60s hub=local company=none | 200 | 200.00 | 0.00% | 2.3 | 2.8 | 16.6 | 0.00 | 0.00 | 0.00 | - | 1.0 | - | 56fb6ef |
+| 2026-10-20 | [B1-local-s3-r3](B1-local-s3-r3.md) | s3 | auth=local/60s hub=local company=none | 200 | 200.00 | 0.00% | 2.3 | 2.9 | 16.7 | 0.00 | 0.00 | 0.00 | - | 1.0 | - | 56fb6ef |
