@@ -53,10 +53,14 @@ export default function (data) {
   });
 }
 
-/** I-09와 같은 요청. 시드 업체 두 곳(같은 서울 허브) 사이 배송이다. orderId는 매번 새로 만든다(같으면 멱등 처리로 200). */
+/**
+ * I-09와 같은 요청. 시드 업체 두 곳(같은 서울 허브) 사이 배송이다. orderId는 매번 새로 만든다(같으면 멱등 처리로 200).
+ * 생성 뒤 order 대신 주문 확정(I-19과 같은 처리)을 보낸다. 배정은 확정 뒤에 한다(결정 로그 29).
+ */
 function createDelivery(token) {
+  const orderId = uuid();
   const body = JSON.stringify({
-    orderId: uuid(),
+    orderId,
     supplierCompanyId: SEED.supplierCompany,
     receiverCompanyId: SEED.receiverCompany,
     departureHubId: SEED.seoulHub,
@@ -66,7 +70,11 @@ function createDelivery(token) {
     recipientName: 'k6 수령인',
     receiverManagerId: SEED.receiverManager,
   });
-  return http.post(`${BASE_URL}/api/v1/deliveries/load-test`, body, params(token, NAME));
+  const res = http.post(`${BASE_URL}/api/v1/deliveries/load-test`, body, params(token, NAME));
+  if (res.status === 201) {
+    http.post(`${BASE_URL}/api/v1/deliveries/load-test/orders/${orderId}/confirm`, null, params(token, 'I-19 직접'));
+  }
+  return res;
 }
 
 function createOrder(token) {

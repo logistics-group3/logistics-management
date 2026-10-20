@@ -2,13 +2,17 @@ package com.sparta.logistics.delivery.application.assignment;
 
 import static com.sparta.logistics.delivery.DeliveryFixture.SUPPLIER_HUB;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.delivery.DeliveryFixture;
 import com.sparta.logistics.delivery.application.DeliveryManagerReader;
 import com.sparta.logistics.delivery.application.DeliveryQueryRepository;
@@ -16,6 +20,7 @@ import com.sparta.logistics.delivery.application.dto.ActiveRouteCount;
 import com.sparta.logistics.delivery.domain.Delivery;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
 import com.sparta.logistics.delivery.domain.DeliveryRoute;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,6 +31,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -36,6 +42,7 @@ class ManagerAssignmentServiceTest {
 
     private static final UUID MANAGER_A = UUID.fromString("a0000000-0000-0000-0000-000000000000");
     private static final UUID MANAGER_B = UUID.fromString("b0000000-0000-0000-0000-000000000000");
+    private static final Duration MANUAL_AFTER = Duration.ofSeconds(60);
 
     @Mock
     private DeliveryRepository deliveryRepository;
@@ -43,23 +50,62 @@ class ManagerAssignmentServiceTest {
     private DeliveryQueryRepository deliveryQueryRepository;
     @Mock
     private DeliveryManagerReader deliveryManagerReader;
+    @Mock
+    private AssignmentNotifier assignmentNotifier;
     private ManagerAssignmentService service;
 
     @BeforeEach
     void setUp() {
         service = new ManagerAssignmentService(deliveryRepository, deliveryQueryRepository, deliveryManagerReader,
-                TransactionOperations.withoutTransaction());
+                TransactionOperations.withoutTransaction(), assignmentNotifier, new ManualAssignmentPolicy(MANUAL_AFTER));
     }
 
     @Test
-    @DisplayName("허브에 배송담당자 후보가 없으면 트랜잭션을 열지 않고 대기로 둔다")
-    void noCandidates() {
+    @DisplayName("후보가 0명이어도 확정 뒤 기준 시간이 지난 배송이 없으면 대기로 두고 아무에게도 알리지 않는다")
+    void noCandidatesWithinGracePeriod() {
         given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of());
+        given(deliveryRepository.tryLockHubAssignment(SUPPLIER_HUB)).willReturn(true);
+        given(deliveryRepository.lockDeliveriesAwaitingManagerConfirmedBefore(eq(SUPPLIER_HUB), any(), anyInt())).willReturn(List.of());
 
         AssignmentResult result = service.assignPending(SUPPLIER_HUB);
 
         assertThat(result.outcome()).isEqualTo(AssignmentResult.Outcome.NO_CANDIDATES);
+        assertThat(result.manualRequired()).isEmpty();
+        then(assignmentNotifier).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("후보가 0명인 상태가 확정 뒤 기준 시간을 넘으면 그 배송을 수동 지정으로 넘기고 커밋 뒤 order에 알린다")
+    void noCandidatesPastGracePeriodRequestsManualAssignment() {
+        Delivery overdue = unassignedSameHub(0);
+        overdue.confirm();
+        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willReturn(List.of());
+        given(deliveryRepository.tryLockHubAssignment(SUPPLIER_HUB)).willReturn(true);
+        ArgumentCaptor<LocalDateTime> confirmedBefore = ArgumentCaptor.forClass(LocalDateTime.class);
+        given(deliveryRepository.lockDeliveriesAwaitingManagerConfirmedBefore(eq(SUPPLIER_HUB), confirmedBefore.capture(), anyInt()))
+                .willReturn(List.of(overdue.getId()));
+        given(deliveryRepository.findAllWithRoutesByIdIn(List.of(overdue.getId()))).willReturn(List.of(overdue));
+        LocalDateTime before = LocalDateTime.now();
+
+        AssignmentResult result = service.assignPending(SUPPLIER_HUB);
+
+        assertThat(confirmedBefore.getValue()).isBetween(before.minus(MANUAL_AFTER), LocalDateTime.now().minus(MANUAL_AFTER));
+        assertThat(overdue.getManualAssignmentRequestedAt()).isNotNull();
+        List<AssignedDelivery> expected = List.of(new AssignedDelivery(overdue.getId(), overdue.getOrderId()));
+        assertThat(result.manualRequired()).isEqualTo(expected);
+        then(assignmentNotifier).should().notifyManualRequired(expected);
+        then(assignmentNotifier).should(never()).notifyAssigned(any());
+    }
+
+    @Test
+    @DisplayName("user 장애로 후보를 읽지 못하면 예외를 올리고 배송을 수동 지정으로 넘기지 않는다")
+    void userFailureDoesNotRequestManualAssignment() {
+        given(deliveryManagerReader.findIdsByHub(SUPPLIER_HUB)).willThrow(new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE));
+
+        assertThatThrownBy(() -> service.assignPending(SUPPLIER_HUB)).isInstanceOf(BusinessException.class);
+
         then(deliveryRepository).shouldHaveNoInteractions();
+        then(assignmentNotifier).shouldHaveNoInteractions();
     }
 
     @Test
@@ -92,6 +138,7 @@ class ManagerAssignmentServiceTest {
         assertThat(result.completed()).extracting(AssignedDelivery::deliveryId)
                 .containsExactlyElementsOf(deliveries.stream().map(Delivery::getId).toList());
         then(deliveryQueryRepository).should().countActiveRoutes(anyCollection());
+        then(assignmentNotifier).should().notifyAssigned(result.completed());
     }
 
     @Test

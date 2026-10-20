@@ -14,10 +14,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -83,9 +86,17 @@ public class Delivery extends BaseEntity {
     @OrderBy("sequence ASC")
     private List<DeliveryRoute> routes = new ArrayList<>();
 
+    /** 주문 확정 시각(I-19). NULL이면 주문이 아직 커밋되지 않았을 수 있어 배정하지 않는다(결정 로그 29). */
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    /** 수동 지정 요청 시각. 값이 있으면 자동 배정이 이 배송을 건너뛰고 MASTER가 D-04로 지정한다(결정 로그 29). */
+    @Column(name = "manual_assignment_requested_at")
+    private LocalDateTime manualAssignmentRequestedAt;
+
     /**
      * I-09 배송 생성. 같은 허브면 집하·업체 배송 2구간, 다르면 집하·허브 이동·업체 배송 3구간을 만든다(ADR 0003).
-     * 구간은 담당자 없이 만들고, 담당자는 허브별 배정 작업이 assignPendingRoutes로 채운다(결정 로그 27).
+     * 구간은 담당자 없이 미확정으로 만든다. 주문이 확정되면(confirm) 허브별 배정 작업이 assignPendingRoutes로 채운다(결정 로그 27·29).
      *
      * @param hubTransferExpected 허브 이동 구간의 예상 거리·시간(I-03). 같은 허브면 쓰지 않는다
      */
@@ -197,13 +208,58 @@ public class Delivery extends BaseEntity {
         }
     }
 
-    /** D-04 재배정. 대상의 소속 허브가 구간 담당 허브가 아니면 400, 도착·취소된 구간이면 409. */
-    public void reassignRouteManager(UUID routeId, DeliveryManager manager) {
+    /**
+     * D-04 재배정. 대상의 소속 허브가 구간 담당 허브가 아니면 400, 도착·취소된 구간이면 409.
+     *
+     * @return 이번 지정으로 확정된 배송의 배정 대기 구간이 모두 채워졌으면 true(배정 완료 알림 대상, 결정 로그 29)
+     */
+    public boolean reassignRouteManager(UUID routeId, DeliveryManager manager) {
         DeliveryRoute route = getRoute(routeId);
         if (!route.getManagingHubId().equals(manager.hubId())) {
             throw new BusinessException(DeliveryErrorCode.MANAGER_HUB_MISMATCH);
         }
+        boolean wasAwaiting = !hasNoRouteAwaitingManager();
         route.changeManager(manager.userId());
+        return isConfirmed() && wasAwaiting && hasNoRouteAwaitingManager();
+    }
+
+    /**
+     * I-19 주문 확정. 이때부터 구간 담당자를 배정한다(결정 로그 29). 이미 확정됐으면 그대로 둔다(멱등).
+     *
+     * @return 이번 호출로 확정됐으면 true
+     */
+    public boolean confirm() {
+        if (confirmedAt != null) {
+            return false;
+        }
+        confirmedAt = LocalDateTime.now();
+        return true;
+    }
+
+    public boolean isConfirmed() {
+        return confirmedAt != null;
+    }
+
+    /**
+     * 후보가 없는 상태가 기준 시간을 넘은 배송을 수동 지정으로 넘긴다. 이후 자동 배정은 이 배송을 건너뛴다(결정 로그 29).
+     * 이미 넘겼거나 배정 대기 구간이 없으면 그대로 둔다.
+     *
+     * @return 이번 호출로 넘겼으면 true(MASTER 알림 대상)
+     */
+    public boolean requestManualAssignment() {
+        if (manualAssignmentRequestedAt != null || hasNoRouteAwaitingManager()) {
+            return false;
+        }
+        manualAssignmentRequestedAt = LocalDateTime.now();
+        return true;
+    }
+
+    /** 배정 대기 구간의 담당 허브. 확정 직후 깨울 배정 작업을 고른다. */
+    public Set<UUID> hubsAwaitingManager() {
+        return routes.stream()
+                .filter(DeliveryRoute::isAwaitingManager)
+                .map(DeliveryRoute::getManagingHubId)
+                .collect(Collectors.toSet());
     }
 
     /** I-13 배송 삭제. 구간도 함께 논리 삭제한다(SA 7.5). 이미 삭제된 행은 그대로 둔다. */

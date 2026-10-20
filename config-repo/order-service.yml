@@ -28,6 +28,11 @@ spring:
           order-delivery-state:
             connectTimeout: 1000
             readTimeout: 2000
+          # I-19 배송 확정(delivery 결정 로그 29). 처리 단계 스레드(4개)에서 주문 커밋 직후 부른다. UPDATE 한 번이라 짧게 끊고,
+          # 응답 없는 실패는 멱등이라 최대 3회 보낸다. 끝내 실패하면 delivery 안전망이 I-21으로 확인한다.
+          order-delivery-confirm:
+            connectTimeout: 1000
+            readTimeout: 2000
           order-dm-delivery:
             connectTimeout: 1000
             readTimeout: 2000

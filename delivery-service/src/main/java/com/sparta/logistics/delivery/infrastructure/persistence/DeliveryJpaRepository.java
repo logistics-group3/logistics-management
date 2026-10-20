@@ -3,6 +3,7 @@ package com.sparta.logistics.delivery.infrastructure.persistence;
 import com.sparta.logistics.delivery.domain.Delivery;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +36,7 @@ public interface DeliveryJpaRepository extends JpaRepository<Delivery, UUID>, De
             SELECT d.delivery_id
             FROM p_deliveries d
             WHERE d.deleted_at IS NULL
+              AND d.confirmed_at IS NOT NULL AND d.manual_assignment_requested_at IS NULL
               AND EXISTS (SELECT 1 FROM p_delivery_routes r
                           WHERE r.delivery_id = d.delivery_id AND r.managing_hub_id = :hubId
                             AND r.manager_id IS NULL AND r.status = 'WAITING' AND r.deleted_at IS NULL)
@@ -43,6 +45,23 @@ public interface DeliveryJpaRepository extends JpaRepository<Delivery, UUID>, De
             FOR UPDATE OF d SKIP LOCKED
             """, nativeQuery = true)
     List<UUID> lockDeliveriesAwaitingManager(@Param("hubId") UUID hubId, @Param("limit") int limit);
+
+    @Override
+    @Query(value = """
+            SELECT d.delivery_id
+            FROM p_deliveries d
+            WHERE d.deleted_at IS NULL
+              AND d.confirmed_at < :confirmedBefore AND d.manual_assignment_requested_at IS NULL
+              AND EXISTS (SELECT 1 FROM p_delivery_routes r
+                          WHERE r.delivery_id = d.delivery_id AND r.managing_hub_id = :hubId
+                            AND r.manager_id IS NULL AND r.status = 'WAITING' AND r.deleted_at IS NULL)
+            ORDER BY d.created_at
+            LIMIT :limit
+            FOR UPDATE OF d SKIP LOCKED
+            """, nativeQuery = true)
+    List<UUID> lockDeliveriesAwaitingManagerConfirmedBefore(@Param("hubId") UUID hubId,
+                                                            @Param("confirmedBefore") LocalDateTime confirmedBefore,
+                                                            @Param("limit") int limit);
 
     @Override
     @Query("select distinct d from Delivery d join fetch d.routes where d.id in :ids")

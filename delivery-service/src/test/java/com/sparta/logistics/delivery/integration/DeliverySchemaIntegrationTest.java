@@ -54,6 +54,15 @@ class DeliverySchemaIntegrationTest extends PostgresIntegrationTest {
                 .contains("WHERE (deleted_at IS NULL)");
     }
 
+    @Test
+    @DisplayName("미확정 배송 인덱스는 생성 시각 순서로 확정되지 않고 삭제되지 않은 배송만 담는다(V5)")
+    void unconfirmedIndex() {
+        String definition = jdbcTemplate.queryForObject(
+                "SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_p_deliveries_unconfirmed'", String.class);
+
+        assertThat(definition).contains("(created_at)").contains("confirmed_at IS NULL").contains("deleted_at IS NULL");
+    }
+
     private void insertDelivery(UUID deliveryId, String status) {
         jdbcTemplate.update("""
                 INSERT INTO p_deliveries (delivery_id, status, pickup_address, delivery_address, recipient_name,

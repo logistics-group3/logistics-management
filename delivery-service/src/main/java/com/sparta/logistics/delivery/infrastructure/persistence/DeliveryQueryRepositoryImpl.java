@@ -23,6 +23,7 @@ import com.sparta.logistics.delivery.application.dto.QDeliverySummaryResult;
 import com.sparta.logistics.delivery.domain.DeliveryStatus;
 import com.sparta.logistics.delivery.domain.QDeliveryRoute;
 import com.sparta.logistics.delivery.domain.RouteStatus;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -144,7 +145,20 @@ public class DeliveryQueryRepositoryImpl implements DeliveryQueryRepository {
     public List<UUID> findHubsAwaitingManager() {
         return queryFactory.select(deliveryRoute.managingHubId).distinct()
                 .from(deliveryRoute)
-                .where(deliveryRoute.managerId.isNull(), deliveryRoute.status.eq(RouteStatus.WAITING))
+                .join(deliveryRoute.delivery, delivery)
+                .where(deliveryRoute.managerId.isNull(), deliveryRoute.status.eq(RouteStatus.WAITING),
+                        delivery.confirmedAt.isNotNull(), delivery.manualAssignmentRequestedAt.isNull())
+                .fetch();
+    }
+
+    @Override
+    public List<UUID> findUnconfirmedOrderIds(LocalDateTime createdAfter, LocalDateTime createdBefore, int limit) {
+        return queryFactory.select(delivery.orderId)
+                .from(delivery)
+                .where(delivery.confirmedAt.isNull(), delivery.createdAt.after(createdAfter),
+                        delivery.createdAt.before(createdBefore))
+                .orderBy(delivery.createdAt.asc())
+                .limit(limit)
                 .fetch();
     }
 

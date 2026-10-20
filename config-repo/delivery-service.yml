@@ -25,6 +25,10 @@ spring:
           hub-service:
             connectTimeout: 1000
             readTimeout: 2000
+          # 결정 로그 29. I-20 배정 결과 알림(전용 실행기), I-21 주문 생성 결과(안전망). order는 받아서 비동기로 처리하므로 수십 ms다.
+          order-service:
+            connectTimeout: 1000
+            readTimeout: 2000
 
 delivery:
   load-test:
@@ -40,6 +44,19 @@ delivery:
     # 실행 중에 온 신호를 모았다가 다시 돌기 전 기다리는 시간. 기본 0: 배정이 느려지면 그동안 온 신호가 다음 한 번에 저절로 묶여
     # 생성 640/초까지 창 없이 통과했다(T08 성능 고도화 단계 3). 창을 주면 배정 실행은 줄고 배정 지연이 창만큼 는다(결정 로그 27)
     batch-window-ms: ${DELIVERY_ASSIGNMENT_BATCH_WINDOW_MS:0}
+  # 주문 확정 뒤 배정(결정 로그 29). I-09는 배송을 미확정으로 저장하고, order가 주문을 커밋한 뒤 I-19로 확정하면 배정한다.
+  confirmation:
+    # 확정 뒤 이 시간이 지나도록 후보가 0명이면 수동 지정으로 넘기고 MASTER에게 알린다(주기 작업 30초면 2~3번째 시도)
+    manual-assignment-after: 60s
+    # 배정 완료·수동 지정을 order에 알린다(I-20). Slack은 order가 보낸다
+    notify-order: true
+    # 확정 유실 안전망: 만든 지 after가 지났는데 미확정이면 order에 물어(I-21) 커밋된 주문이면 확정한다
+    check:
+      enabled: true
+      interval-ms: 60000
+      after: 2m
+      give-up-after: 30m
+      batch-size: 50
 
 # user 장애 격리(결정 로그 26, delivery-service/docs/fault-isolation.md). 인스턴스 이름은 UserClientAdapter.USER_SERVICE
 resilience4j:

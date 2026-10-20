@@ -32,11 +32,12 @@ FROM generate_series(1, :count) AS g,
 
 INSERT INTO delivery_schema.p_deliveries (delivery_id, status, pickup_address, delivery_address, recipient_name,
                                           recipient_slack_id, order_id, supplier_company_id, receiver_company_id,
-                                          departure_hub_id, destination_hub_id,
+                                          departure_hub_id, destination_hub_id, confirmed_at,
                                           created_at, created_by, updated_at, updated_by)
+-- confirmed_at: 끝난 과거 배송은 주문이 확정된 것이다(결정 로그 29). 비워 두면 확정 안전망이 order에 묻는다
 SELECT delivery_id, 'DELIVERED', '부하 테스트 출발지 ' || g, '부하 테스트 도착지 ' || g, '부하수령인' || (g % 1000),
        NULL, gen_random_uuid(), gen_random_uuid(), gen_random_uuid(),
-       departure_hub_id, destination_hub_id,
+       departure_hub_id, destination_hub_id, ts,
        ts, 'LOAD', ts, 'LOAD'
 FROM load_src;
 

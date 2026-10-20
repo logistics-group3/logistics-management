@@ -52,6 +52,25 @@ class SlackOrderNotificationSenderTest {
     }
 
     @Test
+    @DisplayName("수동 지정 요청은 주문·배송 ID를 담아 같은 채널 Webhook으로 한 번 보낸다")
+    void sendsManualAssignmentRequired() throws Exception {
+        try (HttpStubServer slack = new HttpStubServer()) {
+            slack.reset(request -> Reply.json(200, "ok"));
+            SlackOrderNotificationSender sender = new OrderNotificationConfig()
+                    .slackOrderNotificationSender(properties(slack.url() + "/test"));
+            UUID orderId = UUID.randomUUID();
+            UUID deliveryId = UUID.randomUUID();
+
+            sender.sendManualAssignmentRequired(orderId, deliveryId);
+
+            assertThat(slack.requests("POST", "/test")).hasSize(1);
+            var payload = new ObjectMapper().readTree(slack.requests("POST", "/test").get(0).body());
+            assertThat(payload.path("text").asText())
+                    .startsWith("[배송담당자 수동 지정 필요]").contains(orderId.toString(), deliveryId.toString());
+        }
+    }
+
+    @Test
     @DisplayName("설정을 문자열로 출력해도 비밀 Webhook URL을 노출하지 않는다")
     void redactsWebhookFromProperties() {
         assertThat(properties("https://example.invalid/secret-token").toString())

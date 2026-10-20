@@ -12,6 +12,7 @@ import com.sparta.logistics.common.support.PostgresIntegrationTest;
 import com.sparta.logistics.delivery.application.DeliveryCreationService;
 import com.sparta.logistics.delivery.application.DeliveryManagerReader;
 import com.sparta.logistics.delivery.application.DeliveryService;
+import com.sparta.logistics.delivery.application.assignment.DeliveryConfirmationService;
 import com.sparta.logistics.delivery.application.HubRouteReader;
 import com.sparta.logistics.delivery.application.RecipientReader;
 import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
@@ -66,6 +67,8 @@ class DeliveryConcurrencyIntegrationTest extends PostgresIntegrationTest {
 
     @Autowired
     private DeliveryCreationService deliveryCreationService;
+    @Autowired
+    private DeliveryConfirmationService deliveryConfirmationService;
     @Autowired
     private DeliveryService deliveryService;
     @Autowired
@@ -296,6 +299,7 @@ class DeliveryConcurrencyIntegrationTest extends PostgresIntegrationTest {
         UUID deliveryId = deliveryCreationService.create(new CreateDeliveryCommand(orderId, UUID.randomUUID(), UUID.randomUUID(),
                 hub, hub, "경기도 고양시 일산동구 중앙로 1234", "부산광역시 중구 자갈치해안로 52", "부산수산도매", UUID.randomUUID()))
                 .delivery().deliveryId();
+        deliveryConfirmationService.confirm(orderId);
         List<UUID> routeIds = jdbcTemplate.queryForList(
                 "SELECT delivery_route_id FROM p_delivery_routes WHERE delivery_id = ? ORDER BY sequence", UUID.class, deliveryId);
         return new Delivery(deliveryId, orderId, routeIds);

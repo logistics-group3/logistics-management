@@ -4,6 +4,8 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.config.HeaderAuditorAware;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
+import com.sparta.logistics.delivery.application.assignment.AssignedDelivery;
+import com.sparta.logistics.delivery.application.assignment.AssignmentNotifier;
 import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
 import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
@@ -14,6 +16,7 @@ import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryManager;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
 import com.sparta.logistics.delivery.domain.DeliveryRoute;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.AuditorAware;
@@ -38,6 +41,7 @@ public class DeliveryService {
     private final AuditorAware<String> auditorAware;
     /** D-04가 원격 조회를 트랜잭션 밖에서 끝낸 뒤 짧은 트랜잭션만 열기 위해 쓴다. */
     private final TransactionOperations transactionOperations;
+    private final AssignmentNotifier assignmentNotifier;
 
     /** D-03 배송지·수령인 수정. 현재 배송담당자인 마지막 구간 담당자 또는 MASTER, 업체 배송 출발 후면 INVALID_STATUS_TRANSITION */
     @Transactional
@@ -50,18 +54,24 @@ public class DeliveryService {
 
     /**
      * D-04 구간 담당자 재배정(MASTER). 대상이 없거나 배송담당자가 아니면 DELIVERY_MANAGER_NOT_FOUND,
-     * 소속 허브가 구간 담당 허브가 아니면 MANAGER_HUB_MISMATCH, 도착·취소된 구간이면 INVALID_STATUS_TRANSITION
+     * 소속 허브가 구간 담당 허브가 아니면 MANAGER_HUB_MISMATCH, 도착·취소된 구간이면 INVALID_STATUS_TRANSITION.
+     * 이 지정으로 확정된 배송의 빈 구간이 모두 채워지면(수동 지정 포함) 커밋 뒤 order에 배정 완료를 알린다(결정 로그 29).
      * Note: user-service 조회(최대 20초)를 배송 행 잠금 안에 두지 않으려고 조회를 먼저 끝내고 잠금 트랜잭션을 연다.
      * 그래서 없는 구간이어도 담당자 조회 오류가 먼저 나올 수 있다.
      */
     public DeliveryResponse reassignManager(UUID deliveryId, UUID routeId, UUID managerId) {
         DeliveryManager manager = deliveryManagerReader.findById(managerId)
                 .orElseThrow(() -> new BusinessException(DeliveryErrorCode.DELIVERY_MANAGER_NOT_FOUND));
-        return transactionOperations.execute(status -> {
+        Reassignment reassignment = transactionOperations.execute(status -> {
             Delivery delivery = getDeliveryForUpdate(deliveryId);
-            delivery.reassignRouteManager(routeId, manager);
-            return DeliveryResponse.from(delivery);
+            boolean completed = delivery.reassignRouteManager(routeId, manager);
+            return new Reassignment(DeliveryResponse.from(delivery),
+                    completed ? new AssignedDelivery(delivery.getId(), delivery.getOrderId()) : null);
         });
+        if (reassignment.completed() != null) {
+            assignmentNotifier.notifyAssigned(List.of(reassignment.completed()));
+        }
+        return reassignment.response();
     }
 
     /** D-05 구간 상태 변경. 현재 배송담당자인 해당 구간 담당자 또는 MASTER, 순번·전이 위반이면 INVALID_STATUS_TRANSITION */
@@ -124,6 +134,9 @@ public class DeliveryService {
         if (!user.isMaster() && (!user.deliveryManager() || !user.isSelf(managerId))) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
+    }
+
+    private record Reassignment(DeliveryResponse response, AssignedDelivery completed) {
     }
 
     private Delivery getDeliveryForUpdate(UUID deliveryId) {

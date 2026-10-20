@@ -3,6 +3,7 @@ package com.sparta.logistics.delivery.presentation;
 import com.sparta.logistics.delivery.application.DeliveryCreationService;
 import com.sparta.logistics.delivery.application.DeliveryQueryService;
 import com.sparta.logistics.delivery.application.DeliveryService;
+import com.sparta.logistics.delivery.application.assignment.DeliveryConfirmationService;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
 import com.sparta.logistics.delivery.presentation.dto.CreateDeliveryRequest;
 import com.sparta.logistics.delivery.application.dto.DeliveryOrderResult;
@@ -26,8 +27,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * order 전용 내부 API(I-09~I-13, I-15, I-17). Gateway에 라우트가 없어 외부에서 부를 수 없다.
- * DTO를 감싸지 않고 반환한다(ADR 0010). I-09·I-11·I-12·I-13은 같은 요청을 다시 보내도 결과가 같다(SA 7.3).
+ * order 전용 내부 API(I-09~I-13, I-15, I-17~I-19). Gateway에 라우트가 없어 외부에서 부를 수 없다.
+ * DTO를 감싸지 않고 반환한다(ADR 0010). I-09·I-11·I-12·I-13·I-18·I-19는 같은 요청을 다시 보내도 결과가 같다(SA 7.3).
  */
 @RestController
 @Tag(name = "내부 배송 API")
@@ -38,6 +39,7 @@ public class InternalDeliveryController {
     private final DeliveryCreationService deliveryCreationService;
     private final DeliveryService deliveryService;
     private final DeliveryQueryService deliveryQueryService;
+    private final DeliveryConfirmationService deliveryConfirmationService;
 
     /** I-09 배송 생성. 새로 만들면 201, 같은 orderId 배송이 이미 있으면 200과 기존 값 */
     @PostMapping
@@ -65,6 +67,16 @@ public class InternalDeliveryController {
     @GetMapping("/orders/{orderId}")
     public DeliveryOrderResult getByOrderId(@PathVariable UUID orderId) {
         return deliveryQueryService.getOrderResult(orderId);
+    }
+
+    /**
+     * I-19 주문 확정. order가 주문을 커밋한 뒤 부르고, 이때부터 구간 담당자를 배정한다(결정 로그 29).
+     * 배정 결과를 기다리지 않고 확정이 커밋되면 200이다. 이미 확정됐으면 같은 응답, 배송이 없으면 404 DELIVERY_NOT_FOUND
+     */
+    @Operation(summary = "I-19 주문 확정(배정 시작)")
+    @PostMapping("/orders/{orderId}/confirm")
+    public DeliveryStatusResult confirm(@PathVariable UUID orderId) {
+        return deliveryConfirmationService.confirm(orderId);
     }
 
     /** I-11 배송 취소 */

@@ -4,15 +4,18 @@ import com.sparta.logistics.common.auth.RequireRole;
 import com.sparta.logistics.common.auth.Role;
 import com.sparta.logistics.common.response.ApiResponse;
 import com.sparta.logistics.delivery.application.DeliveryCreationService;
+import com.sparta.logistics.delivery.application.assignment.DeliveryConfirmationService;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
 import com.sparta.logistics.delivery.application.dto.DeliveryStatusResult;
 import com.sparta.logistics.delivery.presentation.dto.CreateDeliveryRequest;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class LoadTestDeliveryController {
 
     private final DeliveryCreationService deliveryCreationService;
+    private final DeliveryConfirmationService deliveryConfirmationService;
 
     /** 배송 생성. 요청·멱등 규칙은 I-09와 같다. 새로 만들면 201, 같은 orderId 배송이 있으면 200 */
     @RequireRole(Role.MASTER)
@@ -43,5 +47,15 @@ public class LoadTestDeliveryController {
             return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created("배송이 생성되었습니다.", result.delivery()));
         }
         return ResponseEntity.ok(ApiResponse.ok(result.delivery()));
+    }
+
+    /**
+     * 주문 확정(I-19과 같은 처리). 주문을 거치지 않는 측정에서 k6가 생성 뒤 order 대신 보낸다(결정 로그 29).
+     * 확정 요청이 늘어난 비용까지 재려고 생성 요청에 합치지 않고 따로 둔다.
+     */
+    @RequireRole(Role.MASTER)
+    @PostMapping("/orders/{orderId}/confirm")
+    public ApiResponse<DeliveryStatusResult> confirm(@PathVariable UUID orderId) {
+        return ApiResponse.ok(deliveryConfirmationService.confirm(orderId));
     }
 }

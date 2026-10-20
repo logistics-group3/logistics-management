@@ -10,7 +10,7 @@
 | 포트 | 8084 |
 | 스키마·DB 계정 | `order_schema` / `order_app` |
 | 책임 | 주문 생성(Saga 오케스트레이션)·조회·요청사항 수정·취소·삭제, Slack 알림 |
-| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations`, `p_order_deletions`, `p_order_creation_recoveries`, `p_order_creation_recovery_events` (SA 5.5·11, ADR 0019) |
+| 소유 테이블 | `p_orders`, `p_order_cancellations`, `p_order_creations`, `p_order_deletions` (SA 5.5·주문 ADR 0006~0009) |
 
 ## 2. 제공 API (계약)
 
@@ -18,9 +18,6 @@
 |---|---|---|---|---|
 | O-01 | `POST /api/v1/orders` | 요청업체 관리자 본인, MASTER | 구현 | Idempotency-Key 필수·최초 응답 재사용·동시 생성 차단. **비동기 접수**: 접수 전 검증 통과 시 202와 orderId, 배송 생성·저장·보상은 별도 스레드(ADR 0010, 이슈 #16). 같은 키 재요청은 처리 중 202·완료 201. 생성 진행 기록·커밋 재확인·보상·커밋 후 Slack |
 | O-07 | `GET /api/v1/orders/creations/{orderId}` | 주문자 본인, MASTER | 구현 | 생성 진행 조회(PROCESSING·COMPLETED·ABORTED·RECOVERY_REQUIRED). 실패 사유 `failureCode`·`failureMessage`(ADR 0010) |
-| O-08 | `GET /api/v1/orders/creation-recoveries/candidates` | MASTER | 로컬 구현 | PROCESSING·RECOVERY_REQUIRED 조사 목록, createdAt·updatedAt 정렬 |
-| O-09 | `POST /api/v1/orders/{orderId}/creation-recoveries` | MASTER | 로컬 구현 | 실행 중단 확인·복구 ID·attemptId·예상 상태·사유, 같은 ID 재사용·명시적 재개 |
-| O-10 | `GET /api/v1/orders/creation-recoveries/{recoveryId}` | MASTER | 로컬 구현 | RUNNING·DEFERRED·COMPLETED, 실행 ID와 단계별 감사 이력 |
 | O-02 | `GET /api/v1/orders` | 로그인, USER는 본인 주문만 | 구현 | 선택 필터·QueryDSL·페이지·정렬, 내용과 count에 같은 권한 조건 |
 | O-03 | `GET /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | 없음·삭제 404 ORDER_NOT_FOUND, 타인 주문 403 FORBIDDEN |
 | O-04 | `PATCH /api/v1/orders/{orderId}` | 주문자 본인, MASTER | 구현 | requestNote 필수·공백 불가·최대 500자. 취소된 주문은 409 INVALID_STATUS_TRANSITION |
@@ -39,16 +36,19 @@
 | I-10 `GET /internal/deliveries/{deliveryId}` | delivery | 새 ORDERED 삭제의 배송 완료 확인 | 응답 없는 통신 실패에 최대 3회 (`order-delivery-read`), 5xx는 1회 |
 | I-11 `POST /internal/deliveries/{deliveryId}/cancel` | delivery | 집하 시작 여부를 판단하고 배송·구간 취소 | 1회 (`order-delivery-cancel`), 응답 status=CANCELED 확인 |
 | I-12 `POST /internal/deliveries/{deliveryId}/cancel-revert` | delivery | 확인된 로컬 롤백의 배송 원복 | 응답 없는 통신 실패에 최대 3회 (`order-delivery-cancel-revert`), 5xx 응답은 재시도 없음 |
+| I-19 `POST /internal/deliveries/orders/{orderId}/confirm` | delivery | 주문 커밋 뒤 배송 확정(배정 시작). 실패해도 주문 결과는 바꾸지 않고 delivery 안전망(I-21)이 맞춘다 | 응답 없는 통신 실패에 같은 orderId로 총 3회 (`order-delivery-confirm`, read 2초) |
 | I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 생성 실패 보상·O-06 배송 삭제 | 생성 보상은 OrderService가 총 3회. O-06은 요청당 1회, 실패 후 같은 DELETE로 재개. Feign 자체 재시도 없음 |
 | I-15 `GET /internal/deliveries/{deliveryId}/notification-recipients` | delivery | 커밋 후 DM의 현재 담당자 조회 | 통신 실패 시 총 3회 (`order-dm-delivery`), 5xx는 1회 |
 | I-18 `DELETE /internal/deliveries/orders/{orderId}/creation` | delivery | 생성 실패 보상·운영자 복구 조건부 종료 | Feign 재시도 없음, 생성 보상만 최대 3회 |
 | I-17 `GET /internal/deliveries/orders/{orderId}` | delivery | 배송 ID·상태와 CLOSED 확인 | 1회 (`order-delivery-state`) |
+| I-15 `GET /internal/deliveries/{deliveryId}/notification-recipients` | delivery | 배정 완료(I-20) DM의 현재 담당자 조회 | 통신 실패 시 총 3회 (`order-dm-delivery`), 5xx는 1회 |
 | I-16 `GET /internal/users/{userId}/notification-contact` | user | 배송담당 여부·Slack 이메일 조회 | 통신 실패 시 총 3회 (`order-dm-user`), 5xx는 1회 |
 
 `CompanyClientAdapter`와 `DeliveryClientAdapter`가 application 인터페이스를 실제 Feign에 연결한다. 주소는 Eureka 서비스 이름으로 찾고 URL을 하드코딩하지 않는다. 5xx 응답은 재시도하지 않고 공통 디코더가 `SERVICE_UNAVAILABLE`로 바꾼다.
 
 ## 4. 구현 현황
 
+- [x] 배송담당자 DM 시점 변경(T09, delivery 결정 로그 29): 주문 커밋 직후 DM 리스너를 지우고, delivery의 배정 완료 알림(I-20)을 받아 DM을 보낸다. 주문 커밋 뒤 I-19 배송 확정, 수동 지정 필요 채널 알림, I-21 생성 결과. 주문 471개 테스트(2026-10-20)
 - [x] 이메일 기반 배송담당자 Slack DM: 별도 AFTER_COMMIT 리스너·비동기 전송, 워크스페이스·허용 목록 검증, 같은 이벤트의 수신자 중복 제거, 외부 실패 격리. 주문 451개·전체 727개 테스트와 실제 Slack 접수 1건 확인(2026-10-16). [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md), [설정·실패 처리](../../guides/slack-dm.md)
 
 - [x] 주문 Entity와 Flyway 마이그레이션 (`Order`, `OrderStatus`, `V1__create_p_orders.sql`)
@@ -148,6 +148,13 @@ O-06은 MASTER가 본문 없이 호출하며 성공은 200·data=null이다. CAN
 - 내용: hub-service가 재고 고도화로 I-05·I-06을 구현했다. SA 6.3과 다르게 **공급업체 허브 한 곳**에서만 차감한다. I-05 요청은 `orderId, productId, quantity, supplierHubId`(공급업체 허브, I-07의 `hubId`이며 delivery I-09의 `departureHubId`와 같다), 응답은 `{hubId, quantity}` 한 건이다. 재고가 모자라거나 재고 레코드가 없으면 409 `STOCK_INSUFFICIENT`, 같은 `orderId` 재요청은 처음 결과를 반환한다. I-06은 요청 `orderId`, 응답 `restoredQuantity`이며 이력이 없거나 이미 복원했으면 0이다.
 - 2026-10-20 추가: 복원(I-06)까지 끝난 주문을 같은 `orderId`로 다시 I-05하면 409 `STOCK_ALREADY_RESTORED`다(한 주문 ID는 할당과 복원이 한 번씩). 취소 뒤 같은 `orderId`로 재할당하는 흐름이 있으면 알려 달라.
 - 요청: 재고를 켤 때 주문 생성에서 I-05, 실패·취소 보상에서 I-06을 호출할지와 시점을 정해 달라. SA와 다르므로 이 계약을 받아들일지도 확인해 달라. 구현 전이라 order 코드는 바꾸지 않았다.
+- 결정:
+
+### ORDER-003 배정 완료 시점 DM과 내부 API(I-19 호출, I-20, I-21) 리뷰 요청
+- 상태: OPEN
+- 작성: delivery / 한얼 / 2026-10-20
+- 관련: I-19, I-20, I-21, I-15, [ADR 0016](../../decisions/0016-delivery-manager-slack-dm.md), delivery 결정 로그 29, [T09](../../../delivery-service/docs/tasks/T09.md)
+- 내용: delivery가 배정을 주문 확정 뒤로 옮기면서 order 코드를 함께 고쳤다(사용자 결정, 다른 서비스 코드라 PR 본문에 이유를 적는다). 바뀐 것: (1) `OrderService.process`가 주문 커밋 뒤 I-19로 배송을 확정한다. 실패해도 주문은 성공으로 둔다. (2) 주문 커밋 직후 DM 리스너(`DeliveryManagerDmEventListener`)와 `AsyncDeliveryManagerDmSender`를 지우고, I-20(`InternalOrderController`)를 받아 `AssignmentNotificationHandler`가 기존 `DeliveryManagerDmService`로 DM을 보낸다. 업체명은 주문에 없어 company I-07로 다시 읽고 실패하면 이름 없이 보낸다. (3) 후보가 없어 수동 지정으로 넘긴 배송은 채널 Webhook으로 MASTER에게 알린다. (4) delivery 안전망용 I-21을 추가했다. 확인 부탁: DM 시점 변경과 ADR 0016 갱신, 처리 단계 스레드(4개)에서 I-19을 동기로 부르는 것(read 2초, 최대 3회), 업체명 재조회.
 - 결정:
 
 ## 2026-10-20 생성 복구 로컬 확장

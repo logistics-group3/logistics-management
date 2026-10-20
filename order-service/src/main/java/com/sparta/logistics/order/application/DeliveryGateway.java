@@ -10,6 +10,9 @@ public interface DeliveryGateway {
     /** I-09. orderId로 멱등하며 생성한 배송 ID를 반환한다. */
     UUID create(CreateDeliveryCommand command);
 
+    /** I-19 주문 커밋 뒤 배송 확정. orderId로 멱등하며 응답 없는 실패는 다시 보낸다. 배정 결과를 기다리지 않는다. */
+    void confirm(UUID orderId);
+
     /** I-13 한 번 호출. 대상이 없어도 성공이다. 보상 재시도는 OrderService가 맡아 중첩 재시도를 막는다. */
     void deleteByOrderId(UUID orderId);
 
