@@ -70,3 +70,16 @@ P-01·C-05는 업체 잠금 획득 후 활성 상태와 기존 관리자 권한�
 - 작성: kmh / 2026-10-19
 - 내용: I-07, I-08에 `@Cacheable`을 붙였다. 업체 수정은 업체 키를, 상품 수정·삭제는 상품 키를, 업체 삭제는 업체 키와 상품 캐시 전체를 지운다. 트랜잭션 인식 프록시로 감싸 삭제가 커밋 뒤에 일어난다. `company.cache.type`(`COMPANY_CACHE_TYPE`) 기본 `none`은 지금과 같다.
 - 관련: [ADR 0019](../../decisions/0019-redis-cache-measured-adoption.md), [측정 기록](../../reviews/performance/README.md) C1 조건.
+
+### COMPANY-004 재고 초기화(I-04) 호출 요청과 hub의 I-07·I-08 호출 알림
+- 상태: OPEN
+- 작성: hub / 최승근 / 2026-10-19 (2026-10-20: hub의 I-07 호출과 업체 관리자 입고 내용 추가)
+- 관련: hub I-04·H-06, SA 5.3·6.3·6.5, [hub ADR 0003](../hub/decisions/0003-stock-allocation-supplier-hub-only.md)
+- 내용:
+  - I-04: hub-service가 재고 고도화(`feat/hub-adv`)로 `POST /internal/stocks`(요청 `hubId, productId`, 응답 `hubStockId, quantity`)를 구현했다. 상품 생성 시 업체 관리 허브에 호출해 수량 0 재고를 만들어야 한다. 이미 있으면 기존 값을 반환하므로 재호출해도 된다.
+  - I-08: hub는 H-06 입고 때 `GET /internal/products/{productId}`를 호출한다. MASTER 입고는 재고 레코드가 없을 때만, 업체 관리자 입고는 매번 호출한다.
+  - I-07: 업체 관리자 입고는 `GET /internal/companies/{companyId}`도 호출해 `managerId`와 `hubId`로 권한을 판단한다. company 응답은 바꾸지 않았다.
+  - 두 API의 호출자에 hub가 추가되고 company↔hub 양방향 호출이 된다.
+- 요청: (1) I-04 호출 시점(상품 생성, 기존 상품 보정 여부)을 정해 달라. (2) hub가 I-07·I-08을 호출해도 되는지 확인해 달라. 구현 전이라 company 코드는 바꾸지 않았다.
+- 결정:
+

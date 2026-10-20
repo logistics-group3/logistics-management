@@ -141,6 +141,15 @@ O-06은 MASTER가 본문 없이 호출하며 성공은 200·data=null이다. CAN
 - 주문 측 확인(2026-10-15): 현재 O-05는 SA v2.0의 PICKUP_WAITING 기준을 따르며 집하 시작 여부는 I-11이 원자적으로 판단한다. order ADR 0002는 제안 상태로 채택하지 않았다. 주문의 HTTP 대역 검증은 통과했고 제공 서비스와의 실제 통합은 별도 확인 대상이다.
 - 결정: 주문 측 구현 기준을 답변했다. 제공 담당자 확인과 실제 연동 결과는 후속 기록으로 남긴다.
 
+### ORDER-002 재고 할당·복원(I-05, I-06) 계약 변경 알림과 호출 요청
+- 상태: OPEN
+- 작성: hub / 최승근 / 2026-10-19
+- 관련: hub I-05·I-06, SA 6.3, [hub ADR 0003](../hub/decisions/0003-stock-allocation-supplier-hub-only.md)
+- 내용: hub-service가 재고 고도화로 I-05·I-06을 구현했다. SA 6.3과 다르게 **공급업체 허브 한 곳**에서만 차감한다. I-05 요청은 `orderId, productId, quantity, supplierHubId`(공급업체 허브, I-07의 `hubId`이며 delivery I-09의 `departureHubId`와 같다), 응답은 `{hubId, quantity}` 한 건이다. 재고가 모자라거나 재고 레코드가 없으면 409 `STOCK_INSUFFICIENT`, 같은 `orderId` 재요청은 처음 결과를 반환한다. I-06은 요청 `orderId`, 응답 `restoredQuantity`이며 이력이 없거나 이미 복원했으면 0이다.
+- 2026-10-20 추가: 복원(I-06)까지 끝난 주문을 같은 `orderId`로 다시 I-05하면 409 `STOCK_ALREADY_RESTORED`다(한 주문 ID는 할당과 복원이 한 번씩). 취소 뒤 같은 `orderId`로 재할당하는 흐름이 있으면 알려 달라.
+- 요청: 재고를 켤 때 주문 생성에서 I-05, 실패·취소 보상에서 I-06을 호출할지와 시점을 정해 달라. SA와 다르므로 이 계약을 받아들일지도 확인해 달라. 구현 전이라 order 코드는 바꾸지 않았다.
+- 결정:
+
 ## 2026-10-20 생성 복구 로컬 확장
 
 [ADR 0019](../../decisions/0019-order-creation-operator-recovery.md)에 따라 두 서비스의 통합 구현을 진행했다. 팀 전체 승인을 뜻하지 않는다.

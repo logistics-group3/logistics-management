@@ -34,6 +34,8 @@
 |---|---|---|---|
 | `HUB_NOT_FOUND` | 404 | 허브가 없음 | 구현 |
 | `HUB_ROUTE_NOT_FOUND` | 404 | 허브 간 경로가 없음 | 구현 |
+| `STOCK_INSUFFICIENT` | 409 | 공급업체 허브의 재고가 모자라거나 재고 레코드가 없음(I-05, 고도화) | 구현 |
+| `STOCK_ALREADY_RESTORED` | 409 | 이미 복원한 주문을 같은 `orderId`로 다시 할당함(I-05, 고도화) | 구현 |
 
 ## company-service (`CompanyErrorCode`)
 | 코드 | HTTP | 의미 | 상태 |
