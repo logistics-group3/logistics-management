@@ -4,6 +4,7 @@
 
 - 학습 범위: [roadmap.md](roadmap.md)
 - 구현 스텝 기록: [steps/](steps/README.md)
+- 프로젝트 회고: [물류 MSA 프로젝트에서 배운 것과 생활의 변화](blog/2026-10-20-project-retrospective.md)
 
 ## 하루 정리와 기술블로그
 
