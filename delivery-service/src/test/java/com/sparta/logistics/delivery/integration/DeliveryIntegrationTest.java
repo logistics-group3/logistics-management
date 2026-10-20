@@ -18,6 +18,7 @@ import com.sparta.logistics.delivery.application.DeliveryCreationService;
 import com.sparta.logistics.delivery.application.DeliveryManagerReader;
 import com.sparta.logistics.delivery.application.DeliveryQueryService;
 import com.sparta.logistics.delivery.application.DeliveryService;
+import com.sparta.logistics.delivery.application.assignment.DeliveryConfirmationService;
 import com.sparta.logistics.delivery.application.HubRouteReader;
 import com.sparta.logistics.delivery.application.RecipientReader;
 import com.sparta.logistics.delivery.application.DeliveryQueryRepository;
@@ -74,6 +75,8 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
 
     @Autowired
     private DeliveryCreationService deliveryCreationService;
+    @Autowired
+    private DeliveryConfirmationService deliveryConfirmationService;
     @Autowired
     private DeliveryService deliveryService;
     @Autowired
@@ -305,8 +308,11 @@ class DeliveryIntegrationTest extends PostgresIntegrationTest {
         return headers;
     }
 
+    /** order처럼 배송을 만들고 주문 커밋 뒤 확정한다(I-09 → I-19). 테스트 설정은 확정 직후 같은 스레드에서 배정한다. */
     private UUID create(UUID orderId) {
-        return deliveryCreationService.create(command(orderId)).delivery().deliveryId();
+        UUID deliveryId = deliveryCreationService.create(command(orderId)).delivery().deliveryId();
+        deliveryConfirmationService.confirm(orderId);
+        return deliveryId;
     }
 
     private void givenManagers(Map<UUID, List<UUID>> managersByHub) {

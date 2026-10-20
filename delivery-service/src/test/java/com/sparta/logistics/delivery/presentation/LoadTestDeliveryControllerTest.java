@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import com.sparta.logistics.delivery.application.DeliveryCreationService;
+import com.sparta.logistics.delivery.application.assignment.DeliveryConfirmationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -17,6 +18,7 @@ class LoadTestDeliveryControllerTest {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withBean(DeliveryCreationService.class, () -> mock(DeliveryCreationService.class))
+            .withBean(DeliveryConfirmationService.class, () -> mock(DeliveryConfirmationService.class))
             .withUserConfiguration(LoadTestDeliveryController.class);
 
     @Test

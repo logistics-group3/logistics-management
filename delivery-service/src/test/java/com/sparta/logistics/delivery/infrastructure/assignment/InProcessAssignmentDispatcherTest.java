@@ -25,9 +25,9 @@ import org.junit.jupiter.api.Test;
 class InProcessAssignmentDispatcherTest {
 
     private static final UUID HUB = UUID.randomUUID();
-    private static final AssignmentResult DONE = new AssignmentResult(AssignmentResult.Outcome.ASSIGNED, 1, List.of(), false);
-    private static final AssignmentResult MORE = new AssignmentResult(AssignmentResult.Outcome.ASSIGNED, 1, List.of(), true);
-    private static final AssignmentResult BUSY = new AssignmentResult(AssignmentResult.Outcome.BUSY, 0, List.of(), false);
+    private static final AssignmentResult DONE = new AssignmentResult(AssignmentResult.Outcome.ASSIGNED, 1, List.of(), List.of(), false);
+    private static final AssignmentResult MORE = new AssignmentResult(AssignmentResult.Outcome.ASSIGNED, 1, List.of(), List.of(), true);
+    private static final AssignmentResult BUSY = new AssignmentResult(AssignmentResult.Outcome.BUSY, 0, List.of(), List.of(), false);
 
     private final ManagerAssignmentService service = mock(ManagerAssignmentService.class);
     private final ExecutorService executor = Executors.newFixedThreadPool(2);

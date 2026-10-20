@@ -5,7 +5,10 @@ import static com.sparta.logistics.delivery.DeliveryFixture.RECEIVER_MANAGER;
 import static com.sparta.logistics.delivery.DeliveryFixture.SUPPLIER_MANAGER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 
 import com.sparta.logistics.common.auth.Role;
@@ -13,6 +16,8 @@ import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.delivery.DeliveryFixture;
+import com.sparta.logistics.delivery.application.assignment.AssignedDelivery;
+import com.sparta.logistics.delivery.application.assignment.AssignmentNotifier;
 import com.sparta.logistics.delivery.application.dto.ChangeRouteStatusCommand;
 import com.sparta.logistics.delivery.application.dto.DeliveryResponse;
 import com.sparta.logistics.delivery.application.dto.UpdateRecipientCommand;
@@ -23,6 +28,7 @@ import com.sparta.logistics.delivery.domain.DeliveryManager;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
 import com.sparta.logistics.delivery.domain.DeliveryStatus;
 import com.sparta.logistics.delivery.domain.RouteStatus;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +56,8 @@ class DeliveryServiceTest {
     private DeliveryManagerReader deliveryManagerReader;
     @Mock
     private AuditorAware<String> auditorAware;
+    @Mock
+    private AssignmentNotifier assignmentNotifier;
     private DeliveryService deliveryService;
 
     private Delivery delivery;
@@ -57,7 +65,7 @@ class DeliveryServiceTest {
     @BeforeEach
     void setUp() {
         deliveryService = new DeliveryService(deliveryRepository, closureRepository, deliveryManagerReader, auditorAware,
-                TransactionOperations.withoutTransaction());
+                TransactionOperations.withoutTransaction(), assignmentNotifier);
         delivery = DeliveryFixture.threeRoutes();
         // 담당자 조회가 먼저 실패하는 D-04 테스트에서는 배송을 읽지 않으므로 lenient
         lenient().when(deliveryRepository.findByIdForUpdate(delivery.getId())).thenReturn(Optional.of(delivery));
@@ -79,6 +87,34 @@ class DeliveryServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(CommonErrorCode.FORBIDDEN);
         assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.PICKUP_WAITING);
+    }
+
+    @Test
+    @DisplayName("D-04로 확정된 배송의 마지막 빈 구간을 채우면 커밋 뒤 order에 배정 완료를 한 번 알린다(수동 지정)")
+    void manualAssignmentCompletesDelivery() {
+        Delivery awaiting = DeliveryFixture.confirmedAwaitingManager();
+        given(deliveryRepository.findByIdForUpdate(awaiting.getId())).willReturn(Optional.of(awaiting));
+        given(deliveryManagerReader.findById(SUPPLIER_MANAGER))
+                .willReturn(Optional.of(new DeliveryManager(SUPPLIER_MANAGER, DeliveryFixture.SUPPLIER_HUB)));
+        UUID pickup = awaiting.getRoutes().get(0).getId();
+        UUID lastMile = awaiting.getRoutes().get(1).getId();
+
+        deliveryService.reassignManager(awaiting.getId(), pickup, SUPPLIER_MANAGER);
+        then(assignmentNotifier).should(never()).notifyAssigned(any());
+
+        deliveryService.reassignManager(awaiting.getId(), lastMile, SUPPLIER_MANAGER);
+        then(assignmentNotifier).should().notifyAssigned(List.of(new AssignedDelivery(awaiting.getId(), awaiting.getOrderId())));
+    }
+
+    @Test
+    @DisplayName("D-04로 이미 담당자가 있는 구간의 담당자만 바꾸면 배정 완료 알림을 보내지 않는다")
+    void reassignDoesNotNotify() {
+        given(deliveryManagerReader.findById(SUPPLIER_MANAGER))
+                .willReturn(Optional.of(new DeliveryManager(SUPPLIER_MANAGER, DeliveryFixture.SUPPLIER_HUB)));
+
+        deliveryService.reassignManager(delivery.getId(), routeId(0), SUPPLIER_MANAGER);
+
+        then(assignmentNotifier).shouldHaveNoInteractions();
     }
 
     @Test

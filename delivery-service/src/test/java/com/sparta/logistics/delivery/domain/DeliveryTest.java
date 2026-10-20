@@ -225,6 +225,31 @@ class DeliveryTest {
         assertError(call, CommonErrorCode.INVALID_STATUS_TRANSITION);
     }
 
+    @Test
+    @DisplayName("주문 확정은 처음 한 번만 확정 시각을 남기고 다시 불러도 그대로다")
+    void confirmIsIdempotent() {
+        Delivery delivery = DeliveryFixture.unassigned(SUPPLIER_HUB, RECEIVER_HUB);
+
+        assertThat(delivery.isConfirmed()).isFalse();
+        assertThat(delivery.confirm()).isTrue();
+        Object confirmedAt = delivery.getConfirmedAt();
+        assertThat(delivery.confirm()).isFalse();
+        assertThat(delivery.getConfirmedAt()).isEqualTo(confirmedAt);
+        assertThat(delivery.hubsAwaitingManager()).containsExactlyInAnyOrder(SUPPLIER_HUB, RECEIVER_HUB);
+    }
+
+    @Test
+    @DisplayName("수동 지정 요청은 배정 대기 구간이 있을 때 한 번만 남는다")
+    void requestManualAssignmentOnce() {
+        Delivery awaiting = DeliveryFixture.confirmedAwaitingManager();
+        assertThat(awaiting.requestManualAssignment()).isTrue();
+        assertThat(awaiting.requestManualAssignment()).isFalse();
+
+        Delivery assigned = DeliveryFixture.twoRoutes();
+        assertThat(assigned.requestManualAssignment()).isFalse();
+        assertThat(assigned.getManualAssignmentRequestedAt()).isNull();
+    }
+
     private static void assertError(ThrowingCallable call, ErrorCode expected) {
         assertThatThrownBy(call)
                 .isInstanceOf(BusinessException.class)

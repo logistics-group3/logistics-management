@@ -1,5 +1,6 @@
 package com.sparta.logistics.delivery.domain;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -36,10 +37,16 @@ public interface DeliveryRepository {
     boolean tryLockHubAssignment(UUID hubId);
 
     /**
-     * 이 허브가 담당하는 배정 대기 구간이 있는 배송을 오래된 순으로 최대 limit건 잠근다. 다른 요청이 잡고 있는 배송은 기다리지 않고
-     * 건너뛴다(SKIP LOCKED). 트랜잭션 안에서만 부른다.
+     * 이 허브가 담당하는 배정 대기 구간이 있는 배송을 오래된 순으로 최대 limit건 잠근다. 확정됐고 수동 지정으로 넘기지 않은 배송만 본다
+     * (결정 로그 29). 다른 요청이 잡고 있는 배송은 기다리지 않고 건너뛴다(SKIP LOCKED). 트랜잭션 안에서만 부른다.
      */
     List<UUID> lockDeliveriesAwaitingManager(UUID hubId, int limit);
+
+    /**
+     * {@link #lockDeliveriesAwaitingManager}와 같되, confirmedBefore 전에 확정된 배송만 잠근다. 후보가 없는 상태가 기준 시간을 넘은
+     * 배송을 수동 지정으로 넘길 때 쓴다(결정 로그 29). 트랜잭션 안에서만 부른다.
+     */
+    List<UUID> lockDeliveriesAwaitingManagerConfirmedBefore(UUID hubId, LocalDateTime confirmedBefore, int limit);
 
     /** 배송과 구간을 한 번에 읽는다. 배정 작업이 잠근 배송들을 읽을 때 쓴다. */
     List<Delivery> findAllWithRoutesByIdIn(Collection<UUID> ids);

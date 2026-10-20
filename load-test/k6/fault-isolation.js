@@ -15,6 +15,8 @@ const CLIENT_TIMEOUT = __ENV.CLIENT_TIMEOUT || '10s';
 const CREATE_NAME = TARGET === 'delivery' ? 'I-09 직접' : 'O-01';
 // 주문 경로(TARGET=order)에서는 delivery를 부르지 않는 주문 목록(O-02)을 조회 대상으로 둔다. order 스레드가 묶이면 이것도 느려진다.
 const READ_NAME = TARGET === 'delivery' ? 'D-01 허브별' : 'O-02 목록';
+const CONFIRM_NAME = 'I-19 직접';
+const CONFIRM = (__ENV.CONFIRM || '1') !== '0';
 const PHASES = ['nofault', 'before', 'fault', 'recovery', 'after'];
 
 function phase() {
@@ -29,7 +31,7 @@ function phase() {
 
 // Note: k6 요약은 임계값이 걸린 하위 지표만 따로 보여 준다. 판정용이 아니라 구간별 줄을 요약에 내기 위한 항상 참인 임계값이다.
 const thresholds = {};
-for (const name of [CREATE_NAME, READ_NAME]) {
+for (const name of [CREATE_NAME, READ_NAME, CONFIRM_NAME]) {
   for (const p of PHASES) {
     thresholds[`http_req_duration{name:${name},phase:${p}}`] = ['max>=0'];
     thresholds[`http_req_failed{name:${name},phase:${p}}`] = ['rate>=0'];
@@ -74,8 +76,9 @@ function tagged(token, name, headers) {
 export function create(data) {
   let res;
   if (TARGET === 'delivery') {
+    const orderId = uuid();
     res = http.post(`${BASE_URL}/api/v1/deliveries/load-test`, JSON.stringify({
-      orderId: uuid(),
+      orderId,
       supplierCompanyId: SEED.supplierCompany,
       receiverCompanyId: SEED.receiverCompany,
       departureHubId: SEED.seoulHub,
@@ -85,6 +88,12 @@ export function create(data) {
       recipientName: 'k6 수령인',
       receiverManagerId: SEED.receiverManager,
     }), tagged(data.creator, CREATE_NAME));
+    // 결정 로그 29: 배정은 주문 확정(I-19) 뒤에 한다. order 대신 확정을 보낸다. CONFIRM=0이면 T08처럼 생성만 잰다(배정 안 됨)
+    if (CONFIRM && res.status === 201) {
+      const confirm = http.post(`${BASE_URL}/api/v1/deliveries/load-test/orders/${orderId}/confirm`, null,
+        tagged(data.creator, CONFIRM_NAME));
+      check(confirm, { [`${CONFIRM_NAME} 200`]: (r) => r.status === 200 });
+    }
   } else {
     const key = `k6-fault-${__VU}-${__ITER}-${Date.now()}`;
     res = http.post(`${BASE_URL}/api/v1/orders`, JSON.stringify({

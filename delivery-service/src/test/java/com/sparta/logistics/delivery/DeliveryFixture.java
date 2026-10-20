@@ -38,16 +38,24 @@ public final class DeliveryFixture {
                 Map.of(SUPPLIER_HUB, List.of(SUPPLIER_MANAGER), RECEIVER_HUB, List.of(RECEIVER_MANAGER)), Map.of());
     }
 
-    /** 담당자 없이 만든 뒤 허브별 배정을 한 번씩 돌린 상태(결정 로그 27). 배정 전 상태가 필요하면 {@link #unassigned}. */
+    /** 같은 허브 2구간, 주문 확정 뒤 아직 배정 전. ID가 채워져 있다(결정 로그 29) */
+    public static Delivery confirmedAwaitingManager() {
+        Delivery delivery = withIds(unassigned(SUPPLIER_HUB, SUPPLIER_HUB));
+        delivery.confirm();
+        return delivery;
+    }
+
+    /** 담당자 없이 만들고 주문 확정 뒤 허브별 배정을 한 번씩 돌린 상태(결정 로그 27·29). 배정 전 상태가 필요하면 {@link #unassigned}. */
     private static Delivery create(UUID departureHub, UUID destinationHub) {
         Delivery delivery = unassigned(departureHub, destinationHub);
+        delivery.confirm();
         ManagerAssigner assigner = assigner();
         delivery.assignPendingRoutes(SUPPLIER_HUB, assigner);
         delivery.assignPendingRoutes(RECEIVER_HUB, assigner);
         return delivery;
     }
 
-    /** 배송 생성 직후: 모든 구간이 배정 대기 */
+    /** 배송 생성 직후: 미확정, 모든 구간이 배정 대기 */
     public static Delivery unassigned(UUID departureHub, UUID destinationHub) {
         return Delivery.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), departureHub, destinationHub,
                 "경기도 고양시 일산동구 중앙로 1234", "부산광역시 중구 자갈치해안로 52", "부산수산도매", "U02BCDEF3GH",

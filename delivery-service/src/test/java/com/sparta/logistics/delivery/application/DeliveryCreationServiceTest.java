@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 
 import com.sparta.logistics.common.exception.BusinessException;
 import com.sparta.logistics.delivery.DeliveryFixture;
-import com.sparta.logistics.delivery.application.assignment.AssignmentTrigger;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryCommand;
 import com.sparta.logistics.delivery.application.dto.CreateDeliveryResult;
 import com.sparta.logistics.delivery.domain.Delivery;
@@ -18,7 +17,6 @@ import com.sparta.logistics.delivery.domain.DeliveryErrorCode;
 import com.sparta.logistics.delivery.domain.DeliveryRepository;
 import com.sparta.logistics.delivery.domain.DeliveryRoute;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,19 +42,17 @@ class DeliveryCreationServiceTest {
     private HubRouteReader hubRouteReader;
     @Mock
     private RecipientReader recipientReader;
-    @Mock
-    private AssignmentTrigger assignmentTrigger;
     private DeliveryCreationService deliveryCreationService;
 
     @BeforeEach
     void setUp() {
         deliveryCreationService = new DeliveryCreationService(deliveryRepository, closureRepository, hubRouteReader,
-                recipientReader, TransactionOperations.withoutTransaction(), assignmentTrigger);
+                recipientReader, TransactionOperations.withoutTransaction());
     }
 
     @Test
-    @DisplayName("배송담당자 후보를 보지 않고 구간을 담당자 없이 저장한 뒤, 구간 담당 허브 두 곳의 배정을 깨운다")
-    void savesWithoutManagersAndRequestsAssignment() {
+    @DisplayName("배송담당자 후보를 보지 않고 구간을 담당자 없이 미확정으로 저장한다. 배정은 주문 확정(I-19) 뒤에 한다")
+    void savesUnconfirmedWithoutManagers() {
         CreateDeliveryCommand command = command(SUPPLIER_HUB, RECEIVER_HUB);
         givenNoExistingDelivery(command);
         given(hubRouteReader.getExpectedRoute(SUPPLIER_HUB, RECEIVER_HUB)).willReturn(DeliveryFixture.HUB_ROUTE);
@@ -70,11 +66,11 @@ class DeliveryCreationServiceTest {
         assertThat(saved.getRoutes()).extracting(DeliveryRoute::getManagingHubId)
                 .containsExactly(SUPPLIER_HUB, SUPPLIER_HUB, RECEIVER_HUB);
         assertThat(saved.getRecipientSlackId()).isEqualTo("U02BCDEF3GH");
-        then(assignmentTrigger).should().request(Set.of(SUPPLIER_HUB, RECEIVER_HUB));
+        assertThat(saved.isConfirmed()).isFalse();
     }
 
     @Test
-    @DisplayName("같은 허브면 I-03을 부르지 않고 2구간을 만들며, 그 허브 하나만 깨운다")
+    @DisplayName("같은 허브면 I-03을 부르지 않고 2구간을 만든다")
     void sameHub() {
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
         givenNoExistingDelivery(command);
@@ -86,11 +82,10 @@ class DeliveryCreationServiceTest {
         assertThat(saved.getRoutes()).hasSize(2);
         assertThat(saved.getRecipientSlackId()).isNull();
         then(hubRouteReader).shouldHaveNoInteractions();
-        then(assignmentTrigger).should().request(Set.of(SUPPLIER_HUB));
     }
 
     @Test
-    @DisplayName("같은 orderId 배송이 이미 있으면 다른 서비스를 부르지 않고 기존 배송을 돌려주며 배정을 깨우지 않는다")
+    @DisplayName("같은 orderId 배송이 이미 있으면 다른 서비스를 부르지 않고 기존 배송을 돌려준다")
     void existingOrder() {
         Delivery existing = DeliveryFixture.threeRoutes();
         CreateDeliveryCommand command = command(SUPPLIER_HUB, RECEIVER_HUB);
@@ -102,11 +97,10 @@ class DeliveryCreationServiceTest {
         assertThat(result.delivery().deliveryId()).isEqualTo(existing.getId());
         then(hubRouteReader).shouldHaveNoInteractions();
         then(deliveryRepository).should(never()).saveAndFlush(any());
-        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     @Test
-    @DisplayName("저장 시점에 order_id 유니크 위반(동시 요청)이면 먼저 저장된 배송을 돌려주고 배정은 먼저 저장한 쪽에 맡긴다")
+    @DisplayName("저장 시점에 order_id 유니크 위반(동시 요청)이면 먼저 저장된 배송을 돌려준다")
     void concurrentDuplicate() {
         Delivery winner = DeliveryFixture.twoRoutes();
         CreateDeliveryCommand command = command(SUPPLIER_HUB, SUPPLIER_HUB);
@@ -119,7 +113,6 @@ class DeliveryCreationServiceTest {
 
         assertThat(result.created()).isFalse();
         assertThat(result.delivery().deliveryId()).isEqualTo(winner.getId());
-        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     @Test
@@ -135,7 +128,6 @@ class DeliveryCreationServiceTest {
         then(hubRouteReader).shouldHaveNoInteractions();
         then(recipientReader).shouldHaveNoInteractions();
         then(deliveryRepository).should(never()).saveAndFlush(any());
-        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     @Test
@@ -152,7 +144,6 @@ class DeliveryCreationServiceTest {
                 .extracting("errorCode").isEqualTo(DeliveryErrorCode.DELIVERY_CREATION_CLOSED);
         then(closureRepository).should().lockOrder(command.orderId());
         then(deliveryRepository).should(never()).saveAndFlush(any());
-        then(assignmentTrigger).shouldHaveNoInteractions();
     }
 
     private void givenNoExistingDelivery(CreateDeliveryCommand command) {
