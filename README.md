@@ -140,7 +140,7 @@ docker compose exec gateway-service curl -s http://user-service:8081/actuator/he
 
 ## ERD
 
-서비스마다 스키마를 따로 두고, 서비스 사이의 참조는 FK 없이 UUID로만 잇는다. 아래 그림에서 실선은 같은 스키마 안의 FK, 점선은 서비스 사이의 논리 참조다. 테이블은 모두 18개다.
+서비스마다 스키마를 따로 두고, 서비스 사이의 참조는 FK 없이 UUID로만 잇는다. 아래 그림에서 실선은 같은 스키마 안의 FK, 점선은 서비스 사이의 논리 참조다. 테이블은 모두 16개다(user 1, company 2, hub 4, order 6, delivery 3).
 
 ```mermaid
 erDiagram
