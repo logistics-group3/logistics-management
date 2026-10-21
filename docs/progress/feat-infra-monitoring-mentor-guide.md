@@ -19,7 +19,7 @@
 - [x] `d20ef84` 멘토 테스트 가이드 `/guide`, 로그인 화면 계정 입력, 시나리오 시드 데이터, E2E(스텝 50)
   - 프런트 build·lint·format, 단위 테스트 46개 통과
   - E2E: 기존 15개 통과(허브 선택 조건 수정 후), 가이드 2개 통과(색 대비 수정 후). 수정 뒤 17개를 한 번에 다시 돌리지는 않았다
-- [x] 문서: `docs/guides/monitoring.md`, `docs/guides/mentor-test.md`, 보안 규칙 S4·S5, 로컬 실행, README들. `script/docs-check.sh` OK
+- [x] 문서: `docs/guides/monitoring.md`, `docs/guides/scenario-test.md`, 보안 규칙 S4·S5, 로컬 실행, README들. `script/docs-check.sh` OK
 - [x] 검증 환경 복구
   - `.env.ui-test`의 `SLACK_DM_ENABLED`를 원래 값(true)으로 되돌렸다(백업과 동일 확인). UI 테스트 스택은 작업 전처럼 내렸다
   - 개발 스택을 원래 테스트 모드(`API_TEST_SQL=DEBUG script/api-test.sh up`)로 다시 올리고 prometheus·grafana를 띄웠다. 수집 대상 6개 up

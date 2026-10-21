@@ -109,7 +109,7 @@ export function Login() {
         전용 테스트 환경
       </div>
       <p className="login-help">
-        <Link to="/guide">멘토 테스트 가이드</Link>
+        <Link to="/guide">시나리오 테스트 가이드</Link>
         <br />
         새로고침 후에는 다시 로그인이 필요합니다.
       </p>
