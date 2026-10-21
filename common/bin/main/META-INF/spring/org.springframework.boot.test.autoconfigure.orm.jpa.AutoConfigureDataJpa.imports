@@ -1,0 +1,2 @@
+com.sparta.logistics.common.autoconfigure.CommonJpaAutoConfiguration
+com.sparta.logistics.common.autoconfigure.CommonQuerydslAutoConfiguration
