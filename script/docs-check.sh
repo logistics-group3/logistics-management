@@ -19,7 +19,7 @@ esac
 if [[ "$mode" == hook ]]; then
   input="$(cat 2>/dev/null || true)"
   # 훅이 이미 에이전트를 한 번 이어서 실행시켰다면 다시 막지 않는다(무한 반복 방지)
-  if printf '%s' "$input" | grep -q '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
+  if grep -q '"stop_hook_active"[[:space:]]*:[[:space:]]*true' <<< "$input"; then
     exit 0
   fi
 fi
@@ -58,7 +58,8 @@ done <<< "$changed"
 missing=""
 while IFS= read -r doc; do
   [[ -n "$doc" ]] || continue
-  printf '%s\n' "$changed" | grep -Fxq "$doc" || missing+="  - $doc"$'\n'
+  # Note: 파이프로 넘기면 grep -q가 첫 일치에서 먼저 끝나 printf가 SIGPIPE를 받고, pipefail 때문에 변경 파일이 많을 때(수백 개 이상) 있는 문서를 누락으로 오판한다.
+  grep -Fxq -- "$doc" <<< "$changed" || missing+="  - $doc"$'\n'
 done <<< "$(printf '%s' "$required" | sort -u)"
 
 if [[ -z "$missing" ]]; then
