@@ -1,7 +1,7 @@
 # 코드 품질 감사 — 2026-10-20
 
 디렉토리와 백엔드 계층 분리는 대체로 적절하다. 우선 고칠 문제는 구조 이름보다 동시 수정에 의한 데이터 복원·덮어쓰기와 프런트의 응답 유실 처리다.
-감사 당시 운영 코드는 수정하지 않았다. 이후 6번은 오탐으로 철회했고 1·2번은 수정했다(각 항목 참고). 아래 수정안은 당시 제안이며 팀 설계를 변경한 결정이 아니다.
+감사 당시 운영 코드는 수정하지 않았다. 이후 6번은 오탐으로 철회했고 나머지 7개는 모두 수정했다(각 항목 참고). 아래 수정안은 당시 제안이며 팀 설계를 변경한 결정이 아니다.
 
 ## 범위와 기준
 
@@ -61,6 +61,8 @@
 
 ### 3. [P1] 응답 본문 수신 실패가 업체·상품 중복 등록 방어를 우회한다
 
+- 처리(2026-10-21, `feat/company-write-lock`): 본문 읽기(`response.text()`)를 통신 오류 변환 try 안으로 옮겼다. 본문 수신 실패 단위 테스트(`api.test.ts`)를 추가했다.
+
 - 위치: [api.ts:59](../../frontend/src/shared/api.ts#L59), [CompanyForm.tsx:72](../../frontend/src/features/CompanyForm.tsx#L72), [ProductForm.tsx:78](../../frontend/src/features/ProductForm.tsx#L78).
 - 역할: `api()`는 통신 오류를 `ApiError(0)`로 바꾸고, 등록 폼은 이 오류를 받으면 결과 미확정 상태로 잠근다.
 - 문제: try/catch가 `fetch()`까지만 감싸고 `response.text()`는 밖에 있다. 서버가 201 헤더를 보낸 뒤 본문 수신이 끊기면 원시 `TypeError`가 올라와 폼의 `uncertain` 조건이 거짓이 된다. 실제 api.ts와 실패하는 표준 Response 스트림으로 이 분기를 확인했다.
@@ -71,6 +73,8 @@
 
 ### 4. [P2] 배송 담당자 이름 조회가 공통 조회를 복제하면서 첫 50명만 읽는다
 
+- 처리(2026-10-21, `feat/company-write-lock`): `DeliverySheet`가 `useUsersDirectory`를 재사용한다. 별도 `route-names` 조회와 50명 제한을 없앴다.
+
 - 위치: [DeliverySheet.tsx:22](../../frontend/src/features/DeliverySheet.tsx#L22), [queries.ts:34](../../frontend/src/shared/queries.ts#L34).
 - 역할: MASTER 배송 상세에서 구간 담당자 이름을 보여 준다.
 - 문제: 업체 화면은 전체 페이지를 읽는 `useUsersDirectory`를 쓰지만 배송 화면은 별도 캐시 키로 `/users?size=50` 한 페이지만 읽는다. 담당자가 두 번째 페이지에 있으면 실제 사용자가 있어도 이름 대신 짧은 UUID를 표시한다. 이는 호출·분기 추적으로 확인했으며 51명 브라우저 시나리오는 실행하지 않았다.
@@ -78,6 +82,8 @@
 - 방치 시: 사용자 수와 화면에 따라 같은 담당자의 이름 표시가 달라지고, 사용자 목록 요청·캐시도 중복된다.
 
 ### 5. [P2] 같은 I-17 결과를 읽는 두 함수의 검증이 이미 달라졌다
+
+- 처리(2026-10-21, `feat/company-write-lock`): `isCreationClosed`가 검증된 `getCreationState`를 호출한 뒤 상태만 비교한다. `DeliveryClientAdapterTest`를 추가했다.
 
 - 위치: [DeliveryClientAdapter.java:49](../../order-service/src/main/java/com/sparta/logistics/order/infrastructure/client/DeliveryClientAdapter.java#L49), [DeliveryClientAdapter.java:58](../../order-service/src/main/java/com/sparta/logistics/order/infrastructure/client/DeliveryClientAdapter.java#L58).
 - 역할: `isCreationClosed`는 정상 생성 실패 보상에서, `getCreationState`는 운영자 복구에서 배송 결과를 읽는다.
@@ -95,6 +101,8 @@
 
 ### 7. [P3] 운영자 복구가 기존 MASTER 검사 함수를 다시 구현했다
 
+- 처리(2026-10-21, `feat/company-write-lock`): 로컬 `requireMaster`를 지우고 `user.validateMaster()`를 호출한다.
+
 - 위치: [OrderCreationRecoveryService.java:89](../../order-service/src/main/java/com/sparta/logistics/order/application/OrderCreationRecoveryService.java#L89), [UserContext.java:32](../../common/src/main/java/com/sparta/logistics/common/auth/UserContext.java#L32).
 - 역할: MASTER가 아니면 403을 던진다.
 - 문제: 로컬 `requireMaster`는 이미 있는 `user.validateMaster()`와 같은 역할·오류를 다시 정의한다. 복구 메서드 3곳이 이 사본을 호출한다.
@@ -102,6 +110,8 @@
 - 방치 시: 공통 권한 정책을 바꿀 때 별도 구현도 찾아야 한다. 현재 권한 우회가 확인된 것은 아니다.
 
 ### 8. [P3] 운영 호출이 없는 논리 삭제 헬퍼와 구현을 되풀이하는 테스트가 남아 있다
+
+- 처리(2026-10-21, `feat/company-write-lock`): `notDeleted`와 전용 테스트·미사용 import를 지우고 학습 문서 step-17에 현재 방식을 표시했다.
 
 - 위치: [QuerydslSupport.java:25](../../common/src/main/java/com/sparta/logistics/common/querydsl/QuerydslSupport.java#L25), [QuerydslSupportTest.java:51](../../common/src/test/java/com/sparta/logistics/common/querydsl/QuerydslSupportTest.java#L51).
 - 역할: `notDeleted(path)`가 `path.isNull()`을 반환한다.
