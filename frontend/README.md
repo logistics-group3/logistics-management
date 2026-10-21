@@ -119,7 +119,7 @@ script/ui-test.sh down     # 테스트 컨테이너만 중지·제거, DB 볼륨
 script/ui-test.sh up       # 같은 DB로 다시 실행
 ```
 
-프런트는 실행 터미널에서 Ctrl+C로 중지한다. 소스 변경은 Vite가 반영하고, 백엔드 변경은 테스트 스택의 `up`으로 다시 빌드한다. `.env.ui-test`는 최초 한 번 별도 DB/JWT 비밀값을 생성한다. 기존 개발 환경의 `.env`, `logistics-management` 프로젝트와 DB 볼륨은 사용하지 않는다. 테스트 스택에서는 Slack Webhook을 항상 비운다.
+프런트는 실행 터미널에서 Ctrl+C로 중지한다. 소스 변경은 Vite가 반영하고, 백엔드 변경은 테스트 스택의 `up`으로 다시 빌드한다. `.env.ui-test`는 최초 한 번 별도 DB/JWT 비밀값을 생성한다. 기존 개발 환경의 `.env`, `logistics-management` 프로젝트와 DB 볼륨은 사용하지 않는다. 앞단 Docker 네트워크도 개발 스택과 다른 대역(`10.210.30.0/24`)으로 만들어 함께 띄울 수 있다. 테스트 스택에서는 Slack Webhook을 항상 비운다.
 
 ## 구현 구조와 이유
 

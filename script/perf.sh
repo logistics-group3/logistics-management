@@ -69,6 +69,10 @@ compose() {
     # shellcheck disable=SC1090
     source "$ENV_FILE"
     set +a
+    # 앞단 네트워크 대역을 개발 스택(10.210.10)과 다르게 둔다. 대역이 겹치면 함께 띄울 때 네트워크 생성이 실패한다.
+    if ! grep -q '^LOGISTICS_NET_SUBNET=' "$ENV_FILE"; then
+      export LOGISTICS_NET_SUBNET=10.210.20.0/24 LOGISTICS_NET_PREFIX=10.210.20.
+    fi
     docker compose -p "$PROJECT" --env-file "$ENV_FILE" -f docker-compose.yml -f "$TOOL/compose.perf.yml" "$@"
   )
 }

@@ -37,7 +37,9 @@ if values.get('SLACK_DM_ENABLED', 'false').strip().lower() in ('true', '1', 'yes
     raise SystemExit('UI 테스트에서 DM을 켤 때는 승인된 수신자 이메일 허용 목록이 필요하다.')
 # Note: 포트 값이 없던 기존 .env.ui-test도 기본 개발 스택(9411·9090·3000)과 겹치지 않게 1로 시작하는 포트를 기본으로 쓴다.
 ports = {'ZIPKIN_PORT': '19411', 'PROMETHEUS_PORT': '19090', 'GRAFANA_PORT': '13000'}
-environment = {**os.environ, **dm_defaults, **ports, **values, 'SLACK_WEBHOOK_URL': ''}
+# 앞단 네트워크 대역도 개발(10.210.10)·성능 측정(10.210.20) 스택과 겹치지 않게 둔다(ADR 0020).
+network = {'LOGISTICS_NET_SUBNET': '10.210.30.0/24', 'LOGISTICS_NET_PREFIX': '10.210.30.'}
+environment = {**os.environ, **dm_defaults, **ports, **network, **values, 'SLACK_WEBHOOK_URL': ''}
 result = subprocess.run(['docker', 'compose', '-p', 'logistics-ui-test', '--env-file', '.env.ui-test', '-f', 'docker-compose.yml', *sys.argv[1:]], env=environment)
 sys.exit(result.returncode)
 PYCOMPOSE

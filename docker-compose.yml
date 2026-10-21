@@ -1,6 +1,8 @@
 # 실행: docker compose up -d --build   (빌드는 Dockerfile 안에서 한다)
 # 사전 준비: cp .env.example .env
 # 관리용 포트(postgres, config-server, eureka, zipkin, prometheus, grafana)는 이 PC(127.0.0.1)에서만 열고, 외부에는 Gateway 8080만 공개한다.
+# 네트워크는 둘이다(ADR 0020). logistics-net(앞단: Gateway·플랫폼·관측·업무 서비스), logistics-data(업무 서비스·postgres).
+# 업무 서비스만 두 네트워크에 함께 붙고, Gateway·관측 도구는 postgres에 닿지 않는다.
 
 x-app: &app
   build:
@@ -15,6 +17,9 @@ x-service-env: &service-env
   EUREKA_URL: http://eureka-server:8761/eureka
   # Note: 컨테이너 호스트명(컨테이너 ID) 대신 IP로 Eureka에 등록해야 Gateway가 다른 컨테이너에서 찾아갈 수 있다.
   EUREKA_PREFER_IP: "true"
+  # Note: 업무 서비스는 네트워크가 둘이라 IP도 둘이다. logistics-data 쪽 IP가 Eureka에 등록되면 그 네트워크에 없는 Gateway가
+  # 연결하지 못한다. 등록할 IP를 logistics-net 대역으로 고정한다(spring.cloud.inetutils.preferred-networks, 접두어 일치).
+  SPRING_CLOUD_INETUTILS_PREFERREDNETWORKS: ${LOGISTICS_NET_PREFIX:-10.210.10.}
   DB_HOST: postgres
   # 분산 추적 구간을 보낼 곳(config-repo/application.yml의 management.zipkin.tracing.endpoint)
   ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
@@ -23,6 +28,7 @@ x-service-env: &service-env
 
 x-db-service: &db-service
   <<: *app
+  networks: [logistics-net, logistics-data]
   depends_on:
     postgres:
       condition: service_healthy
@@ -54,7 +60,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d logistics"]
       interval: 5s
       retries: 10
-    networks: [logistics-net]
+    networks: [logistics-data]
 
   config-server:
     <<: *app
@@ -199,7 +205,15 @@ services:
       DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD}
 
 networks:
+  # 앞단. 대역을 고정해야 위의 preferred-networks 접두어와 맞출 수 있다. Docker 기본 풀(172.17~31, 192.168)과 겹치지 않는 10.210을 쓴다.
+  # 같은 PC에서 다른 스택을 함께 띄우면 대역이 겹쳐 생성이 실패하므로 성능 측정(10.210.20)·UI 테스트(10.210.30) 스크립트는 다른 대역을 준다.
   logistics-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${LOGISTICS_NET_SUBNET:-10.210.10.0/24}
+  # 데이터. internal: true로 막으면 postgres의 127.0.0.1 포트 공개(psql·IDE 접속)가 안 되므로 일반 bridge로 둔다.
+  logistics-data:
     driver: bridge
 
 volumes:
