@@ -2,11 +2,8 @@ package com.sparta.logistics.common.querydsl;
 
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.ComparableExpressionBase;
-import com.querydsl.core.types.dsl.DateTimePath;
 import com.sparta.logistics.common.exception.InvalidSortException;
-import java.time.LocalDateTime;
 import java.util.Map;
 import org.springframework.data.domain.Sort;
 
@@ -19,11 +16,6 @@ import org.springframework.data.domain.Sort;
 public final class QuerydslSupport {
 
     private QuerydslSupport() {
-    }
-
-    /** 논리 삭제 제외 조건. 예: {@code .where(notDeleted(hub.deletedAt))} */
-    public static BooleanExpression notDeleted(DateTimePath<LocalDateTime> deletedAt) {
-        return deletedAt.isNull();
     }
 
     /**

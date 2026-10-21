@@ -30,7 +30,7 @@ public class OrderCreationRecoveryService {
     /** O-09 운영자가 원래 실행 중단을 확인한 생성 시도만 정리한다. */
     @Transactional(propagation = Propagation.NEVER)
     public OrderCreationRecoveryResult recover(UserContext user, UUID orderId, RecoverOrderCreationCommand command) {
-        requireMaster(user);
+        user.validateMaster();
         if (!command.originalExecutionStopped() || command.reason() == null || command.reason().isBlank()
                 || command.reason().length() > 500
                 || (command.expectedStatus() != OrderCreationStatus.PROCESSING && command.expectedStatus() != OrderCreationStatus.RECOVERY_REQUIRED)) {
@@ -76,13 +76,13 @@ public class OrderCreationRecoveryService {
     /** O-08 경과 시간은 조사 대상을 고르는 근거일 뿐 실행 종료의 증거가 아니다. */
     @Transactional(readOnly = true)
     public Page<OrderRecoveryCandidateResult> candidates(UserContext user, Pageable pageable) {
-        requireMaster(user);
+        user.validateMaster();
         SortAllowList.check(pageable, Set.of("createdAt", "updatedAt"));
         return creations.findRecoveryCandidates(pageable).map(OrderRecoveryCandidateResult::from);
     }
 
     public OrderCreationRecoveryResult get(UserContext user, UUID recoveryId) {
-        requireMaster(user);
+        user.validateMaster();
         return writer.get(recoveryId);
     }
 

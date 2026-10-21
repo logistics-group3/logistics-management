@@ -18,7 +18,6 @@ import org.springframework.data.domain.Sort;
 class QuerydslSupportTest {
 
     private final DateTimePath<LocalDateTime> createdAt = Expressions.dateTimePath(LocalDateTime.class, "createdAt");
-    private final DateTimePath<LocalDateTime> deletedAt = Expressions.dateTimePath(LocalDateTime.class, "deletedAt");
     private final StringPath name = Expressions.stringPath("name");
 
     @Test
@@ -44,11 +43,5 @@ class QuerydslSupportTest {
                 .isInstanceOf(InvalidSortException.class)
                 .extracting(e -> ((InvalidSortException) e).getProperty())
                 .isEqualTo("password");
-    }
-
-    @Test
-    @DisplayName("논리 삭제 제외 조건은 deleted_at IS NULL이다")
-    void notDeleted() {
-        assertThat(QuerydslSupport.notDeleted(deletedAt)).isEqualTo(deletedAt.isNull());
     }
 }

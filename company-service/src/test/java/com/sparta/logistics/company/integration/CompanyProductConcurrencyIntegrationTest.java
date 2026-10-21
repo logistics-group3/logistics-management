@@ -7,11 +7,14 @@ import static org.awaitility.Awaitility.await;
 import com.sparta.logistics.common.auth.Role;
 import com.sparta.logistics.common.auth.UserContext;
 import com.sparta.logistics.common.exception.BusinessException;
+import com.sparta.logistics.common.exception.CommonErrorCode;
 import com.sparta.logistics.common.support.PostgresIntegrationTest;
 import com.sparta.logistics.company.application.CompanyService;
 import com.sparta.logistics.company.application.ProductService;
 import com.sparta.logistics.company.application.dto.CreateProductCommand;
 import com.sparta.logistics.company.application.dto.ProductResult;
+import com.sparta.logistics.company.application.dto.UpdateCompanyCommand;
+import com.sparta.logistics.company.application.dto.UpdateProductCommand;
 import com.sparta.logistics.company.domain.Company;
 import com.sparta.logistics.company.domain.CompanyErrorCode;
 import com.sparta.logistics.company.domain.CompanyRepository;
@@ -120,6 +123,90 @@ class CompanyProductConcurrencyIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    @DisplayName("업체 삭제가 먼저면 상품 수정이 기다렸다가 PRODUCT_NOT_FOUND로 거절되고 삭제를 되돌리지 않는다")
+    void deletionBeforeProductUpdateKeepsDeletion() throws Exception {
+        Company company = company();
+        UUID productId = createProduct(company.getId()).productId();
+        CountDownLatch prepared = new CountDownLatch(1), release = new CountDownLatch(1), updateStarted = new CountDownLatch(1);
+        AtomicInteger updaterPid = new AtomicInteger(), deleterPid = new AtomicInteger();
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> deletion = workers.submit(() -> tx().executeWithoutResult(status -> {
+                deleterPid.set(backendPid());
+                companyService.delete(master, company.getId());
+                prepared.countDown();
+                awaitLatch(release);
+            }));
+            awaitLatch(prepared);
+            Future<?> update = workers.submit(() -> tx().executeWithoutResult(status -> {
+                updaterPid.set(backendPid());
+                updateStarted.countDown();
+                productService.update(master, company.getId(), productId, new UpdateProductCommand("늦은 수정", null, null));
+            }));
+            awaitLatch(updateStarted);
+            await().atMost(Duration.ofSeconds(5)).until(() -> update.isDone() || blockedBy(updaterPid.get(), deleterPid.get()));
+            boolean waited = blockedBy(updaterPid.get(), deleterPid.get());
+            release.countDown();
+            deletion.get(5, TimeUnit.SECONDS);
+
+            assertThatThrownBy(() -> update.get(5, TimeUnit.SECONDS))
+                    .isInstanceOf(ExecutionException.class)
+                    .hasCauseInstanceOf(BusinessException.class)
+                    .satisfies(error -> assertThat(((BusinessException) error.getCause()).getErrorCode())
+                            .isEqualTo(CompanyErrorCode.PRODUCT_NOT_FOUND));
+            assertDeletedTogether(company.getId());
+            assertThat(waited).as("상품 수정은 같은 업체의 삭제 커밋을 기다린다").isTrue();
+        } finally {
+            release.countDown();
+            stop(workers);
+        }
+    }
+
+    @Test
+    @DisplayName("관리자 변경이 먼저면 업체명 수정이 기다렸다가 새 관리자 기준으로 거절된다")
+    void managerTransferBeforeCompanyUpdateKeepsNewManager() throws Exception {
+        UUID oldManager = UUID.randomUUID(), newManager = UUID.randomUUID();
+        Company company = companies.save(Company.create("동시성 테스트 업체", "테스트 주소", UUID.randomUUID(), oldManager));
+        UserContext oldManagerUser = new UserContext(oldManager, "old-manager", Role.USER, false);
+        CountDownLatch prepared = new CountDownLatch(1), release = new CountDownLatch(1), updateStarted = new CountDownLatch(1);
+        AtomicInteger transferPid = new AtomicInteger();
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> transfer = workers.submit(() -> tx().executeWithoutResult(status -> {
+                transferPid.set(backendPid());
+                companies.findByIdForUpdate(company.getId()).orElseThrow().assignManager(newManager);
+                prepared.countDown();
+                awaitLatch(release);
+            }));
+            awaitLatch(prepared);
+            Future<?> update = workers.submit(() -> {
+                updateStarted.countDown();
+                companyService.update(oldManagerUser, company.getId(), new UpdateCompanyCommand("늦은 수정", null, null, null));
+            });
+            awaitLatch(updateStarted);
+            // Note: update는 서비스 안에서 트랜잭션을 직접 열어 테스트가 백엔드 PID를 알 수 없다. 대기 중인 잠금 요청 쪽을 PID로 찾는다.
+            await().atMost(Duration.ofSeconds(5)).until(() -> update.isDone() || waiterOf(transferPid.get()));
+            boolean waited = waiterOf(transferPid.get());
+            release.countDown();
+            transfer.get(5, TimeUnit.SECONDS);
+
+            assertThatThrownBy(() -> update.get(5, TimeUnit.SECONDS))
+                    .isInstanceOf(ExecutionException.class)
+                    .hasCauseInstanceOf(BusinessException.class)
+                    .satisfies(error -> assertThat(((BusinessException) error.getCause()).getErrorCode())
+                            .isEqualTo(CommonErrorCode.FORBIDDEN));
+            assertThat(jdbc.queryForObject("SELECT manager_id FROM p_companies WHERE company_id = ?",
+                    UUID.class, company.getId())).isEqualTo(newManager);
+            assertThat(jdbc.queryForObject("SELECT name FROM p_companies WHERE company_id = ?",
+                    String.class, company.getId())).isEqualTo("동시성 테스트 업체");
+            assertThat(waited).as("업체 수정은 같은 업체의 관리자 변경 커밋을 기다린다").isTrue();
+        } finally {
+            release.countDown();
+            stop(workers);
+        }
+    }
+
+    @Test
     @DisplayName("한 업체의 상품 생성이 커밋을 기다려도 다른 업체의 상품은 생성된다")
     void differentCompaniesProceedIndependently() throws Exception {
         Company first = company(), second = company();
@@ -162,6 +249,11 @@ class CompanyProductConcurrencyIntegrationTest extends PostgresIntegrationTest {
 
     private boolean blockedBy(int waiter, int holder) {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT ? = ANY(pg_blocking_pids(?))", Boolean.class, holder, waiter));
+    }
+
+    private boolean waiterOf(int holder) {
+        return Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE ? = ANY(pg_blocking_pids(pid)))", Boolean.class, holder));
     }
 
     private void assertDeletedTogether(UUID companyId) {

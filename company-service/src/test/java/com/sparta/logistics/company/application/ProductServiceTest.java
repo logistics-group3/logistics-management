@@ -90,6 +90,7 @@ class ProductServiceTest {
     void updateByMaster() {
         Company company = company(UUID.randomUUID());
         Product product = product(company);
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
         given(productRepository.findById(product.getId())).willReturn(Optional.of(product));
 
         ProductResult result = productService.update(master(), company.getId(), product.getId(),
@@ -103,10 +104,24 @@ class ProductServiceTest {
     @DisplayName("경로의 업체 소속이 아닌 상품을 수정하면 PRODUCT_NOT_FOUND")
     void updateProductOfOtherCompany() {
         Product product = product(company(UUID.randomUUID()));
+        Company other = company(UUID.randomUUID());
+        given(companyRepository.findByIdForUpdate(other.getId())).willReturn(Optional.of(other));
         given(productRepository.findById(product.getId())).willReturn(Optional.of(product));
 
-        assertErrorCode(() -> productService.update(master(), UUID.randomUUID(), product.getId(),
+        assertErrorCode(() -> productService.update(master(), other.getId(), product.getId(),
                 new UpdateProductCommand("새 이름", null, null)), CompanyErrorCode.PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("업체가 이미 삭제됐으면 상품을 수정·삭제할 수 없고 상품은 읽지 않는다")
+    void writeProductOfDeletedCompany() {
+        UUID companyId = UUID.randomUUID(), productId = UUID.randomUUID();
+        given(companyRepository.findByIdForUpdate(companyId)).willReturn(Optional.empty());
+
+        assertErrorCode(() -> productService.update(master(), companyId, productId,
+                new UpdateProductCommand("새 이름", null, null)), CompanyErrorCode.PRODUCT_NOT_FOUND);
+        assertErrorCode(() -> productService.delete(master(), companyId, productId), CompanyErrorCode.PRODUCT_NOT_FOUND);
+        verify(productRepository, never()).findById(any());
     }
 
     @Test
@@ -115,6 +130,7 @@ class ProductServiceTest {
         UUID managerId = UUID.randomUUID();
         Company company = company(managerId);
         Product product = product(company);
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
         given(productRepository.findById(product.getId())).willReturn(Optional.of(product));
 
         productService.delete(user(managerId), company.getId(), product.getId());
@@ -127,6 +143,7 @@ class ProductServiceTest {
     void deleteByOtherUser() {
         Company company = company(UUID.randomUUID());
         Product product = product(company);
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
         given(productRepository.findById(product.getId())).willReturn(Optional.of(product));
 
         assertErrorCode(() -> productService.delete(user(UUID.randomUUID()), company.getId(), product.getId()),

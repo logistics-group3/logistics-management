@@ -4,10 +4,10 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Check, MapPin, RefreshCw, Truck } from 'lucide-react'
 import { api } from '../shared/api'
 import { labels, dateTime, shortId } from '../shared/format'
-import { useDirectory } from '../shared/queries'
+import { useDirectory, useUsersDirectory } from '../shared/queries'
 import { Badge, DetailField, ErrorNotice, Field, Loading } from '../shared/ui'
 import { nextRouteAction } from '../shared/delivery-rules'
-import type { DeliveryDetail, DeliveryRoute, Page, User } from '../shared/types'
+import type { DeliveryDetail, DeliveryRoute } from '../shared/types'
 import { Button } from '../components/ui/button'
 import { Dialog } from '../components/ui/dialog'
 import { useAuth } from '../app/auth'
@@ -19,11 +19,7 @@ export function DeliverySheet({ id }: { id: string }) {
     queryKey: ['deliveries', id],
     queryFn: ({ signal }) => api<DeliveryDetail>(`/deliveries/${id}`, { signal }),
   })
-  const users = useQuery({
-    queryKey: ['users', 'route-names'],
-    queryFn: ({ signal }) => api<Page<User>>('/users?size=50', { signal }),
-    enabled: user?.role === 'MASTER',
-  })
+  const users = useUsersDirectory(user?.role === 'MASTER')
   const [target, setTarget] = useState<{
     route: DeliveryRoute
     status: 'MOVING' | 'ARRIVED'
@@ -103,7 +99,7 @@ export function DeliverySheet({ id }: { id: string }) {
             const manager =
               route.managerId === user?.userId
                 ? `${user.name} (나)`
-                : (users.data?.content.find((u) => u.userId === route.managerId)?.name ??
+                : (users.data?.find((u) => u.userId === route.managerId)?.name ??
                   shortId(route.managerId))
             return (
               <article
