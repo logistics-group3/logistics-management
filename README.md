@@ -140,29 +140,46 @@ docker compose exec gateway-service curl -s http://user-service:8081/actuator/he
 
 ## ERD
 
-서비스마다 스키마를 따로 두고, 서비스 사이의 참조는 FK 없이 UUID로만 잇는다. 아래 그림에서 실선은 같은 스키마 안의 FK, 점선은 서비스 사이의 논리 참조다. Audit 컬럼 6개(`created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by`)는 모든 테이블에 있어 그림에서 뺐다.
+서비스마다 스키마를 따로 두고, 서비스 사이의 참조는 FK 없이 UUID로만 잇는다. 아래 그림에서 실선은 같은 스키마 안의 FK, 점선은 서비스 사이의 논리 참조다. 테이블은 모두 18개다.
 
 ```mermaid
 erDiagram
     p_hubs ||--o{ p_hub_routes : "출발 허브"
     p_hubs ||--o{ p_hub_routes : "도착 허브"
+    p_hubs ||--o{ p_hub_stocks : "허브 재고"
+    p_hub_stocks ||--o{ p_hub_stock_histories : "변경 이력"
     p_companies ||--o{ p_products : "상품 판매"
+    p_orders ||--o{ p_order_cancellations : "취소 시도"
+    p_orders ||--o| p_order_deletions : "삭제 진행"
+    p_order_creations ||--o| p_order_creation_recoveries : "운영자 복구"
+    p_order_creation_recoveries ||--o{ p_order_creation_recovery_events : "복구 이벤트"
     p_deliveries ||--|{ p_delivery_routes : "배송 구간"
 
     p_users ||..o{ p_companies : "업체 관리자"
     p_hubs ||..o{ p_companies : "소속 허브"
+    p_hubs |o..o{ p_users : "배송담당자 소속 허브"
+    p_products ||..o{ p_hub_stocks : "재고 상품"
     p_users ||..o{ p_orders : "주문자"
     p_companies ||..o{ p_orders : "공급 / 요청 업체"
     p_products ||..o{ p_orders : "주문 상품"
     p_orders ||..|| p_deliveries : "배송"
+    p_orders ||..o| p_order_creations : "선발급 주문 ID"
+    p_orders ||..o| p_delivery_creation_closures : "생성 시도 종료 표시"
     p_companies ||..o{ p_deliveries : "공급 / 요청 업체"
     p_hubs ||..o{ p_deliveries : "출발 / 목적지 허브"
-    p_hubs |o..o{ p_delivery_routes : "구간 출발 / 도착 허브"
+    p_hubs |o..o{ p_delivery_routes : "구간 출발 / 도착 / 담당 허브"
     p_users ||..o{ p_delivery_routes : "구간 담당자"
-    p_hubs |o..o{ p_users : "배송담당자 소속 허브"
 ```
 
-컬럼과 길이까지 적은 서비스별 ERD는 [SA 문서 4장](docs/SA/sparta-logistics-sa.md)에 있고, dbdiagram.io에 붙여 넣을 수 있는 DBML은 같은 문서의 부록 10.2에 있다. 위 그림에는 order-service가 나중에 추가한 진행 기록 테이블(`p_order_creations`, `p_order_cancellations`, `p_order_deletions`)과 hub의 재고 테이블이 빠져 있다. 각각 order·hub 서비스 문서와 마이그레이션(`*/src/main/resources/db/migration`)을 보면 된다.
+컬럼을 모두 보여 주는 서비스별 ERD는 아래와 같다. 마이그레이션(`*/src/main/resources/db/migration`)을 임시 PostgreSQL 16에 적용해서 뽑은 현재 스키마다. Audit 컬럼 6개(`created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by`)는 `BaseEntity`가 넣는 공통 컬럼이라 테이블마다 한 줄로 줄였다. 설계 문서의 ERD와 컬럼 설명은 [SA 문서 4장](docs/SA/sparta-logistics-sa.md), dbdiagram.io용 DBML은 같은 문서의 부록 10.2에 있다.
+
+![user·company ERD](docs/images/erd-user-company.svg)
+
+![hub ERD](docs/images/erd-hub.svg)
+
+![order ERD](docs/images/erd-order.svg)
+
+![delivery ERD](docs/images/erd-delivery.svg)
 
 ## 화면
 

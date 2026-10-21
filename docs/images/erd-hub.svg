@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1232 609" width="1232" height="609" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif" role="img" aria-label="hub 서비스 ERD">
+<defs><filter id="sh" x="-5%" y="-5%" width="110%" height="115%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity=".08"/></filter><marker id="one" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M8 0V10M5 0V10" stroke="#64748b" stroke-width="1.4" fill="none"/></marker><marker id="many" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M9 0L2 5L9 10M2 5H9" stroke="#64748b" stroke-width="1.4" fill="none"/></marker></defs>
+<rect width="1232" height="609" fill="#ffffff"/>
+<text x="28" y="40" font-size="22" font-weight="800" fill="#0f172a">hub 서비스 ERD</text>
+<text x="28" y="64" font-size="13" fill="#475569">hub_schema, 허브 간 경로와 허브 재고</text>
+<path d="M664,196.5 H618.0 V146.5 H584" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#one)"/>
+<circle cx="664" cy="196.5" r="3.2" fill="#64748b"/>
+<path d="M664,171.5 H630.0 V146.5 H584" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#one)"/>
+<circle cx="664" cy="171.5" r="3.2" fill="#64748b"/>
+<path d="M44,435.5 H28 V146.5 H44" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#one)"/>
+<circle cx="44" cy="435.5" r="3.2" fill="#64748b"/>
+<path d="M664,410.5 H624.0 V385.5 H584" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#one)"/>
+<circle cx="664" cy="410.5" r="3.2" fill="#64748b"/>
+<g filter="url(#sh)"><rect x="44" y="84" width="540" height="205" rx="12" fill="#fff" stroke="#e2e8f0"/></g>
+<path d="M44,96 a12,12 0 0 1 12,-12 h516 a12,12 0 0 1 12,12 v38 h-540 z" fill="#0891b2"/>
+<text x="60" y="106" font-size="15" font-weight="700" fill="#fff">p_hubs</text>
+<text x="60" y="124" font-size="12" fill="#fff" fill-opacity=".88">허브</text>
+<text x="568" y="106" font-size="11" fill="#fff" fill-opacity=".85" text-anchor="end">hub_schema</text>
+<rect x="56" y="139" width="26" height="15" rx="4" fill="#fef3c7"/><text x="69.0" y="150.5" font-size="9.5" font-weight="700" fill="#b45309" text-anchor="middle">PK</text>
+<text x="116" y="151" font-size="13" font-weight="600" fill="#0f172a">hub_id</text>
+<text x="336" y="151" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<rect x="45" y="159" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<rect x="56" y="164" width="26" height="15" rx="4" fill="#ede9fe"/><text x="69.0" y="175.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="116" y="176" font-size="13" font-weight="400" fill="#0f172a">name</text>
+<text x="336" y="176" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">varchar(50)</text>
+<text x="116" y="201" font-size="13" font-weight="400" fill="#0f172a">address</text>
+<text x="336" y="201" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">varchar(255)</text>
+<rect x="45" y="209" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<text x="116" y="226" font-size="13" font-weight="400" fill="#0f172a">latitude</text>
+<text x="336" y="226" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">numeric(10,7)</text>
+<text x="116" y="251" font-size="13" font-weight="400" fill="#0f172a">longitude</text>
+<text x="336" y="251" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">numeric(10,7)</text>
+<line x1="56" y1="263" x2="572" y2="263" stroke="#e2e8f0"/>
+<text x="60" y="281" font-size="11" fill="#94a3b8">Audit 6컬럼: created_at/by · updated_at/by · deleted_at/by</text>
+<g filter="url(#sh)"><rect x="44" y="323" width="540" height="180" rx="12" fill="#fff" stroke="#e2e8f0"/></g>
+<path d="M44,335 a12,12 0 0 1 12,-12 h516 a12,12 0 0 1 12,12 v38 h-540 z" fill="#0891b2"/>
+<text x="60" y="345" font-size="15" font-weight="700" fill="#fff">p_hub_stocks</text>
+<text x="60" y="363" font-size="12" fill="#fff" fill-opacity=".88">허브 재고 (고도화)</text>
+<text x="568" y="345" font-size="11" fill="#fff" fill-opacity=".85" text-anchor="end">hub_schema</text>
+<rect x="56" y="378" width="26" height="15" rx="4" fill="#fef3c7"/><text x="69.0" y="389.5" font-size="9.5" font-weight="700" fill="#b45309" text-anchor="middle">PK</text>
+<text x="116" y="390" font-size="13" font-weight="600" fill="#0f172a">hub_stock_id</text>
+<text x="336" y="390" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<rect x="45" y="398" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<text x="116" y="415" font-size="13" font-weight="400" fill="#0f172a">quantity</text>
+<text x="336" y="415" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">int</text>
+<rect x="56" y="428" width="26" height="15" rx="4" fill="#dbeafe"/><text x="69.0" y="439.5" font-size="9.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">FK</text>
+<rect x="85" y="428" width="26" height="15" rx="4" fill="#ede9fe"/><text x="98.0" y="439.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="116" y="440" font-size="13" font-weight="400" fill="#0f172a">hub_id</text>
+<text x="336" y="440" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<text x="572" y="440" font-size="10.5" fill="#64748b" text-anchor="end">→ p_hubs</text>
+<rect x="45" y="448" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<rect x="56" y="453" width="20" height="15" rx="4" fill="#f1f5f9"/><text x="66.0" y="464.5" font-size="9.5" font-weight="700" fill="#64748b" text-anchor="middle">→</text>
+<rect x="79" y="453" width="26" height="15" rx="4" fill="#ede9fe"/><text x="92.0" y="464.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="116" y="465" font-size="13" font-weight="400" fill="#0f172a">product_id</text>
+<text x="336" y="465" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<text x="572" y="465" font-size="10.5" fill="#64748b" text-anchor="end">→ company · p_products</text>
+<line x1="56" y1="477" x2="572" y2="477" stroke="#e2e8f0"/>
+<text x="60" y="495" font-size="11" fill="#94a3b8">Audit 6컬럼: created_at/by · updated_at/by · deleted_at/by</text>
+<g filter="url(#sh)"><rect x="664" y="84" width="540" height="205" rx="12" fill="#fff" stroke="#e2e8f0"/></g>
+<path d="M664,96 a12,12 0 0 1 12,-12 h516 a12,12 0 0 1 12,12 v38 h-540 z" fill="#0891b2"/>
+<text x="680" y="106" font-size="15" font-weight="700" fill="#fff">p_hub_routes</text>
+<text x="680" y="124" font-size="12" fill="#fff" fill-opacity=".88">허브 간 경로</text>
+<text x="1188" y="106" font-size="11" fill="#fff" fill-opacity=".85" text-anchor="end">hub_schema</text>
+<rect x="676" y="139" width="26" height="15" rx="4" fill="#fef3c7"/><text x="689.0" y="150.5" font-size="9.5" font-weight="700" fill="#b45309" text-anchor="middle">PK</text>
+<text x="736" y="151" font-size="13" font-weight="600" fill="#0f172a">hub_route_id</text>
+<text x="956" y="151" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<rect x="665" y="159" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<rect x="676" y="164" width="26" height="15" rx="4" fill="#dbeafe"/><text x="689.0" y="175.5" font-size="9.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">FK</text>
+<rect x="705" y="164" width="26" height="15" rx="4" fill="#ede9fe"/><text x="718.0" y="175.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="736" y="176" font-size="13" font-weight="400" fill="#0f172a">departure_hub_id</text>
+<text x="956" y="176" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<text x="1192" y="176" font-size="10.5" fill="#64748b" text-anchor="end">→ p_hubs</text>
+<rect x="676" y="189" width="26" height="15" rx="4" fill="#dbeafe"/><text x="689.0" y="200.5" font-size="9.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">FK</text>
+<rect x="705" y="189" width="26" height="15" rx="4" fill="#ede9fe"/><text x="718.0" y="200.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="736" y="201" font-size="13" font-weight="400" fill="#0f172a">arrival_hub_id</text>
+<text x="956" y="201" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<text x="1192" y="201" font-size="10.5" fill="#64748b" text-anchor="end">→ p_hubs</text>
+<rect x="665" y="209" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<text x="736" y="226" font-size="13" font-weight="400" fill="#0f172a">duration_minutes</text>
+<text x="956" y="226" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">int</text>
+<text x="736" y="251" font-size="13" font-weight="400" fill="#0f172a">distance_km</text>
+<text x="956" y="251" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">numeric(8,2)</text>
+<line x1="676" y1="263" x2="1192" y2="263" stroke="#e2e8f0"/>
+<text x="680" y="281" font-size="11" fill="#94a3b8">Audit 6컬럼: created_at/by · updated_at/by · deleted_at/by</text>
+<g filter="url(#sh)"><rect x="664" y="323" width="540" height="230" rx="12" fill="#fff" stroke="#e2e8f0"/></g>
+<path d="M664,335 a12,12 0 0 1 12,-12 h516 a12,12 0 0 1 12,12 v38 h-540 z" fill="#0891b2"/>
+<text x="680" y="345" font-size="15" font-weight="700" fill="#fff">p_hub_stock_histories</text>
+<text x="680" y="363" font-size="12" fill="#fff" fill-opacity=".88">재고 변경 이력</text>
+<text x="1188" y="345" font-size="11" fill="#fff" fill-opacity=".85" text-anchor="end">hub_schema</text>
+<rect x="676" y="378" width="26" height="15" rx="4" fill="#fef3c7"/><text x="689.0" y="389.5" font-size="9.5" font-weight="700" fill="#b45309" text-anchor="middle">PK</text>
+<text x="736" y="390" font-size="13" font-weight="600" fill="#0f172a">hub_stock_history_id</text>
+<text x="956" y="390" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<rect x="665" y="398" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<rect x="676" y="403" width="26" height="15" rx="4" fill="#dbeafe"/><text x="689.0" y="414.5" font-size="9.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">FK</text>
+<rect x="705" y="403" width="26" height="15" rx="4" fill="#ede9fe"/><text x="718.0" y="414.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="736" y="415" font-size="13" font-weight="400" fill="#0f172a">hub_stock_id</text>
+<text x="956" y="415" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid</text>
+<text x="1192" y="415" font-size="10.5" fill="#64748b" text-anchor="end">→ p_hub_stocks</text>
+<rect x="676" y="428" width="20" height="15" rx="4" fill="#f1f5f9"/><text x="686.0" y="439.5" font-size="9.5" font-weight="700" fill="#64748b" text-anchor="middle">→</text>
+<rect x="699" y="428" width="26" height="15" rx="4" fill="#ede9fe"/><text x="712.0" y="439.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="736" y="440" font-size="13" font-weight="400" fill="#0f172a">order_id</text>
+<text x="956" y="440" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">uuid ?</text>
+<text x="1192" y="440" font-size="10.5" fill="#64748b" text-anchor="end">→ order · p_orders</text>
+<rect x="665" y="448" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<rect x="676" y="453" width="26" height="15" rx="4" fill="#ede9fe"/><text x="689.0" y="464.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="736" y="465" font-size="13" font-weight="400" fill="#0f172a">change_type</text>
+<text x="956" y="465" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">varchar(20)</text>
+<text x="736" y="490" font-size="13" font-weight="400" fill="#0f172a">quantity</text>
+<text x="956" y="490" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">int</text>
+<rect x="665" y="498" width="538" height="25" fill="#ecfeff" fill-opacity=".55"/>
+<text x="736" y="515" font-size="13" font-weight="400" fill="#0f172a">quantity_after</text>
+<text x="956" y="515" font-size="12" fill="#475569" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">int</text>
+<line x1="676" y1="527" x2="1192" y2="527" stroke="#e2e8f0"/>
+<text x="680" y="545" font-size="11" fill="#94a3b8">Audit: created_at · created_by</text>
+<rect x="28" y="579" width="26" height="15" rx="4" fill="#fef3c7"/><text x="41.0" y="590.5" font-size="9.5" font-weight="700" fill="#b45309" text-anchor="middle">PK</text>
+<text x="62" y="591" font-size="12" fill="#475569">기본 키</text>
+<rect x="132.5" y="579" width="26" height="15" rx="4" fill="#dbeafe"/><text x="145.5" y="590.5" font-size="9.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">FK</text>
+<text x="166.5" y="591" font-size="12" fill="#475569">같은 스키마의 FK</text>
+<rect x="295.5" y="579" width="20" height="15" rx="4" fill="#f1f5f9"/><text x="305.5" y="590.5" font-size="9.5" font-weight="700" fill="#64748b" text-anchor="middle">→</text>
+<text x="323.5" y="591" font-size="12" fill="#475569">다른 서비스 UUID 논리 참조(FK 없음)</text>
+<rect x="578.0" y="579" width="26" height="15" rx="4" fill="#ede9fe"/><text x="591.0" y="590.5" font-size="9.5" font-weight="700" fill="#7c3aed" text-anchor="middle">UK</text>
+<text x="612.0" y="591" font-size="12" fill="#475569">유니크</text>
+<text x="675.5" y="591" font-size="12" fill="#475569">타입 뒤 ? = NULL 허용</text>
+</svg>
