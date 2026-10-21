@@ -9,6 +9,8 @@
 - [x] 화면 3장은 `docs/reviews/ui-redesign/2026-10-20/`의 기존 캡처를 참조한다. 새로 찍은 화면은 테스트 데이터에 부하 시험 잔여분이 보여 쓰지 않았다.
 - [x] "설계에서 신경 쓴 부분"은 ADR·학습 노트·감사 기록에서 뽑아 링크로 연결했다.
 - [x] 검증: 두 mermaid 다이어그램을 브라우저에서 렌더링해 확인했고, 상대 경로 링크가 모두 존재하는지 확인했다.
+- [x] 아키텍처 이미지(`docs/images/architecture.svg`)에 기술 스택 아이콘을 넣었다. 아이콘은 simple-icons 14.15.0(CC0)에서 받은 SVG 15개이며 `docs/images/icons/`에 두고 경로를 SVG에 직접 넣었다. GitHub README의 mermaid는 외부 아이콘을 지원하지 않아 이미지로 만들었다. Zipkin·OpenFeign·Caffeine은 simple-icons에 없어 글자 배지로 표기했다.
+- [x] 공개 저장소 기준으로 '멘토·튜터' 표기를 '시나리오 테스트'로 바꿨다(README, 가이드 문서 `scenario-test.md`로 이름 변경, 운영 콘솔 문구). 과거 기록과 SA의 '멘토 피드백' 출처 표기는 그대로 둔다.
 - [ ] 역할 표는 PR·커밋 이력 기준이다. hub·delivery 담당자는 서비스 README에서 아직 "미정"이라 팀 확인이 필요하다. 김진우는 사용자 지정("공통 인프라 설계 참여")을 따랐다.
 
 ## 다음 단계

@@ -43,6 +43,10 @@
 
 ## 서비스 구성
 
+![서비스 아키텍처](docs/images/architecture.svg)
+
+서비스 사이의 Feign 호출 방향만 따로 그리면 다음과 같다.
+
 ```mermaid
 flowchart TB
     client["브라우저 / 운영 콘솔"] --> gw["gateway-service :8080<br/>JWT 검증 · 권한 재확인 · 사용자 헤더 주입"]
