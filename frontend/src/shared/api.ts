@@ -34,6 +34,7 @@ export async function api<T>(
 ): Promise<T> {
   const sentToken = token
   let response: Response
+  let raw: string
   try {
     response = await fetch(`/api/v1${path}`, {
       method: options.method ?? 'GET',
@@ -48,6 +49,8 @@ export async function api<T>(
         ? AbortSignal.any([options.signal, AbortSignal.timeout(20000)])
         : AbortSignal.timeout(20000),
     })
+    // Note: 헤더만 받고 본문 수신이 끊기는 경우도 결과 미확정(ApiError 0)이어야 등록 폼이 중복 전송을 막는다.
+    raw = await response.text()
   } catch (error) {
     if (options.signal?.aborted) throw error
     throw new ApiError(
@@ -56,7 +59,6 @@ export async function api<T>(
       '서버 응답을 확인하지 못했습니다. 연결 상태를 확인해 주세요.',
     )
   }
-  const raw = await response.text()
   let envelope: { data?: T; code?: string; message?: string }
   try {
     envelope = raw ? (parseResponse(raw) as typeof envelope) : {}
