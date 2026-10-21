@@ -1,0 +1,14 @@
+<factorypath>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/jakarta.annotation/jakarta.annotation-api/2.1.1/48b9bda22b091b1f48b13af03fe36db3be6e1ae3/jakarta.annotation-api-2.1.1.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.46/a5cfe99fdf320e84955ef653f2ce1bf789d11385/lombok-1.18.46.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/jakarta.inject/jakarta.inject-api/2.0.1/4c28afe1991a941d7702fe1362c365f0a8641d1e/jakarta.inject-api-2.0.1.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/io.github.classgraph/classgraph/4.8.195/672bbe4f03b36e47eb957e6059f8fdc0e184a320/classgraph-4.8.195.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/io.github.openfeign.querydsl/querydsl-apt/7.7/bd6d17ceda7100ecf874cbff41b473bc82396803/querydsl-apt-7.7-jpa.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/jakarta.persistence/jakarta.persistence-api/3.1.0/66901fa1c373c6aff65c13791cc11da72060a8d6/jakarta.persistence-api-3.1.0.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/io.github.openfeign.querydsl/querydsl-core/7.7/4c18a2c37028ca691baa3b6a3db2339aaf19e863/querydsl-core-7.7.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/io.github.openfeign.querydsl/querydsl-codegen-utils/7.7/290c94c53c76403138bbf1086a053c068cd4d006/querydsl-codegen-utils-7.7.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/io.github.openfeign.querydsl/querydsl-codegen/7.7/3731436f6c8eba43c87782747184ef076a5c98d1/querydsl-codegen-7.7.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/io.projectreactor/reactor-core/3.7.19/4b4c09f49a6fa2fa122554453c2d71b5bf2077ef/reactor-core-3.7.19.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/org.reactivestreams/reactive-streams/1.0.4/3864a1320d97d7b045f729a326e1e077661f31b7/reactive-streams-1.0.4.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/Users/alloy/.gradle/caches/modules-2/files-2.1/org.eclipse.jdt/ecj/3.46.100/a06c482cdb8601a94328aae668c7236e3818fbe9/ecj-3.46.100.jar" enabled="true" runInBatchMode="false"/>
+</factorypath>

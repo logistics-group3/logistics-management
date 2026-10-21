@@ -53,11 +53,8 @@ public class DeliveryClientAdapter implements DeliveryGateway {
 
     @Override
     public boolean isCreationClosed(UUID orderId) {
-        DeliveryOrderStateResponse response = orderStateClient.getByOrderId(orderId);
-        if (response == null || !orderId.equals(response.orderId()) || !ORDER_STATES.contains(response.state())) {
-            throw new BusinessException(CommonErrorCode.SERVICE_UNAVAILABLE, "배송 생성 시도의 결과를 확인할 수 없습니다.");
-        }
-        return "CLOSED".equals(response.state());
+        // Note: 운영 복구(getCreationState)와 같은 검증을 거쳐야 모순 응답을 두 경로가 다르게 해석하지 않는다.
+        return "CLOSED".equals(getCreationState(orderId).state());
     }
 
     @Override
