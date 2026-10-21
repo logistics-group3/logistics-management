@@ -43,11 +43,13 @@ const audit = async (page: Page) => {
   )
 }
 
-test('멘토 가이드: 로그인 전 열람 → 시나리오 계정으로 시작 → 계정 전환', async ({
+test('시나리오 가이드: 로그인 전 열람 → 시나리오 계정으로 시작 → 계정 전환', async ({
   page,
 }, testInfo) => {
   await page.goto('/guide')
-  await expect(page.getByRole('heading', { name: '멘토 테스트 가이드', exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: '시나리오 테스트 가이드', exact: true }),
+  ).toBeVisible()
   await expect(page.getByRole('heading', { name: '운영 콘솔 로그인' })).toHaveCount(0)
   await audit(page)
 
@@ -58,8 +60,10 @@ test('멘토 가이드: 로그인 전 열람 → 시나리오 계정으로 시�
   await expect(page.locator('.account-info strong')).toHaveText('김서연')
 
   await page.keyboard.press('Escape')
-  await page.getByRole('link', { name: '멘토 테스트 가이드' }).click()
-  await expect(page.getByRole('heading', { name: '멘토 테스트 가이드', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: '시나리오 테스트 가이드' }).click()
+  await expect(
+    page.getByRole('heading', { name: '시나리오 테스트 가이드', exact: true }),
+  ).toBeVisible()
   const check = page.getByRole('checkbox', {
     name: '주문하면 배송과 배송 경로 기록이 함께 생긴다 확인 완료',
   })
@@ -71,7 +75,7 @@ test('멘토 가이드: 로그인 전 열람 → 시나리오 계정으로 시�
   const users = page.getByRole('article', { name: '사용자 조회는 본인만, 관리자는 전체를 본다' })
   await users.getByRole('button', { name: 'uiuser로 시작', exact: true }).click()
   await expect(page).toHaveURL(/\/users$/)
-  await page.getByRole('link', { name: '멘토 테스트 가이드' }).click()
+  await page.getByRole('link', { name: '시나리오 테스트 가이드' }).click()
   await page
     .getByRole('article', { name: '배송담당자는 별도 엔티티가 아니라 사용자 권한으로 지정한다' })
     .getByRole('button', { name: 'uimaster로 시작', exact: true })
@@ -100,7 +104,7 @@ test('발제 예시: 경기 → 부산 허브 간 주문, 출발 허브 담당�
   const form = page.getByRole('dialog', { name: '새 주문 등록' })
   await form.getByLabel('공급업체', { exact: true }).selectOption(scenario['경기 건조식품 가공'])
   await form.getByLabel('수령업체', { exact: true }).selectOption(scenario['부산 수산 도매'])
-  await expect(form.getByText(/다른 허브 간 주문입니다/)).toBeVisible()
+  await expect(form.getByText(/배송 경로: 공급업체 집하/)).toBeVisible()
   await form
     .getByLabel('상품', { exact: true })
     .selectOption(scenario.products['마른오징어 가공품'])

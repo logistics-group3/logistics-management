@@ -20,9 +20,7 @@ export function Login() {
       <span className="login-icon">
         <ShieldCheck size={25} />
       </span>
-      <span className="eyebrow">WELCOME BACK</span>
       <h2>운영 콘솔 로그인</h2>
-      <p>계정으로 로그인하고 오늘의 물류 현황을 확인하세요.</p>
       {registeredUsername && (
         <div className="notice signup-success" role="status">
           회원가입이 완료되었습니다. {registeredUsername} 계정으로 로그인해 주세요.
@@ -101,7 +99,6 @@ export function Login() {
         </div>
       </details>
       <div className="auth-switch">
-        <span>아직 계정이 없으신가요?</span>
         <Link to="/signup">
           회원가입
           <ArrowRight size={14} />
@@ -109,10 +106,10 @@ export function Login() {
       </div>
       <div className="login-footnote">
         <span className="connection-dot" />
-        로컬 테스트 환경 · 실제 서비스 API 연결
+        전용 테스트 환경
       </div>
       <p className="login-help">
-        <Link to="/guide">멘토 테스트 가이드 보기</Link> · 계정별 시나리오와 기대 결과
+        <Link to="/guide">시나리오 테스트 가이드</Link>
         <br />
         새로고침 후에는 다시 로그인이 필요합니다.
       </p>

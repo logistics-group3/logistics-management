@@ -38,9 +38,7 @@ export function Orders() {
   return (
     <>
       <PageTitle
-        eyebrow="ORDER MANAGEMENT"
         title="주문 관리"
-        description="주문의 접수부터 변경, 취소까지 한곳에서 관리합니다."
         actions={
           <>
             <Button
@@ -233,13 +231,7 @@ export function Orders() {
         있습니다.
       </p>
       {selected === 'new' ? (
-        <Dialog
-          open
-          onClose={() => navigate('/orders')}
-          title="새 주문 등록"
-          description="공급업체의 상품을 선택하고 수령 정보를 확인하세요."
-          sheet
-        >
+        <Dialog open onClose={() => navigate('/orders')} title="새 주문 등록" sheet>
           <CreateOrder />
         </Dialog>
       ) : (

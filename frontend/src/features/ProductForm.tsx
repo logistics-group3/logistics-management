@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Package, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useAuth } from '../app/auth'
 import { api, ApiError } from '../shared/api'
 import { canManageCompany, parseWonPrice } from '../shared/catalog-rules'
@@ -37,7 +37,7 @@ export function ProductForm({
   if (directory.companies.isSuccess && !owned?.length)
     return (
       <div className="notice">
-        먼저 담당 업체를 등록해야 상품을 추가할 수 있습니다.
+        상품 등록 전 담당 업체 등록이 필요합니다.
         <div className="actions">
           <Button asChild>
             <Link to="/companies?create=1">내 업체 등록하기</Link>
@@ -71,7 +71,7 @@ export function ProductForm({
           if (!result?.productId)
             throw new ApiError(0, 'INVALID_RESPONSE', '상품 저장 결과를 확인할 수 없습니다.')
           await cache.invalidateQueries({ queryKey: ['products'] })
-          notify('상품이 등록되었습니다. 주문에서 선택할 수 있습니다.')
+          notify('상품이 등록되었습니다.')
           onSaved(result)
         } catch (value) {
           setError(value)
@@ -83,10 +83,6 @@ export function ProductForm({
         }
       }}
     >
-      <div className="form-intro">
-        <Package size={19} />
-        <span>담당 업체가 공급하는 상품과 원화 단가를 등록합니다.</span>
-      </div>
       <ErrorNotice
         error={error}
         help={
@@ -150,7 +146,7 @@ export function ProductForm({
         ) : (
           <Button disabled={busy || directory.companies.isPending || directory.companies.isError}>
             <Plus size={16} />
-            {busy ? '등록 중…' : '상품 등록 완료'}
+            {busy ? '등록 중…' : '상품 등록'}
           </Button>
         )}
       </div>

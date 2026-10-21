@@ -1,0 +1,12 @@
+[
+  {
+    "orderId": "e2a9c1f4-d522-45b3-8f89-21df763d644a",
+    "purpose": "이번 실패한 테스트가 만든 주문만 정리",
+    "delete_http_status": 200
+  },
+  {
+    "orderId": "ef01f6b2-22fb-40ce-8a9e-567b6bb7c215",
+    "purpose": "이번 실패한 테스트가 만든 주문만 정리",
+    "delete_http_status": 200
+  }
+]

@@ -73,7 +73,7 @@ export function CompanyDetails({
           </Button>
           <Button asChild>
             <Link to="/orders/new">
-              주문 등록으로
+              주문 등록하기
               <ArrowRight size={15} />
             </Link>
           </Button>

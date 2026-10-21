@@ -7,7 +7,7 @@
 | 상황 | 읽을 문서 |
 |---|---|
 | 브라우저로 주문·배송을 테스트한다 | [운영 UI 실행 안내](../frontend/README.md), [검증 기록](reviews/logistics-test-ui.md) |
-| 멘토·튜터가 발제 기능을 차례로 확인한다 | [멘토·튜터 테스트 안내](guides/mentor-test.md), 운영 콘솔 `/guide` |
+| 필수 기능을 시나리오대로 차례로 확인한다 | [시나리오 테스트 안내](guides/scenario-test.md), 운영 콘솔 `/guide` |
 | Swagger로 API를 하나씩 테스트하며 서비스 간 요청 흐름을 본다 | [Swagger 수동 테스트와 요청 흐름 보기](guides/api-test.md) |
 | 요청 수·오류·응답 시간 그래프를 본다 | [메트릭 모니터링](guides/monitoring.md) |
 | 컨테이너가 어느 네트워크·포트로 연결되는지 본다 | [로컬 Docker 네트워크 구역도](design/local-network.md) |

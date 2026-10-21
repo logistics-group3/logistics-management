@@ -40,7 +40,7 @@
 | I-13 `DELETE /internal/deliveries/orders/{orderId}` | delivery | 생성 실패 보상·O-06 배송 삭제 | 생성 보상은 OrderService가 총 3회. O-06은 요청당 1회, 실패 후 같은 DELETE로 재개. Feign 자체 재시도 없음 |
 | I-15 `GET /internal/deliveries/{deliveryId}/notification-recipients` | delivery | 커밋 후 DM의 현재 담당자 조회 | 통신 실패 시 총 3회 (`order-dm-delivery`), 5xx는 1회 |
 | I-18 `DELETE /internal/deliveries/orders/{orderId}/creation` | delivery | 생성 실패 보상·운영자 복구 조건부 종료 | Feign 재시도 없음, 생성 보상만 최대 3회 |
-| I-17 `GET /internal/deliveries/orders/{orderId}` | delivery | 배송 ID·상태와 CLOSED 확인 | 1회 (`order-delivery-state`) |
+| I-17 `GET /internal/deliveries/orders/{orderId}` | delivery | 배송 ID·상태와 CLOSED 확인. 생성 보상 확인(`isCreationClosed`)과 운영 복구(`getCreationState`)가 같은 검증을 거치며, CLOSED인데 배송 ID·상태가 함께 오는 모순 응답은 둘 다 503으로 거절한다 | 1회 (`order-delivery-state`) |
 | I-15 `GET /internal/deliveries/{deliveryId}/notification-recipients` | delivery | 배정 완료(I-20) DM의 현재 담당자 조회 | 통신 실패 시 총 3회 (`order-dm-delivery`), 5xx는 1회 |
 | I-16 `GET /internal/users/{userId}/notification-contact` | user | 배송담당 여부·Slack 이메일 조회 | 통신 실패 시 총 3회 (`order-dm-user`), 5xx는 1회 |
 

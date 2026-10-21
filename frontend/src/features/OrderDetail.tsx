@@ -168,7 +168,7 @@ export function OrderDetail({ id }: { id: string }) {
         onClose={() => {
           if (!busy) setAction(null)
         }}
-        title={action === 'delete' ? '주문을 삭제할까요?' : '주문을 취소할까요?'}
+        title={action === 'delete' ? '주문 삭제 확인' : '주문 취소 확인'}
         description={`${o.productName} · ${o.quantity}개 · ${money(o.totalPrice)}`}
       >
         <p>

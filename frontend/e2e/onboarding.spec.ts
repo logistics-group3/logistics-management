@@ -51,7 +51,7 @@ async function companyThroughUI(page: Page, name: string, hubId: string) {
   const response = page.waitForResponse(
     (r) => r.url().endsWith('/api/v1/companies') && r.request().method() === 'POST',
   )
-  await form.getByRole('button', { name: '업체 등록 완료' }).click()
+  await form.getByRole('button', { name: '업체 등록' }).click()
   const created = await response
   expect(created.status()).toBe(201)
   const company = (await created.json()).data
@@ -119,11 +119,11 @@ test('신규 회원가입 → 본인 업체 2곳 등록 → 상품 등록 → �
     const registration = page.waitForResponse(
       (r) => r.url().endsWith('/auth/signup') && r.request().method() === 'POST',
     )
-    await page.getByRole('button', { name: '계정 만들기' }).click()
+    await page.getByRole('button', { name: '회원가입' }).click()
     const account = (await (await registration).json()).data
     resources.users.push(account.userId)
     await login(page, username)
-    await expect(page.getByRole('heading', { name: '내 업체 등록부터 시작하세요.' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '담당 업체 등록 필요' })).toBeVisible()
     const supplier = await companyThroughUI(page, `E2E 공급 ${username}`, fixture.hubId)
     resources.companies.push(supplier.companyId)
     expect(supplier.managerId).toBe(account.userId)
@@ -155,7 +155,7 @@ test('신규 회원가입 → 본인 업체 2곳 등록 → 상품 등록 → �
         r.url().endsWith(`/companies/${supplier.companyId}/products`) &&
         r.request().method() === 'POST',
     )
-    await productForm.getByRole('button', { name: '상품 등록 완료' }).click()
+    await productForm.getByRole('button', { name: '상품 등록' }).click()
     const createdProduct = await productResponse
     expect(createdProduct.request().postData()).toContain('"price":9007199254740993')
     expect(createdProduct.status()).toBe(201)
@@ -169,7 +169,7 @@ test('신규 회원가입 → 본인 업체 2곳 등록 → 상품 등록 → �
     const receiver = await companyThroughUI(page, `E2E 수령 ${username}`, fixture.hubId)
     resources.companies.push(receiver.companyId)
     await page.screenshot({ path: testInfo.outputPath('new-company-connected.png') })
-    await page.getByRole('link', { name: '주문 등록으로' }).click()
+    await page.getByRole('link', { name: '주문 등록하기' }).click()
     const orderForm = page.getByRole('dialog', { name: '새 주문 등록' })
     await orderForm.getByLabel('공급업체', { exact: true }).selectOption(supplier.companyId)
     await orderForm.getByLabel('수령업체', { exact: true }).selectOption(receiver.companyId)
@@ -265,7 +265,7 @@ test('MASTER 배송담당자·허브 연결 → 실제 자동 배정과 구간 �
     const hubs = (await (await request.get('/api/v1/hubs?size=50', { headers })).json()).data
       .content
     // Note: 자동 배정은 허브의 담당 건수가 가장 적은 담당자를 고른다. 새 담당자가 유일한 후보인 허브여야 배정 대상을 단정할 수 있다.
-    // 시드가 담당자를 둔 허브와, 멘토 롤백 시나리오용으로 담당자를 비워 둔 허브(scenario.rollbackHubId)는 고르지 않는다.
+    // 시드가 담당자를 둔 허브와, 롤백 시나리오용으로 담당자를 비워 둔 허브(scenario.rollbackHubId)는 고르지 않는다.
     const users = (await (await request.get('/api/v1/users?size=50', { headers })).json()).data
       .content as { isDeliveryManager: boolean; hubId: string | null }[]
     const staffed = new Set(users.filter((u) => u.isDeliveryManager).map((u) => u.hubId))
@@ -401,7 +401,7 @@ test('이메일만으로 가입, MASTER 수정·해제와 USER 편집 제한', a
     const registration = page.waitForResponse(
       (r) => r.url().endsWith('/auth/signup') && r.request().method() === 'POST',
     )
-    await page.getByRole('button', { name: '계정 만들기' }).click()
+    await page.getByRole('button', { name: '회원가입' }).click()
     const result = await registration
     expect(result.status()).toBe(201)
     expect(result.request().postDataJSON()).not.toHaveProperty('slackId')

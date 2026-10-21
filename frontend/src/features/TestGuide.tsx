@@ -77,9 +77,8 @@ export function TestGuide() {
   return (
     <div className="test-guide">
       <PageTitle
-        eyebrow="MENTOR TEST GUIDE"
-        title="멘토 테스트 가이드"
-        description="실제 Gateway API에 연결된 테스트 환경입니다. 계정 버튼을 누르면 그 계정으로 로그인해 시나리오 화면을 엽니다."
+        title="시나리오 테스트 가이드"
+        description="계정 선택 시 해당 계정으로 로그인하고 시나리오 화면으로 이동합니다."
         actions={
           <div className="guide-progress" aria-live="polite">
             <strong>

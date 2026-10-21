@@ -293,7 +293,7 @@ test('회원가입 검증·중복 아이디·가입 완료 → 실제 로그인�
   await page.goto('/login')
   await page.getByRole('link', { name: '회원가입', exact: true }).click()
   await expect(page.getByRole('heading', { name: '회원가입', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '계정 만들기', exact: true }).click()
+  await page.getByRole('button', { name: '회원가입', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('입력 항목')
   await expect(page.getByLabel('아이디', { exact: true })).toBeFocused()
   await page.getByLabel('아이디', { exact: true }).fill('uiuser')
@@ -302,10 +302,10 @@ test('회원가입 검증·중복 아이디·가입 완료 → 실제 로그인�
   await page.getByLabel('이름', { exact: true }).fill('가입 검증 담당자')
   await page.getByLabel('Slack 계정 이메일', { exact: true }).fill('signup@example.com')
   await page.getByLabel('소속명', { exact: true }).fill('회원가입 테스트 업체')
-  await page.getByRole('button', { name: '계정 만들기', exact: true }).click()
+  await page.getByRole('button', { name: '회원가입', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('비밀번호가 일치하지')
   await page.getByLabel('비밀번호 확인', { exact: true }).fill(password)
-  await page.getByRole('button', { name: '계정 만들기', exact: true }).click()
+  await page.getByRole('button', { name: '회원가입', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('이미 사용 중인 아이디')
   const username = 'ui' + Date.now().toString(36).slice(-8)
   await page.getByLabel('아이디', { exact: true }).fill(username)
@@ -314,7 +314,7 @@ test('회원가입 검증·중복 아이디·가입 완료 → 실제 로그인�
     (response) =>
       response.url().endsWith('/api/v1/auth/signup') && response.request().method() === 'POST',
   )
-  await page.getByRole('button', { name: '계정 만들기', exact: true }).click()
+  await page.getByRole('button', { name: '회원가입', exact: true }).click()
   const response = await created
   expect(response.status()).toBe(201)
   const account = (await response.json()).data
@@ -330,7 +330,7 @@ test('회원가입 검증·중복 아이디·가입 완료 → 실제 로그인�
     await expect(page.getByText('업체 · 회원가입 테스트 업체')).toBeVisible()
     await openNav(page, '주문 관리')
     await page.getByRole('link', { name: '새 주문 등록', exact: true }).click()
-    await expect(page.getByText('연결된 수령업체가 없습니다.', { exact: false })).toBeVisible()
+    await expect(page.getByText('담당 수령업체가 없습니다.', { exact: false })).toBeVisible()
   } finally {
     const auth = await request.post('/api/v1/auth/login', {
       data: { username: 'uimaster', password },
@@ -356,4 +356,25 @@ test('모바일 회원가입 화면과 접근성', async ({ page }, testInfo) =>
     [],
   )
   await page.screenshot({ path: testInfo.outputPath('signup-mobile.png'), fullPage: true })
+})
+
+test('운영 대시보드의 배송 단계에서 상태가 적용된 목록으로 이동한다', async ({ page }) => {
+  await page.goto('/')
+  await login(page)
+  const pipeline = page.getByRole('region', { name: '배송 단계별 현황' })
+  await expect(pipeline.getByRole('link')).toHaveCount(8)
+  const waiting = pipeline.getByRole('link', { name: /^집하 대기 / })
+  await expect(waiting).not.toContainText('—')
+  await waiting.click()
+  await expect(page).toHaveURL(/\/deliveries\?status=PICKUP_WAITING$/)
+  await expect(page.getByLabel('배송 상태', { exact: true })).toHaveValue('PICKUP_WAITING')
+  await expect(page.locator('tbody .badge').first()).toHaveText('집하 대기')
+  await page.locator('tbody .row-link').first().click()
+  await expect(page.getByRole('dialog', { name: '배송 상세', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '닫기', exact: true }).click()
+  await expect(page).toHaveURL(/\/deliveries\?status=PICKUP_WAITING$/)
+  await expect(page.getByLabel('배송 상태', { exact: true })).toHaveValue('PICKUP_WAITING')
+  await page.getByRole('button', { name: '초기화', exact: true }).click()
+  await expect(page.getByLabel('배송 상태', { exact: true })).toHaveValue('')
+  await expect(page).toHaveURL(/\/deliveries$/)
 })

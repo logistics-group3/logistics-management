@@ -134,6 +134,7 @@ class CompanyServiceTest {
         UUID managerId = UUID.randomUUID();
         Company company = company(managerId);
         given(companyRepository.findById(company.getId())).willReturn(Optional.of(company));
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
         runCallbackDirectly();
 
         CompanyResult result = companyService.update(user(managerId), company.getId(),
@@ -173,6 +174,7 @@ class CompanyServiceTest {
         Company company = company(UUID.randomUUID());
         UUID newManagerId = UUID.randomUUID();
         given(companyRepository.findById(company.getId())).willReturn(Optional.of(company));
+        given(companyRepository.findByIdForUpdate(company.getId())).willReturn(Optional.of(company));
         runCallbackDirectly();
 
         CompanyResult result = companyService.update(master(), company.getId(),
@@ -180,6 +182,21 @@ class CompanyServiceTest {
 
         assertThat(result.managerId()).isEqualTo(newManagerId);
         verify(userReader).checkExists(newManagerId);
+    }
+
+    @Test
+    @DisplayName("트랜잭션 안에서는 잠근 최신 행으로 권한을 다시 검사해 변경하지 않는다")
+    void updateChecksLockedRow() {
+        UUID managerId = UUID.randomUUID();
+        Company stale = company(managerId);
+        Company locked = company(UUID.randomUUID());
+        given(companyRepository.findById(stale.getId())).willReturn(Optional.of(stale));
+        given(companyRepository.findByIdForUpdate(stale.getId())).willReturn(Optional.of(locked));
+        runCallbackDirectly();
+
+        assertErrorCode(() -> companyService.update(user(managerId), stale.getId(),
+                new UpdateCompanyCommand("새 이름", null, null, null)), CommonErrorCode.FORBIDDEN);
+        assertThat(locked.getName()).isEqualTo("스파르타 식품");
     }
 
     @Test

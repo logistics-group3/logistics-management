@@ -38,7 +38,7 @@ public class ProductService {
     @CacheEvict(cacheNames = CompanyCacheNames.INTERNAL_PRODUCT, key = "#productId")
     @Transactional
     public ProductResult update(UserContext user, UUID companyId, UUID productId, UpdateProductCommand command) {
-        Product product = getProductOfCompany(companyId, productId);
+        Product product = getLockedProductOfCompany(companyId, productId);
         user.validateSelfOrMaster(product.getCompany().getManagerId());
         product.update(command.name(), command.description(), command.price());
         return ProductResult.from(product);
@@ -48,13 +48,19 @@ public class ProductService {
     @CacheEvict(cacheNames = CompanyCacheNames.INTERNAL_PRODUCT, key = "#productId")
     @Transactional
     public void delete(UserContext user, UUID companyId, UUID productId) {
-        Product product = getProductOfCompany(companyId, productId);
+        Product product = getLockedProductOfCompany(companyId, productId);
         user.validateSelfOrMaster(product.getCompany().getManagerId());
         product.softDelete(user.username());
     }
 
-    /** 경로의 업체 소속이 아닌 상품도 PRODUCT_NOT_FOUND로 응답한다(SA P-03). */
-    private Product getProductOfCompany(UUID companyId, UUID productId) {
+    /**
+     * 경로의 업체 소속이 아닌 상품도 PRODUCT_NOT_FOUND로 응답한다(SA P-03).
+     * Note: 상품을 읽기 전에 업체 행을 먼저 잠근다. 그렇지 않으면 읽은 뒤 업체 삭제(C-05)가 커밋되고,
+     * 오래된 deletedAt=null을 실은 상품 UPDATE가 삭제를 되돌린다. 업체가 이미 삭제됐으면 상품도 없는 것으로 본다.
+     */
+    private Product getLockedProductOfCompany(UUID companyId, UUID productId) {
+        companyRepository.findByIdForUpdate(companyId)
+                .orElseThrow(() -> new BusinessException(CompanyErrorCode.PRODUCT_NOT_FOUND));
         return productRepository.findById(productId)
                 .filter(product -> product.belongsTo(companyId))
                 .orElseThrow(() -> new BusinessException(CompanyErrorCode.PRODUCT_NOT_FOUND));

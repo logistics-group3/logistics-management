@@ -58,7 +58,9 @@ public class CompanyService {
             hubReader.checkExists(command.hubId());
         }
         return transactionTemplate.execute(status -> {
-            Company company = getCompany(companyId);
+            // Note: 잠근 최신 행으로 검사한다. 일반 조회면 그 사이 완료된 관리자 변경을 전체 컬럼 UPDATE가 되돌린다.
+            Company company = companyRepository.findByIdForUpdate(companyId)
+                    .orElseThrow(() -> new BusinessException(CompanyErrorCode.COMPANY_NOT_FOUND));
             user.validateSelfOrMaster(company.getManagerId());
             company.update(command.name(), command.address());
             if (command.hubId() != null) {

@@ -37,9 +37,7 @@ export function Signup() {
       <span className="login-icon">
         <UserRoundPlus size={24} />
       </span>
-      <span className="eyebrow">JOIN THE WORKSPACE</span>
       <h2>회원가입</h2>
-      <p>계정을 만들고 물류 운영 워크스페이스에 참여하세요.</p>
       <form
         noValidate
         onSubmit={async (event) => {
@@ -191,7 +189,7 @@ export function Signup() {
           }
         />
         <div className="signup-role-note">
-          일반 사용자로 가입됩니다. 가입 후 업체를 등록하면 본인이 담당자로 연결됩니다. 다른
+          일반 사용자로 가입됩니다. 가입 후 업체를 등록하면 본인이 담당자로 지정됩니다. 다른
           사용자의 업체 담당자 변경과 배송 담당자 지정은 관리자가 처리합니다.
         </div>
         <Button className="login-submit" disabled={busy}>
@@ -202,14 +200,13 @@ export function Signup() {
             </>
           ) : (
             <>
-              계정 만들기
+              회원가입
               <ArrowRight size={17} />
             </>
           )}
         </Button>
       </form>
       <div className="auth-switch">
-        <span>이미 계정이 있으신가요?</span>
         <Link to="/login">로그인</Link>
       </div>
     </AuthLayout>

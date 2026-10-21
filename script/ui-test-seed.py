@@ -50,7 +50,7 @@ for attempt in range(30):
 hubs = request('/hubs?size=50', token=master)['content']
 hub = next((item for item in hubs if '서울' in item['name']), hubs[0])
 hub_by_name = {item['name']: item for item in hubs}
-# 멘토 테스트 가이드(frontend 테스트 가이드 화면)의 시나리오용 허브. 서울 허브에는 배송담당자를 더하지 않는다.
+# 시나리오 테스트 가이드(frontend 테스트 가이드 화면)의 시나리오용 허브. 서울 허브에는 배송담당자를 더하지 않는다.
 # Note: 자동 배정은 허브의 담당 건수가 가장 적은 담당자를 고르므로, 서울에 담당자를 늘리면 기존 E2E의 uidriver 배정이 바뀐다.
 gyeonggi, busan, daejeon = hub_by_name['경기 북부 센터'], hub_by_name['부산광역시 센터'], hub_by_name['대전광역시 센터']
 users = request('/users?size=50', token=master)['content']
@@ -102,7 +102,7 @@ if manifest_path.exists():
     manifest['users'] = {**manifest.get('users', {}), **{key: value['userId'] for key, value in by_username.items()}}
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
     print('테스트 계정·참조 데이터를 확인했다. 기존 주문 상태를 유지한다.')
-    print(f'계정 {len(users)}명, 업체 {len(companies)}개. 멘토 가이드: http://127.0.0.1:5174/guide')
+    print(f'계정 {len(users)}명, 업체 {len(companies)}개. 시나리오 가이드: http://127.0.0.1:5174/guide')
     raise SystemExit(0)
 user_token = login('uiuser')
 orders = []
@@ -125,4 +125,4 @@ for index in range(12):
 manifest_path.parent.mkdir(exist_ok=True)
 manifest_path.write_text(json.dumps({'hubId': hub['hubId'], 'supplierCompanyId': supplier['companyId'], 'receiverCompanyId': receiver['companyId'], 'products': products, 'orders': orders, 'users': {key: value['userId'] for key, value in by_username.items()}, 'scenario': scenario}, ensure_ascii=False, indent=2))
 print(f'실제 API로 준비 완료: 사용자 {len(users)}명, 허브 {len(hubs)}개, 업체 {len(companies)}개, 상품 {len(products)}개, 주문 {len(orders)}건. Slack 비활성화 확인.')
-print('멘토 가이드: http://127.0.0.1:5174/guide')
+print('시나리오 가이드: http://127.0.0.1:5174/guide')

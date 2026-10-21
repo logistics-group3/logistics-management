@@ -18,29 +18,21 @@ type Item = Company | Product | Hub | User
 const config = {
   companies: {
     title: '업체 관리',
-    english: 'COMPANY DIRECTORY',
-    description: '주문과 배송을 연결하는 공급업체와 수령업체를 확인합니다.',
     search: '업체명',
     key: 'companyId',
   },
   products: {
     title: '상품 관리',
-    english: 'PRODUCT CATALOG',
-    description: '업체별 상품 정보와 주문에 적용되는 단가를 확인합니다.',
     search: '상품명',
     key: 'productId',
   },
   hubs: {
     title: '허브 관리',
-    english: 'HUB NETWORK',
-    description: '전국 물류 허브의 위치와 상세 정보를 확인합니다.',
     search: '허브명 또는 주소',
     key: 'hubId',
   },
   users: {
     title: '사용자 관리',
-    english: 'TEAM & ACCESS',
-    description: '사용자 계정과 역할, 배송 담당 정보를 확인합니다.',
     search: '사용자 이름',
     key: 'userId',
   },
@@ -91,9 +83,7 @@ export function Catalog({ kind }: { kind: Kind }) {
   return (
     <>
       <PageTitle
-        eyebrow={info.english}
         title={info.title}
-        description={info.description}
         actions={
           kind === 'companies' || kind === 'products' ? (
             <Button
@@ -278,7 +268,7 @@ export function Catalog({ kind }: { kind: Kind }) {
       )}
       <p className="table-footnote">
         {kind === 'companies'
-          ? '일반 사용자는 업체 등록 시 본인이 담당자로 연결됩니다. 담당자 변경은 관리자만 할 수 있습니다.'
+          ? '일반 사용자는 업체 등록 시 본인이 담당자로 지정됩니다. 담당자 변경은 관리자만 할 수 있습니다.'
           : kind === 'products'
             ? '상품 등록은 해당 업체 담당자 또는 관리자가 할 수 있습니다.'
             : kind === 'users'
@@ -311,11 +301,6 @@ export function Catalog({ kind }: { kind: Kind }) {
         open={creating}
         onClose={() => setSearchParams({})}
         title={kind === 'companies' ? '업체 등록' : '상품 등록'}
-        description={
-          kind === 'companies'
-            ? '업체 정보와 담당자를 연결하면 주문 업무를 시작할 수 있습니다.'
-            : '공급업체와 상품 정보를 등록합니다.'
-        }
         sheet
       >
         {creating &&
