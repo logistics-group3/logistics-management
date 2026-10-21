@@ -77,7 +77,7 @@ export function TestGuide() {
   return (
     <div className="test-guide">
       <PageTitle
-        title="멘토 테스트 가이드"
+        title="시나리오 테스트 가이드"
         description="계정 선택 시 해당 계정으로 로그인하고 시나리오 화면으로 이동합니다."
         actions={
           <div className="guide-progress" aria-live="polite">
