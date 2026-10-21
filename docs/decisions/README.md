@@ -6,7 +6,7 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |---|---|---|---|
-| 0020 | [로컬 Docker 네트워크를 앞단과 데이터 두 개로 나눈다](0020-docker-network-split.md) | 제안 | 2026-10-21 |
+| 0020 | [로컬 Docker 네트워크를 앞단과 데이터 두 개로 나눈다](0020-docker-network-split.md) | 채택 | 2026-10-21 |
 | 0019 | [주문 생성 운영자 복구와 배송 조건부 종료](0019-order-creation-operator-recovery.md) | 로컬 구현 채택·팀 리뷰 대기 | 2026-10-20 |
 | 0019 | [Redis 캐시를 기본 꺼짐으로 넣고 측정으로 채택을 정한다](0019-redis-cache-measured-adoption.md) | 제안 | 2026-10-19 |
 | 0018 | [메트릭 수집: Prometheus + Grafana 도입](0018-metrics-prometheus-grafana.md) | 제안 | 2026-10-16 |

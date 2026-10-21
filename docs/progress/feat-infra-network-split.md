@@ -1,7 +1,7 @@
 # feat/infra-network-split
 
 ## 지금 하는 일
-로컬 Docker 네트워크를 앞단(logistics-net)·데이터(logistics-data)로 분리, 커밋·PR 전
+로컬 Docker 네트워크 분리, PR #39 리뷰·병합 대기
 
 ## 진행 상태
 - [x] `docker-compose.yml`: postgres를 `logistics-data`에만, 업무 서비스는 두 네트워크에 붙임. 앞단 대역 `10.210.10.0/24` 고정, `SPRING_CLOUD_INETUTILS_PREFERREDNETWORKS`로 Eureka에 앞단 IP만 등록. DB 호스트 포트 `127.0.0.1:5432` 유지(사용자 결정)
@@ -10,13 +10,13 @@
 - [x] 개발 스택 기동 확인(2026-10-21): Eureka 6개 UP, 등록 IP 모두 10.210.10.x. 마스터 로그인 후 users/hubs/companies/products/orders/deliveries 조회 200, 토큰 없음 401, `/internal` 404. Gateway·Prometheus·Zipkin에서 `postgres` 이름 해석 안 됨(Gateway TCP 5432 BLOCKED), user-service는 해석됨. Prometheus 대상 7개 모두 up
 - [ ] `script/run.sh --check`(e2e-check.sh) 통과 확인: 이 PC는 `python3`가 Windows 스토어 별칭이라 JSON 파싱이 비어 "등록: []"로 실패한다. 변경과 무관한 실행 환경 문제이며, 같은 항목을 curl로 직접 확인했다(위 항목). Python이 있는 환경에서 다시 돌린다
 - [ ] 성능 측정(`script/perf.sh up`)·UI 테스트(`script/ui-test.sh up`) 스택 실제 기동: 미확인. Compose 설정 렌더링(대역 10.210.20, preferred 접두어)과 `bash -n`만 확인
-- [ ] 팀 전체 리뷰(docker-compose.yml 변경), ADR 0020 채택 여부
+- [x] 팀 합의(2026-10-21), ADR 0020 채택. PR #39
 - 면접 포인트: 네트워크 분리로 얻는 심층 방어, 다중 네트워크 컨테이너가 서비스 디스커버리에 잘못된 IP를 등록하는 문제와 해결, Docker internal 네트워크와 포트 공개의 관계
 
 ## 다음 단계
 1. Python이 있는 환경에서 `script/run.sh --check` 실행해 완료 기준 6개 통과 확인
 2. `script/perf.sh up`, `script/ui-test.sh up`을 개발 스택과 동시에 띄워 대역 충돌이 없는지, k6가 Gateway에 닿는지 확인
-3. 커밋(`chore(infra): Docker 네트워크를 앞단과 데이터로 분리`)과 PR, 팀원 전체 리뷰 요청
+3. PR #39 리뷰 승인 후 dev에 squash 병합
 
 ## 직접 해보기
 1. 기존 스택 내리기: `docker compose down` (DB 볼륨은 남는다)
