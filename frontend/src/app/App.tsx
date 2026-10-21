@@ -44,7 +44,7 @@ const navigation = [
   { path: '/hubs', label: '허브 관리', icon: Network },
   { path: '/users', label: '사용자 관리', icon: Users },
 ]
-// 로그인 전에도 멘토가 가이드를 먼저 읽을 수 있게 사이드바 없는 화면으로 연다.
+// 로그인 전에도 가이드를 먼저 읽을 수 있게 사이드바 없는 화면으로 연다.
 function PublicGuide() {
   return (
     <div className="public-guide">
@@ -79,7 +79,7 @@ function Shell() {
     item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path),
   )
   const currentLabel = location.pathname.startsWith('/guide')
-    ? '멘토 테스트 가이드'
+    ? '시나리오 테스트 가이드'
     : current?.label
   return (
     <div className="app-shell">
@@ -138,7 +138,7 @@ function Shell() {
           </div>
           <NavLink className="sidebar-help" to="/guide" onClick={() => setMenu(false)}>
             <ClipboardCheck size={18} />
-            멘토 테스트 가이드
+            시나리오 테스트 가이드
             <ChevronRight size={15} />
           </NavLink>
           <span className="sidebar-version">물류 관리 시스템</span>

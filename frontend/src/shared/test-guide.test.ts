@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ApiError, errorHelp } from './api'
 import { scenarios, testAccounts, testLinks } from './test-guide'
 
-describe('멘토 테스트 가이드 데이터', () => {
+describe('시나리오 테스트 가이드 데이터', () => {
   it('시나리오 ID는 겹치지 않는다(확인 표시 저장 키)', () => {
     expect(new Set(scenarios.map((s) => s.id)).size).toBe(scenarios.length)
   })

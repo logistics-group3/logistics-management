@@ -33,7 +33,7 @@
 | `frontend/src/shared/api.ts` | `DELIVERY_MANAGER_NOT_FOUND` 안내 |
 | `script/ui-test-seed.py` | 시나리오 데이터, manifest `scenario` |
 | `frontend/e2e/guide.spec.ts`, `onboarding.spec.ts` | 가이드 E2E·접근성, 담당자 지정 테스트의 허브 선택 조건 |
-| `docs/guides/mentor-test.md`, README들 | 실행 4줄과 데이터 설명 |
+| `docs/guides/scenario-test.md`, README들 | 실행 4줄과 데이터 설명 |
 
 ## 왜 이렇게 만들었는가
 
