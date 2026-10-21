@@ -14,7 +14,7 @@
 | `script/perf/k6/s3-read.js` | S3 허브 단건(H-02)·경로 단건(H-04). B가 캐시하는 단건 조회만 부른다 |
 | `script/perf/k6/report.js` | 본 측정 구간의 k6 요약과 Prometheus 지표를 보고서로 만든다 |
 
-- 프로젝트 이름은 `logistics-perf`, 환경 파일은 `.env.perf`(처음 실행 때 만든다. Git 제외)다. 개발 스택(8080)·UI 테스트(18080)와 포트가 겹치지 않는다(Gateway 28080, Prometheus 29090, Grafana 23000).
+- 프로젝트 이름은 `logistics-perf`, 환경 파일은 `.env.perf`(처음 실행 때 만든다. Git 제외)다. 개발 스택(8080)·UI 테스트(18080)와 포트가 겹치지 않는다(Gateway 28080, Prometheus 29090, Grafana 23000). 앞단 Docker 네트워크 대역도 `10.210.20.0/24`로 따로 둔다(ADR 0020, `.env.perf`에 `LOGISTICS_NET_SUBNET`이 있으면 그 값). k6·Redis는 앞단 `logistics-perf_logistics-net`에 붙고, postgres는 데이터 네트워크에만 있다.
 - 추적 샘플링은 0.0이다. 추적 비용이 측정값에 섞이지 않게 한다.
 - Redis(`redis:7.4.2`, 1 CPU·256MB, 디스크 저장 없음)는 쓰지 않는 조건에서도 함께 띄운다. 조건마다 컨테이너 구성을 같게 한다.
 

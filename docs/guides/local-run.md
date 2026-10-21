@@ -33,7 +33,8 @@ script/run.sh --check    # 기동 후 완료 기준 확인(script/e2e-check.sh)�
 | 진입점 | `gateway-service` | `8080` |
 | 비즈니스 | `user`, `hub`, `company`, `order`, `delivery` 서비스 | 공개하지 않음 |
 
-비즈니스 서비스 포트를 공개하지 않으므로 외부 요청은 Gateway(8080)로만 들어온다. 같은 이유로 `--scale`로 인스턴스를 늘려도 포트가 충돌하지 않는다.
+비즈니스 서비스 포트를 공개하지 않으므로 외부 요청은 Gateway(8080)로만 들어온다. 같은 이유로 `--scale`로 인스턴스를 늘려도 포트가 충돌하지 않는다. 구역별 포트 노출은 [로컬 Docker 네트워크 구역도](../design/local-network.md)에 그림으로 정리했다.
+Docker 네트워크는 앞단 `logistics-net`(대역 `10.210.10.0/24`)과 데이터 `logistics-data` 둘이다. postgres는 데이터 쪽에만 있어 Gateway·관측 도구는 DB에 닿지 않고, 업무 서비스만 두 네트워크에 함께 붙는다(ADR 0020). 이전 구성으로 띄운 스택은 `docker compose down` 뒤 다시 올리면 새 네트워크로 만들어진다. DB 볼륨은 그대로다.
 Gateway의 actuator(헬스 체크·메트릭)는 공개하지 않는 관리 포트 8090에 있다. 늘린 인스턴스도 Prometheus가 Eureka에서 찾아 수집한다([메트릭 모니터링](monitoring.md)).
 
 ## 3. 서버 올리는 방법
@@ -131,7 +132,7 @@ script/db-check.sh                              # 서비스 계정 권한 확인
 ## 9. 물류 운영 테스트 UI
 
 전체 메뉴와 주문·배송 기능을 브라우저에서 테스트하려면 [frontend 실행 안내](../../frontend/README.md)를 따른다.
-`script/ui-test.sh up`은 별도 `logistics-ui-test` 프로젝트·전용 환경 파일·DB 볼륨을 사용한다. 기본 개발 환경은 유지하고 Slack Webhook은 항상 비활성화한다. DM은 기본 비활성화이며 명시한 토큰·워크스페이스·수신 허용 목록으로만 켠다.
+`script/ui-test.sh up`은 별도 `logistics-ui-test` 프로젝트·전용 환경 파일·DB 볼륨을 사용한다. 앞단 네트워크 대역은 개발 스택과 겹치지 않게 `10.210.30.0/24`를 쓴다. 기본 개발 환경은 유지하고 Slack Webhook은 항상 비활성화한다. DM은 기본 비활성화이며 명시한 토큰·워크스페이스·수신 허용 목록으로만 켠다.
 `seed`는 공개 API로 테스트 계정·업체·상품·주문과 시나리오 가이드 데이터(발제 예시 경기·부산 업체, 배송담당자가 없는 대전 허브의 롤백용 업체)를 준비한다. 다시 실행해도 중복되지 않는다. 확인하는 사람은 http://127.0.0.1:5174/guide 에서 시작한다([시나리오 테스트 안내](scenario-test.md)). `frontend`는 http://127.0.0.1:5174 에서 실행하고 Gateway는 18080번, Zipkin은 19411번, Grafana는 13000번, Prometheus는 19090번이다.
 실제 DM이 켜져 있으면 `seed`와 브라우저 E2E는 주문 생성 전에 중단한다. 최초 DM 배포는 config-server·user·delivery·order를 빌드하고 user Flyway V2·V3를 적용한다. [Slack DM 설정·실패 처리](slack-dm.md)를 따른다.
 종료는 프런트 실행 터미널의 Ctrl+C와 `script/ui-test.sh down`이다. 테스트 DB 볼륨은 유지한다.
