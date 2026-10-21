@@ -1,0 +1,91 @@
+package com.sparta.logistics.company.integration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import com.sparta.logistics.common.auth.Role;
+import com.sparta.logistics.common.auth.UserContext;
+import com.sparta.logistics.common.support.PostgresIntegrationTest;
+import com.sparta.logistics.company.application.CompanyService;
+import com.sparta.logistics.company.application.ProductService;
+import com.sparta.logistics.company.application.dto.CreateProductCommand;
+import com.sparta.logistics.company.application.dto.UpdateCompanyCommand;
+import com.sparta.logistics.company.application.dto.UpdateProductCommand;
+import com.sparta.logistics.company.domain.Company;
+import com.sparta.logistics.company.domain.CompanyRepository;
+import java.util.UUID;
+import java.util.concurrent.*;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+class QualityAuditConcurrencyTest extends PostgresIntegrationTest {
+    @Autowired CompanyRepository companies;
+    @Autowired CompanyService companyService;
+    @Autowired ProductService productService;
+    @Autowired PlatformTransactionManager transactions;
+    @Autowired JdbcTemplate jdbc;
+    final UserContext master = new UserContext(UUID.randomUUID(), "audit-master", Role.MASTER, false);
+
+    @Test void productUpdateMustNotUndoCompanyDeletion() throws Exception {
+        Company company = companies.save(Company.create("감사 업체", "주소", UUID.randomUUID(), master.userId()));
+        UUID productId = productService.create(master, company.getId(), new CreateProductCommand("상품", null, 1000L)).productId();
+        CountDownLatch prepared = new CountDownLatch(1), release = new CountDownLatch(1);
+        ExecutorService worker = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> update = worker.submit(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                productService.update(master, company.getId(), productId, new UpdateProductCommand("늦은 수정", null, null));
+                prepared.countDown();
+                await(release);
+            }));
+            await(prepared);
+            companyService.delete(master, company.getId());
+            assertThat(jdbc.queryForObject("select deleted_at is not null from p_products where product_id=?", Boolean.class, productId)).isTrue();
+            release.countDown();
+            update.get(10, TimeUnit.SECONDS);
+            boolean productDeleted = jdbc.queryForObject("select deleted_at is not null from p_products where product_id=?", Boolean.class, productId);
+            System.out.println("AUDIT_PRODUCT_DELETED_AFTER_LATE_UPDATE=" + productDeleted);
+            assertThat(productDeleted).as("업체 삭제 후 늦은 상품 수정이 논리 삭제를 되돌리면 안 된다").isTrue();
+        } finally { release.countDown(); worker.shutdownNow(); worker.awaitTermination(5, TimeUnit.SECONDS); }
+    }
+
+    @Test void companyUpdateMustNotUndoManagerTransfer() throws Exception {
+        Company company = companies.save(Company.create("감사 업체", "주소", UUID.randomUUID(), master.userId()));
+        UUID newManager = UUID.randomUUID();
+        CountDownLatch prepared = new CountDownLatch(1), release = new CountDownLatch(1);
+        ExecutorService worker = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> update = worker.submit(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
+                companyService.update(master, company.getId(), new UpdateCompanyCommand("늦은 수정", null, null, null));
+                prepared.countDown();
+                await(release);
+            }));
+            await(prepared);
+            new TransactionTemplate(transactions).executeWithoutResult(status -> companies.findByIdForUpdate(company.getId()).orElseThrow().assignManager(newManager));
+            release.countDown();
+            update.get(10, TimeUnit.SECONDS);
+            UUID manager = jdbc.queryForObject("select manager_id from p_companies where company_id=?", UUID.class, company.getId());
+            System.out.println("AUDIT_MANAGER_TRANSFER_PRESERVED=" + newManager.equals(manager));
+            assertThat(manager).as("늦은 이름 수정이 완료된 관리자 변경을 되돌리면 안 된다").isEqualTo(newManager);
+        } finally { release.countDown(); worker.shutdownNow(); worker.awaitTermination(5, TimeUnit.SECONDS); }
+    }
+    @Test void paginationMustNotDuplicateEqualTimestamps() {
+        UUID hub = UUID.randomUUID();
+        for (int i = 0; i < 120; i++) companies.save(Company.create("페이지 업체 " + i, "주소", hub, master.userId()));
+        jdbc.update("update p_companies set created_at=timestamp '2026-10-20 00:00:00' where hub_id=?", hub);
+        java.util.List<UUID> ids = new java.util.ArrayList<>();
+        for (int page = 0; page < 3; page++) {
+            var result = companies.search(new com.sparta.logistics.company.domain.CompanySearchCondition(null, hub, null),
+                    org.springframework.data.domain.PageRequest.of(page, 50, org.springframework.data.domain.Sort.by("createdAt").descending()));
+            result.forEach(company -> ids.add(company.getId()));
+        }
+        int unique = new java.util.HashSet<>(ids).size();
+        System.out.println("AUDIT_PAGINATION_ITEMS=" + ids.size() + ", UNIQUE=" + unique);
+        assertThat(unique).as("동일 생성 시각의 업체도 페이지 사이 중복 없이 모두 조회되어야 한다").isEqualTo(120);
+    }
+
+    static void await(CountDownLatch latch) {
+        try { if (!latch.await(15, TimeUnit.SECONDS)) throw new IllegalStateException("대기 시간 초과"); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException(e); }
+    }
+}

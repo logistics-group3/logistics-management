@@ -12,6 +12,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // Gateway 권한 캐시(auth.user-cache=redis)의 키를 권한 변경·탈퇴 때 지운다. 기본(local)에서는 연결하지 않는다
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     // Note: BCrypt만 필요해서 spring-boot-starter-security 대신 crypto 모듈만 쓴다. starter를 넣으면 기본 보안 필터 체인이 모든 API를 막는다. 인증은 Gateway가 맡는다.
     implementation 'org.springframework.security:spring-security-crypto'

@@ -1,0 +1,154 @@
+{
+  "start": "2026-10-20T11:52:02.011878+09:00",
+  "end": "2026-10-20T11:52:02.067301+09:00",
+  "method": "GET",
+  "url": "http://127.0.0.1:28080/api/v1/hubs?size=50",
+  "requestBody": null,
+  "idempotencyKey": null,
+  "status": 200,
+  "responseHeaders": {
+    "transfer-encoding": "chunked",
+    "Content-Type": "application/json",
+    "Date": "Tue, 20 Oct 2026 02:52:02 GMT",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 200,
+    "message": "SUCCESS",
+    "data": {
+      "content": [
+        {
+          "hubId": "47fd3fad-0fa3-4ea8-8741-b93c3b9c4d35",
+          "name": "부산광역시 센터",
+          "address": "부산 동구 중앙대로 206",
+          "latitude": 35.1215884,
+          "longitude": 129.0431246
+        },
+        {
+          "hubId": "4944c848-671b-4038-a69e-1788b65e9f71",
+          "name": "경기 남부 센터",
+          "address": "경기도 이천시 덕평로 257-21",
+          "latitude": 37.1884094,
+          "longitude": 127.3773456
+        },
+        {
+          "hubId": "6090face-fa49-4edb-a089-1bd667aeaf0f",
+          "name": "충청남도 센터",
+          "address": "충남 홍성군 홍북읍 충남대로 21",
+          "latitude": 36.6565769,
+          "longitude": 126.6932487
+        },
+        {
+          "hubId": "6153ad9f-7a1b-4616-b281-078a83484de5",
+          "name": "인천광역시 센터",
+          "address": "인천 남동구 정각로 29",
+          "latitude": 37.4561224,
+          "longitude": 126.7052408
+        },
+        {
+          "hubId": "6ad7c6db-61b2-4bcb-bcbb-ff23b7b97c12",
+          "name": "대구광역시 센터",
+          "address": "대구 북구 태평로 161",
+          "latitude": 35.8760013,
+          "longitude": 128.5960548
+        },
+        {
+          "hubId": "6cc4c486-6f2f-4a68-86de-b21173703f07",
+          "name": "강원특별자치도 센터",
+          "address": "강원특별자치도 춘천시 중앙로 1",
+          "latitude": 37.875892,
+          "longitude": 127.7201923
+        },
+        {
+          "hubId": "6f39d519-4947-4a95-a454-58c25728f388",
+          "name": "서울특별시 센터",
+          "address": "서울특별시 송파구 송파대로 55",
+          "latitude": 37.486698,
+          "longitude": 127.122444
+        },
+        {
+          "hubId": "715c4f51-3f18-4ff4-939e-a1d1cbd1b2a6",
+          "name": "충청북도 센터",
+          "address": "충북 청주시 상당구 상당로 82",
+          "latitude": 36.6354596,
+          "longitude": 127.4916071
+        },
+        {
+          "hubId": "92db1fc2-984c-4d06-8ad9-6d28169c0404",
+          "name": "광주광역시 센터",
+          "address": "광주 서구 내방로 111",
+          "latitude": 35.1601047,
+          "longitude": 126.851467
+        },
+        {
+          "hubId": "93eb97ce-b201-46e0-b26b-584c39191aa9",
+          "name": "대전광역시 센터",
+          "address": "대전 서구 둔산로 100",
+          "latitude": 36.3505508,
+          "longitude": 127.3849608
+        },
+        {
+          "hubId": "a28c5bd9-abf6-4613-8e3d-79800f6623d5",
+          "name": "경상북도 센터",
+          "address": "경북 안동시 풍천면 도청대로 455",
+          "latitude": 36.5753909,
+          "longitude": 128.5051633
+        },
+        {
+          "hubId": "b686bb34-1d41-4ecb-8d32-0c2d5df16db2",
+          "name": "경상남도 센터",
+          "address": "경남 창원시 의창구 중앙대로 300",
+          "latitude": 35.2378647,
+          "longitude": 128.6918717
+        },
+        {
+          "hubId": "c1eb0ea5-9905-4c19-9ebe-c3c4eba916b1",
+          "name": "세종특별자치시 센터",
+          "address": "세종특별자치시 한누리대로 2130",
+          "latitude": 36.4801145,
+          "longitude": 127.2889636
+        },
+        {
+          "hubId": "cfa35654-5a89-49e3-a6af-1d538093a49a",
+          "name": "경기 북부 센터",
+          "address": "경기도 고양시 덕양구 권율대로 570",
+          "latitude": 37.6403385,
+          "longitude": 126.8738261
+        },
+        {
+          "hubId": "ea06e966-8dd0-435b-a3d3-46d87e3f2f44",
+          "name": "전라남도 센터",
+          "address": "전남 무안군 삼향읍 오룡길 1",
+          "latitude": 34.8160967,
+          "longitude": 126.4634978
+        },
+        {
+          "hubId": "f2987999-13fa-4022-965f-69c8fcb2e7ec",
+          "name": "울산광역시 센터",
+          "address": "울산 남구 중앙로 201",
+          "latitude": 35.5311035,
+          "longitude": 129.3156467
+        },
+        {
+          "hubId": "fd28ad70-bcbf-4cad-b67b-6112f61cdf41",
+          "name": "전북특별자치도 센터",
+          "address": "전북특별자치도 전주시 완산구 효자로 225",
+          "latitude": 35.820078,
+          "longitude": 127.1079557
+        }
+      ],
+      "page": 0,
+      "size": 50,
+      "totalElements": 17,
+      "totalPages": 1,
+      "sort": "createdAt,DESC"
+    }
+  }
+}

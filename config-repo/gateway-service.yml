@@ -1,7 +1,25 @@
 server:
   port: 8080
 
+management:
+  server:
+    # Note: 8080은 호스트에 공개된 유일한 포트다. actuator를 같은 포트에 두면 메트릭이 외부에서도 보이므로, Compose 네트워크 안에서만 닿는
+    # 별도 관리 포트로 분리한다(ADR 0018). Prometheus는 Eureka 메타데이터(management.port)로 이 포트를 찾는다.
+    port: ${GATEWAY_MANAGEMENT_PORT:8090}
+  health:
+    # Redis는 auth.user-cache=redis일 때만 쓴다. 기본(local)에서 Redis가 없다고 health가 DOWN이 되지 않게 끈다.
+    redis:
+      enabled: false
+
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  # Note: WebFlux는 한 요청이 여러 스레드를 옮겨 다녀 ThreadLocal인 MDC가 비기 쉽다. auto로 두면 Reactor가 traceId를 스레드 사이로 옮겨
+  # Gateway 로그 줄에도 traceId가 찍힌다(Micrometer context-propagation).
+  reactor:
+    context-propagation: auto
   cloud:
     gateway:
       server:
@@ -72,7 +90,6 @@ auth:
   whitelist:
     - /api/v1/auth/signup
     - /api/v1/auth/login
-    - /actuator/health
     - /swagger-ui.html
     - /swagger-ui/**
     - /webjars/**
@@ -80,6 +97,9 @@ auth:
     - /*/v3/api-docs/**
   # 권한 재확인 결과 캐시 시간(SA 8.2, 팀 결정 60초)
   user-cache-ttl: 60s
+  # 캐시 저장소. local(기본, 인스턴스 메모리)이나 redis(공유, user-service가 권한 변경·탈퇴 때 키를 지운다). 성능 측정 A2 조건.
+  # redis로 바꾸면 user-service에도 같은 AUTH_USER_CACHE=redis를 줘야 삭제가 동작한다.
+  user-cache: ${AUTH_USER_CACHE:local}
 
 springdoc:
   swagger-ui:

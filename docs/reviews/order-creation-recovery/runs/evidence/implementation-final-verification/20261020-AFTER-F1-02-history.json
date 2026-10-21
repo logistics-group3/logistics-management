@@ -1,0 +1,74 @@
+{
+  "start": "2026-10-20T11:52:03.219739+09:00",
+  "end": "2026-10-20T11:52:03.255093+09:00",
+  "method": "GET",
+  "url": "http://127.0.0.1:28080/api/v1/orders/creation-recoveries/9cb67303-a2c7-58fb-a6a5-78de5792072d",
+  "requestBody": null,
+  "idempotencyKey": null,
+  "status": 200,
+  "responseHeaders": {
+    "transfer-encoding": "chunked",
+    "Content-Type": "application/json",
+    "Date": "Tue, 20 Oct 2026 02:52:03 GMT",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 200,
+    "message": "SUCCESS",
+    "data": {
+      "recoveryId": "9cb67303-a2c7-58fb-a6a5-78de5792072d",
+      "orderId": "47b96d83-e767-4c91-95dc-b17d043d95d5",
+      "attemptId": "a22735b4-fb9b-421c-bc24-359c7ff7e651",
+      "status": "COMPLETED",
+      "executionId": "6e2f4047-2da4-4b8c-accc-d844d5af2c89",
+      "requestedBy": "64f60607-c657-40fc-9218-fa5b187fa5b1",
+      "expectedStatus": "PROCESSING",
+      "reason": "격리 order의 SIGKILL exit 137·재기동과 원래 실행 중단을 확인했다.",
+      "message": "배송 생성 종료와 주문 부재를 확인해 ABORTED로 종료했습니다.",
+      "events": [
+        {
+          "step": "CLAIMED",
+          "detail": "status=PROCESSING, failureReason=null, deliveryId=null",
+          "executionId": "6e2f4047-2da4-4b8c-accc-d844d5af2c89",
+          "occurredAt": "2026-10-20T11:48:08.517675",
+          "actor": "recmaster"
+        },
+        {
+          "step": "OBSERVED",
+          "detail": "DeliveryCreationState[orderId=47b96d83-e767-4c91-95dc-b17d043d95d5, state=NONE, deliveryId=null, status=null]",
+          "executionId": "6e2f4047-2da4-4b8c-accc-d844d5af2c89",
+          "occurredAt": "2026-10-20T11:48:08.677946",
+          "actor": "recmaster"
+        },
+        {
+          "step": "CLOSE_REQUESTED",
+          "detail": "DeliveryCreationState[orderId=47b96d83-e767-4c91-95dc-b17d043d95d5, state=NONE, deliveryId=null, status=null]",
+          "executionId": "6e2f4047-2da4-4b8c-accc-d844d5af2c89",
+          "occurredAt": "2026-10-20T11:48:08.683766",
+          "actor": "recmaster"
+        },
+        {
+          "step": "VERIFIED",
+          "detail": "DeliveryCreationState[orderId=47b96d83-e767-4c91-95dc-b17d043d95d5, state=CLOSED, deliveryId=null, status=null]",
+          "executionId": "6e2f4047-2da4-4b8c-accc-d844d5af2c89",
+          "occurredAt": "2026-10-20T11:48:08.755368",
+          "actor": "recmaster"
+        },
+        {
+          "step": "COMPLETED",
+          "detail": "주문 없음·배송 CLOSED를 확인했다. 생성 시도를 ABORTED로 종료했다.",
+          "executionId": "6e2f4047-2da4-4b8c-accc-d844d5af2c89",
+          "occurredAt": "2026-10-20T11:48:08.761671",
+          "actor": "recmaster"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "start": "2026-10-20T11:52:03.564788+09:00",
+  "end": "2026-10-20T11:52:03.586920+09:00",
+  "method": "GET",
+  "url": "http://127.0.0.1:28080/api/v1/orders/creation-recoveries/candidates",
+  "requestBody": null,
+  "idempotencyKey": null,
+  "status": 200,
+  "responseHeaders": {
+    "transfer-encoding": "chunked",
+    "Content-Type": "application/json",
+    "Date": "Tue, 20 Oct 2026 02:52:03 GMT",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 200,
+    "message": "SUCCESS",
+    "data": {
+      "content": [
+        {
+          "attemptId": "4e2f2194-cfd8-456a-8e3a-7232d35c5e63",
+          "orderId": "012ff9ff-65e2-4b06-8988-6106e09d06b6",
+          "status": "PROCESSING",
+          "recoveryId": null,
+          "deliveryId": null,
+          "createdAt": "2026-10-20T11:44:28.380699",
+          "updatedAt": "2026-10-20T11:44:28.380699"
+        },
+        {
+          "attemptId": "7f1db3b3-8258-4eb4-904b-492a89cec526",
+          "orderId": "8cdebc87-7eb6-4b80-a631-928f6e719d0c",
+          "status": "PROCESSING",
+          "recoveryId": null,
+          "deliveryId": null,
+          "createdAt": "2026-10-20T11:20:07.039366",
+          "updatedAt": "2026-10-20T11:20:07.039366"
+        },
+        {
+          "attemptId": "7f339019-ee6e-4525-8062-eb3dc6fd8760",
+          "orderId": "f7f1245e-b3f0-4baa-9498-414d9245bb33",
+          "status": "PROCESSING",
+          "recoveryId": null,
+          "deliveryId": null,
+          "createdAt": "2026-10-20T11:19:14.692113",
+          "updatedAt": "2026-10-20T11:19:14.692113"
+        }
+      ],
+      "page": 0,
+      "size": 10,
+      "totalElements": 3,
+      "totalPages": 1,
+      "sort": "createdAt,DESC"
+    }
+  }
+}

@@ -36,7 +36,29 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus: Prometheus가 15초마다 가져가는 메트릭(ADR 0018). 서비스 포트는 Compose 네트워크 안에서만 열려 있다.
+        include: health,info,prometheus
+  metrics:
+    tags:
+      # 모든 메트릭에 서비스 이름을 붙여 Grafana에서 서비스별로 나눠 본다.
+      application: ${spring.application.name}
+    distribution:
+      # Note: 응답 시간을 구간(bucket)별 개수로도 내보내야 Prometheus가 여러 인스턴스를 합친 p95를 계산할 수 있다.
+      # 켜 두면 Micrometer Tracing의 traceId가 bucket에 예시(exemplar)로 붙어 Grafana 그래프에서 Zipkin trace로 넘어갈 수 있다.
+      percentiles-histogram:
+        http.server.requests: true
+        http.client.requests: true
+        # Feign 호출은 common의 FeignMeterFilter가 이 이름으로 바꾼다(라벨 키가 달라 http.client.requests와 섞을 수 없다).
+        feign.client.requests: true
+  # 분산 추적(ADR 0017). 로컬 개발에서는 모든 요청을 추적한다. 운영처럼 요청이 많으면 TRACING_SAMPLING_PROBABILITY로 낮춘다(Boot 기본값 0.1).
+  # Note: 비율은 Gateway가 trace를 시작할 때 정한다. 뒤 서비스는 traceparent의 sampled 플래그를 따르므로 한 요청의 구간이 중간에 끊기지 않는다.
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  zipkin:
+    tracing:
+      # IDE로 띄우면 localhost, Compose에서는 docker-compose.yml이 http://zipkin:9411/api/v2/spans를 넣는다.
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 springdoc:
   # 외부 문서에는 서비스 간 내부 API를 싣지 않는다(Gateway에서도 차단된다)

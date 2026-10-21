@@ -32,3 +32,7 @@ common-core/src/main/*ErrorCode.java	docs/error-codes.md	공통 표
 docker-compose*.yml	docs/guides/local-run.md	2. 무엇이 뜨나, 4. 바꾼 것만 다시 올리기
 settings.gradle	README.md,AGENTS.md	모듈 구성 표, 프로젝트(모듈과 포트)
 .agents/skills/*/SKILL.md	.agents/skills/README.md	스킬 목록
+
+frontend/src/*	frontend/README.md	UI 범위·계약·검증
+script/ui-test*	frontend/README.md,docs/guides/local-run.md	테스트 환경·기동·시드
+script/perf*	docs/guides/performance-test.md	구성, 한 회차 측정

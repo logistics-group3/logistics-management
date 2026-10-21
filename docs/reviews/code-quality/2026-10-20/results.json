@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-20",
+  "branch": "feat/order-creation-recovery",
+  "head": "5036505dc9875df69231e7567b902734b8f7a80c",
+  "baseline": {
+    "gradle_build": "success, 38s, 2 executed (company/order tests), 56 up-to-date",
+    "junit_xml_total": 857,
+    "fresh_company_tests": 50,
+    "fresh_order_tests": 484,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "frontend_build": "passed",
+    "frontend_lint": "passed",
+    "frontend_format_check": "passed",
+    "frontend_unit_tests": 56,
+    "browser_e2e": "not run"
+  },
+  "repro_tests": [
+    {
+      "class": "com.sparta.logistics.company.integration.QualityAuditConcurrencyTest",
+      "tests": 3,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "name": "companyUpdateMustNotUndoManagerTransfer()",
+          "result": "failure"
+        },
+        {
+          "name": "paginationMustNotDuplicateEqualTimestamps()",
+          "result": "passed"
+        },
+        {
+          "name": "productUpdateMustNotUndoCompanyDeletion()",
+          "result": "failure"
+        }
+      ],
+      "observations": [
+        "AUDIT_MANAGER_TRANSFER_PRESERVED=false",
+        "AUDIT_PAGINATION_ITEMS=120, UNIQUE=120",
+        "AUDIT_PRODUCT_DELETED_AFTER_LATE_UPDATE=false"
+      ]
+    },
+    {
+      "class": "com.sparta.logistics.order.infrastructure.client.QualityAuditDeliveryStateTest",
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "name": "bothStateReadersMustRejectContradictoryClosedState()",
+          "result": "failure"
+        }
+      ],
+      "observations": []
+    }
+  ],
+  "body_read_repro": {
+    "exit_code": 1,
+    "observed_error": "TypeError",
+    "create_form_uncertain": false,
+    "test_type": "actual api.ts transpiled, fetch stub with native Response and failing ReadableStream; no real browser/network"
+  },
+  "source_sha256": {
+    "company-service/src/main/java/com/sparta/logistics/company/application/CompanyService.java": "f47d42f49ac3a6c6a94234a78933ad7dda48e567d587e46090e74350cdee549e",
+    "company-service/src/main/java/com/sparta/logistics/company/application/ProductService.java": "c33be740108904ab7f64ca21b6e61cde2c84bf0f7acfae1112fbf951d72e1f56",
+    "common/src/main/java/com/sparta/logistics/common/entity/BaseEntity.java": "f4ee529ef8ab0dc6fa06da6571d11fe3634c224a5ebef131026358dcb1906caf",
+    "frontend/src/shared/api.ts": "3fa48b50286b94d6a23d168d561942d774993d3f783d84308031566353cd5150",
+    "frontend/src/features/CompanyForm.tsx": "79fed95f50c3102b3193009dbf6b7482f1395a24c42683765a915556be1e24fb",
+    "frontend/src/features/ProductForm.tsx": "2a8f4bc610ab90863bee7d52cb98fa21fd26a0ed544e5ea99ca10b05c055e55d",
+    "order-service/src/main/java/com/sparta/logistics/order/infrastructure/client/DeliveryClientAdapter.java": "ad421904e5c1fcb68ffd1c87b92c9a6d1be81572035e5c5efe5dd8038818a217"
+  }
+}

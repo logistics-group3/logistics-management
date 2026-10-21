@@ -74,6 +74,9 @@ if gateway=$(host_url gateway-service 8080); then
 fi
 if eureka=$(host_url eureka-server 8761); then echo "Eureka       $eureka"; fi
 if config=$(host_url config-server 8888); then echo "Config       $config/user-service/default"; fi
+if zipkin=$(host_url zipkin 9411); then echo "Zipkin       $zipkin  (분산 추적)"; fi
+if prometheus=$(host_url prometheus 9090); then echo "Prometheus   $prometheus/targets  (메트릭 수집 대상)"; fi
+if grafana=$(host_url grafana 3000); then echo "Grafana      $grafana  (메트릭 대시보드, 보기는 로그인 없음)"; fi
 echo "서비스가 Eureka에 등록될 때까지 수십 초 걸린다. 로그: docker compose logs -f {서비스}"
 
 if [[ "$check" == true ]]; then

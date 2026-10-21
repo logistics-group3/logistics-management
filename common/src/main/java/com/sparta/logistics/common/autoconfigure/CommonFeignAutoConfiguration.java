@@ -3,6 +3,7 @@ package com.sparta.logistics.common.autoconfigure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.logistics.common.feign.FeignErrorDecoder;
 import com.sparta.logistics.common.feign.FeignHeaderInterceptor;
+import com.sparta.logistics.common.feign.FeignMeterFilter;
 import feign.RequestInterceptor;
 import feign.codec.ErrorDecoder;
 import org.springframework.beans.factory.ObjectProvider;
@@ -12,9 +13,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 /**
- * 모든 FeignClient에 적용되는 공통 처리: X-User-* 헤더 전달, 하위 서비스 에러 변환.
+ * 모든 FeignClient에 적용되는 공통 처리: X-User-* 헤더 전달, 하위 서비스 에러 변환, 호출 메트릭 이름 분리.
  * 재시도(IdempotentRetryConfig)는 멱등 API에만 붙이므로 여기 넣지 않는다.
  * 서비스가 ErrorDecoder를 직접 정의하면 공통 디코더는 빠진다. 끄기: {@code common.feign.enabled=false}
  */
@@ -33,5 +35,17 @@ public class CommonFeignAutoConfiguration {
     @ConditionalOnMissingBean(ErrorDecoder.class)
     public FeignErrorDecoder feignErrorDecoder(ObjectProvider<ObjectMapper> objectMapper) {
         return new FeignErrorDecoder(objectMapper.getIfAvailable(ObjectMapper::new));
+    }
+
+    /** Micrometer(actuator)가 있는 서비스에서만 Feign 메트릭 이름을 나눈다. common 자체는 actuator에 의존하지 않는다. */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(name = "io.micrometer.core.instrument.config.MeterFilter")
+    static class FeignMetricsConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public FeignMeterFilter feignMeterFilter() {
+            return new FeignMeterFilter();
+        }
     }
 }

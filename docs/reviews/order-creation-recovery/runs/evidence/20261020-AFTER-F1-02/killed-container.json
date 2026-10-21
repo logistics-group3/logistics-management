@@ -1,0 +1,42 @@
+{
+  "id": "2a4e696d6c91c3f4d5bcae28deff6429786eaaa02826f77baf7ed96b83045b83",
+  "image": "sha256:a1bb147bb5e8040c04ae61347d641c262256cad3d2afe05b74687b7f9d3339c4",
+  "state": {
+    "Status": "exited",
+    "Running": false,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 0,
+    "ExitCode": 137,
+    "Error": "",
+    "StartedAt": "2026-10-20T02:47:04.703420927Z",
+    "FinishedAt": "2026-10-20T02:47:46.389921376Z"
+  },
+  "restartCount": 0,
+  "labels": {
+    "com.docker.compose.config-hash": "1446171b47ec08b5a1f39b049c48d9c9b9b86665d8394207ccd41363d092eb84",
+    "com.docker.compose.container-number": "1",
+    "com.docker.compose.depends_on": "config-server:service_healthy:false,eureka-server:service_started:false,zipkin:service_started:false,postgres:service_healthy:false",
+    "com.docker.compose.image": "sha256:97d8cfbbc3b9275b3316f6a90e0a41385058fbf7803dc641a633ba5e45190ac8",
+    "com.docker.compose.oneoff": "False",
+    "com.docker.compose.project": "logistics-recovery-test",
+    "com.docker.compose.project.config_files": "/Users/alloy/Desktop/bootcamp/logistics-management/docker-compose.yml,/Users/alloy/Desktop/bootcamp/logistics-management/.local/recovery-experiments/compose.override.yml",
+    "com.docker.compose.project.environment_file": "/Users/alloy/Desktop/bootcamp/logistics-management/.env.recovery-test",
+    "com.docker.compose.project.working_dir": "/Users/alloy/Desktop/bootcamp/logistics-management",
+    "com.docker.compose.service": "order-service",
+    "com.docker.compose.version": "5.6.0",
+    "org.opencontainers.image.created": "2026-10-06T20:38:12.175309+00:00",
+    "org.opencontainers.image.description": "The Ubuntu container image maintained by Canonical\n\nUbuntu is a Debian-based Linux operating system that runs from the desktop to the cloud, to all your internet connected things.\nIt is the world's most popular operating system across public clouds and OpenStack clouds.\nIt is the number one platform for containers; from Docker to Kubernetes to LXD, Ubuntu can run your containers at scale.\nFast, secure and simple, Ubuntu powers millions of PCs worldwide.\n",
+    "org.opencontainers.image.title": "ubuntu",
+    "org.opencontainers.image.version": "26.04"
+  },
+  "ports": {},
+  "mounts": [],
+  "slackDisabled": true,
+  "restartPolicy": {
+    "Name": "no",
+    "MaximumRetryCount": 0
+  }
+}

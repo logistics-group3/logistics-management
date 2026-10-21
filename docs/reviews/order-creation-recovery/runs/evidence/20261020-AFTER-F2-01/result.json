@@ -1,0 +1,9 @@
+{
+  "kind": "F2",
+  "runId": "20261020-AFTER-F2-01",
+  "startedAt": "2026-10-20T11:44:28.084580+09:00",
+  "orderId": "012ff9ff-65e2-4b06-8988-6106e09d06b6",
+  "verdict": "FAILED_OR_INCONCLUSIVE",
+  "error": "kill-order: exit 1, Error response from daemon: cannot kill container: 1572f5f1406d96cc875efa45d5732812ea1cef18c54b814e6effb975edf3530a: container 1572f5f1406d96cc875efa45d5732812ea1cef18c54b814e6effb975edf3530a is not running\n",
+  "endedAt": "2026-10-20T11:44:31.166126+09:00"
+}

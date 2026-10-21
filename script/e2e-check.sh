@@ -26,7 +26,7 @@ status() { "${CURL[@]}" -o /dev/null -w '%{http_code}' "$@"; }
 code() { "${CURL[@]}" "$@" | json "d.get('code')"; }
 signup() {
   "${CURL[@]}" -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/v1/auth/signup" -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\",\"name\":\"검증\",\"slackId\":\"U0E2E\",\"affiliationType\":\"HUB\",\"affiliationName\":\"서울특별시 센터\"}"
+    -d "{\"username\":\"$1\",\"password\":\"$PASSWORD\",\"name\":\"검증\",\"slackEmail\":\"e2e@example.com\",\"affiliationType\":\"HUB\",\"affiliationName\":\"서울특별시 센터\"}"
 }
 login() {
   "${CURL[@]}" -X POST "$GATEWAY/api/v1/auth/login" -H 'Content-Type: application/json' \
@@ -120,19 +120,19 @@ user_token=$(login "$user")
 check "로그인 후 토큰 발급" "yes" "$([[ -n "$user_token" ]] && echo yes || echo no)"
 
 echo "[3] Gateway 경유 호출 시 서비스가 @CurrentUser로 사용자 정보를 받음"
-me=$("${CURL[@]}" "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $user_token")
+me=$("${CURL[@]}" "$GATEWAY/api/v1/users/me" -H "Authorization: Bearer $user_token")
 check "@CurrentUser username" "$user" "$(json "d['data']['username']" <<<"$me")"
 
 echo "[4] 토큰 없음·위조는 401, USER가 MASTER 전용 API 호출은 403"
-check "토큰 없음 401" "401" "$(status "$GATEWAY/api/v1/users/sample/me")"
-check "토큰 없음 code UNAUTHORIZED" "UNAUTHORIZED" "$(code "$GATEWAY/api/v1/users/sample/me")"
-check "위조 토큰 401" "401" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer ${user_token%?????}AAAAA")"
-check "USER → MASTER 전용 403" "403" "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token")"
-check "USER → MASTER 전용 code FORBIDDEN" "FORBIDDEN" "$(code "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token")"
+check "토큰 없음 401" "401" "$(status "$GATEWAY/api/v1/users/me")"
+check "토큰 없음 code UNAUTHORIZED" "UNAUTHORIZED" "$(code "$GATEWAY/api/v1/users/me")"
+check "위조 토큰 401" "401" "$(status "$GATEWAY/api/v1/users/me" -H "Authorization: Bearer ${user_token%?????}AAAAA")"
+check "USER → MASTER 전용 403" "403" "$(status "$GATEWAY/api/v1/users" -H "Authorization: Bearer $user_token")"
+check "USER → MASTER 전용 code FORBIDDEN" "FORBIDDEN" "$(code "$GATEWAY/api/v1/users" -H "Authorization: Bearer $user_token")"
 # MASTER는 user-service가 기동할 때 .env의 MASTER_USERNAME으로 만든다
 master_token=$(login "$master_username" "$master_password")
 check "기동 시 만든 MASTER 로그인" "yes" "$([[ -n "$master_token" ]] && echo yes || echo no)"
-check "MASTER → MASTER 전용 200" "200" "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $master_token")"
+check "MASTER → MASTER 전용 200" "200" "$(status "$GATEWAY/api/v1/users" -H "Authorization: Bearer $master_token")"
 
 echo "[5] 외부에서 /internal/** 호출 차단"
 check "/internal 404" "404" "$(status "$GATEWAY/internal/users/00000000-0000-0000-0000-000000000000" -H "Authorization: Bearer $user_token")"
@@ -140,8 +140,8 @@ check "/internal code NOT_FOUND" "NOT_FOUND" "$(code "$GATEWAY/internal/users/00
 
 echo "[6] 클라이언트가 보낸 X-User-Role: MASTER 무시"
 check "위조 role 헤더로 MASTER 전용 403" "403" \
-  "$(status "$GATEWAY/api/v1/users/sample/admin" -H "Authorization: Bearer $user_token" -H 'X-User-Role: MASTER')"
-forged=$("${CURL[@]}" "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $user_token" -H 'X-Username: evil' -H 'X-User-Role: MASTER')
+  "$(status "$GATEWAY/api/v1/users" -H "Authorization: Bearer $user_token" -H 'X-User-Role: MASTER')"
+forged=$("${CURL[@]}" "$GATEWAY/api/v1/users/me" -H "Authorization: Bearer $user_token" -H 'X-Username: evil' -H 'X-User-Role: MASTER')
 check "위조 헤더가 서비스에 전달되지 않음" "$user USER" "$(json "d['data']['username'] + ' ' + d['data']['role']" <<<"$forged")"
 
 if [[ "$cache_ttl" == true ]]; then
@@ -149,12 +149,12 @@ if [[ "$cache_ttl" == true ]]; then
   ttl_user="e2et$suffix"
   signup "$ttl_user" >/dev/null
   ttl_token=$(login "$ttl_user")
-  check "캐시 적재 200" "200" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")"
+  check "캐시 적재 200" "200" "$(status "$GATEWAY/api/v1/users/me" -H "Authorization: Bearer $ttl_token")"
   started=$(date +%s)
   script/promote-master.sh "$ttl_user" >/dev/null
-  check "DB role 변경 직후에도 캐시된 값으로 200" "200" "$(status "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")"
+  check "DB role 변경 직후에도 캐시된 값으로 200" "200" "$(status "$GATEWAY/api/v1/users/me" -H "Authorization: Bearer $ttl_token")"
   sleep $(( 63 - ($(date +%s) - started) ))
-  expired=$("${CURL[@]}" "$GATEWAY/api/v1/users/sample/me" -H "Authorization: Bearer $ttl_token")
+  expired=$("${CURL[@]}" "$GATEWAY/api/v1/users/me" -H "Authorization: Bearer $ttl_token")
   check "만료 후 재조회로 TOKEN_ROLE_MISMATCH" "TOKEN_ROLE_MISMATCH" "$(json "d['code']" <<<"$expired")"
 fi
 

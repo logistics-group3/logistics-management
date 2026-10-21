@@ -7,7 +7,7 @@
 ## 바꾼 것
 | 파일 | 내용 |
 |---|---|
-| `common/.../querydsl/QuerydslSupport` | `notDeleted(deletedAt)`, `toOrderSpecifiers(sort, 허용 목록 Map)` |
+| `common/.../querydsl/QuerydslSupport` | `notDeleted(deletedAt)`(2026-10-21 삭제: 서비스는 Entity의 `@SQLRestriction`을 쓴다), `toOrderSpecifiers(sort, 허용 목록 Map)` |
 | `common/.../page/SortAllowList` | Spring Data 리포지토리에 Pageable을 넘기기 전 `check(pageable, 허용 필드 Set)` |
 | `common/.../exception/InvalidSortException` | 허용 목록 밖 정렬 필드 |
 | `GlobalExceptionHandler` | `InvalidSortException`을 400 `VALIDATION_ERROR`, `errors[0].field = "sort"`로 응답. Entity에 없는 필드(`PropertyReferenceException`)와 같은 형식 |
@@ -30,7 +30,7 @@ private static final Map<String, ComparableExpressionBase<?>> SORTS = Map.of(
         "createdAt", hub.createdAt, "name", hub.name);
 
 List<Hub> content = queryFactory.selectFrom(hub)
-        .where(notDeleted(hub.deletedAt), nameContains(keyword))
+        .where(nameContains(keyword)) // 논리 삭제 제외는 Entity의 @SQLRestriction이 처리한다
         .orderBy(toOrderSpecifiers(pageable.getSort(), SORTS))
         .offset(pageable.getOffset()).limit(pageable.getPageSize())
         .fetch();

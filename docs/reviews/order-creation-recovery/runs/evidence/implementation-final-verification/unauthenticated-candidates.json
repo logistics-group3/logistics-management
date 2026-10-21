@@ -1,0 +1,28 @@
+{
+  "start": "2026-10-20T11:52:03.460177+09:00",
+  "end": "2026-10-20T11:52:03.465395+09:00",
+  "method": "GET",
+  "url": "http://127.0.0.1:28080/api/v1/orders/creation-recoveries/candidates",
+  "requestBody": null,
+  "idempotencyKey": null,
+  "status": 401,
+  "responseHeaders": {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "0",
+    "Referrer-Policy": "no-referrer",
+    "content-length": "164",
+    "connection": "close"
+  },
+  "responseBody": {
+    "status": 401,
+    "code": "UNAUTHORIZED",
+    "message": "인증이 필요합니다.",
+    "path": "/api/v1/orders/creation-recoveries/candidates",
+    "timestamp": "2026-10-20T11:52:03"
+  }
+}

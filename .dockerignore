@@ -11,3 +11,5 @@ script
 *.md
 .env
 .env.*
+frontend
+.local
