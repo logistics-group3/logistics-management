@@ -8,6 +8,7 @@
   check-cell <칸 폴더>          칸 하나만 확인한다(perf-run.sh가 칸이 끝날 때 부른다. 문제가 있으면 1)
   prom-dump <시작> <끝> <파일>  Prometheus 시계열을 JSON으로 남긴다(epoch 초)
   judge-fault <칸 폴더>         V4 장애 격리 칸을 판정한다(5절 V4 합격선)
+  table                         perf-master.md 8절 칸별 표(V0~V3)와 V4 표를 칸 기록으로 만든다
 상태는 대화나 별도 파일이 아니라 칸 폴더에서만 나온다. 그래서 끊긴 뒤 같은 명령으로 이어 가고, 검증은 다시 계산해 비교한다.
 """
 import csv
@@ -384,6 +385,64 @@ def render_fault(cell):
     return '\n'.join(lines) + '\n'
 
 
+# ---------- 8절 표 ----------
+
+def verdict_values(cell):
+    return {line.split('\t')[0]: line.split('\t')[1] for line in verdict_lines(cell) if line.count('\t') == 3}
+
+
+def cpu_of(cell, container):
+    values = []
+    for line in (cell / 'docker.txt').read_text(encoding='utf-8').splitlines():
+        parts = line.split('\t')
+        if len(parts) >= 3 and parts[1].startswith(container):
+            values.append(float(parts[2].rstrip('%') or 0))
+    return f'{sum(values) / len(values):.0f}% / {max(values):.0f}%' if values else '-'
+
+
+def prom_max(cell, name):
+    data = json.loads((cell / 'prom.json').read_text(encoding='utf-8'))['queries'][name]['result']
+    values = [float(v) for s in data if isinstance(s, dict) and s['metric'].get('application') == 'delivery-service'
+              for _, v in s['values']]
+    return f'{max(values):.0f}' if values else '-'
+
+
+def pg_max(cell, column):
+    rows = (cell / 'pgwait.txt').read_text(encoding='utf-8').splitlines()
+    header = rows[0].split('\t')
+    i = header.index(column)
+    values = [int(r.split('\t')[i]) for r in rows[1:] if r.count('\t') >= i and r.split('\t')[i].isdigit()]
+    return str(max(values)) if values else '-'
+
+
+def render_table():
+    out = ['| 버전 | TPS | 회차 | 생성 p95 | 생성 p99 | 실패+못 보냄 | 조회 p95 | 편차 | 배정 지연 p95 | 미배정 | Hikari 대기 | advisory 대기 '
+           '| postgres CPU 평균/최대 | 판정 | 캡처 |', '|' + '---|' * 15]
+    for ver in VERSIONS[:4]:
+        for rate in RATES:
+            for n in (1, 2, 3):
+                cell = RESULTS / ver / f'{rate}-{n}'
+                if not cell.exists():
+                    continue
+                v = verdict_values(cell)
+                cols = [ver, str(rate), str(n), v.get('생성 p95(ms)'), v.get('생성 p99(ms)'), v.get('생성 실패+못 보냄(%)'),
+                        v.get('조회 p95(ms)'), v.get('담당자 편차(건)'), v.get('배정 지연 p95(ms)'), v.get('미배정(건)'),
+                        prom_max(cell, 'hikari_pending'), pg_max(cell, 'advisory_wait'), cpu_of(cell, 'postgres'),
+                        verdict(cell), f'`{ver}-{rate}-{n}-*`']
+                out.append('| ' + ' | '.join(c if c not in (None, '') else '-' for c in cols) + ' |')
+    out += ['', '| 칸 | 장애 중 생성 실패+못 보냄 | 장애 중 조회 p95 | 복구 30초 뒤 미배정 | 생성 p95 장애 전 / 중 / 뒤 | 판정 |', '|---|---|---|---|---|---|']
+    for c in V4_CELLS:
+        cell = RESULTS / 'V4' / c
+        if not cell.exists():
+            continue
+        v = verdict_values(cell)
+        notes = {line.split('\t')[1].split(' ')[2]: line.split(' ')[-1] for line in verdict_lines(cell)
+                 if line.startswith('참고\t생성 p95 ')}
+        out.append(f"| {c} | {v.get('장애 중 생성 실패+못 보냄(%)')}% | {v.get('장애 중 조회 p95(ms)')}ms "
+                   f"| {v.get('복구 30초 뒤 미배정(건)')} | {notes.get('before')} / {notes.get('fault')} / {notes.get('after')} | {verdict(cell)} |")
+    return '\n'.join(out)
+
+
 def main(argv):
     if not argv:
         sys.exit(__doc__)
@@ -403,6 +462,8 @@ def main(argv):
         prom_dump(*args)
     elif cmd == 'judge-fault' and len(args) == 1:
         sys.stdout.write(render_fault(Path(args[0])))
+    elif cmd == 'table':
+        print(render_table())
     else:
         sys.exit(__doc__)
 
