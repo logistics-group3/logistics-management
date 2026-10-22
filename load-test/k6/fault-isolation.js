@@ -37,18 +37,27 @@ for (const name of [CREATE_NAME, READ_NAME, CONFIRM_NAME]) {
     thresholds[`http_req_failed{name:${name},phase:${p}}`] = ['rate>=0'];
   }
 }
+// 못 보낸 요청(dropped_iterations)은 시나리오를 합친 한 값으로만 나온다. 생성 몫을 따로 판정하려고 시나리오별 줄을 낸다(perf-judge.py).
+for (const s of ['create', 'read']) {
+  thresholds[`dropped_iterations{scenario:${s}}`] = ['count>=0'];
+}
 
-function constantRate(exec, rate) {
+// Note: 미리 만든 VU가 모자라면 k6가 측정 중에 VU를 더 만들고, 그동안 도착한 요청은 보내지 못한다(dropped).
+//   서버는 멀쩡한데 못 보낸 요청이 생긴다. 성능 마스터 측정은 생성 VU를 최대치만큼 미리 만든다(PRE_VUS=400, perf-master.md 3절).
+const PRE_VUS = numberEnv('PRE_VUS', 50);
+const MAX_VUS = Math.max(numberEnv('MAX_VUS', 400), PRE_VUS);
+
+function constantRate(exec, rate, preAllocatedVUs) {
   return {
     executor: 'constant-arrival-rate', exec, rate, timeUnit: '1s', duration: DURATION,
-    preAllocatedVUs: 50, maxVUs: numberEnv('MAX_VUS', 400),
+    preAllocatedVUs, maxVUs: MAX_VUS,
   };
 }
 
 export const options = {
   scenarios: {
-    create: constantRate('create', CREATE_RATE),
-    read: constantRate('read', READ_RATE),
+    create: constantRate('create', CREATE_RATE, PRE_VUS),
+    read: constantRate('read', READ_RATE, 50),
   },
   thresholds,
   summaryTrendStats: ['avg', 'med', 'p(95)', 'p(99)', 'max'],

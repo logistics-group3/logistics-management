@@ -16,13 +16,15 @@
 |---|---|---|
 | 생성 p95 | 200ms 이하 | |
 | 생성 p99 | 500ms 이하 | |
-| 생성 실패 + 못 보낸 요청(k6 dropped) | 0.1% 이하 | |
+| 생성 실패 + 못 보낸 요청(k6 dropped) | 0.1% 이하 | 확정(I-19) 실패는 넣지 않고 참고로 적는다. 확정이 실패한 배송은 배정되지 않아 미배정에서 잡힌다 |
 | 조회 p95 (20 TPS 고정) | 100ms 이하 | 생성이 조회를 막는지 본다 |
-| 담당자 편차 | 1건 이하 | 측정에서 만든 구간만, 측정 허브 담당자 10명의 최대 - 최소 |
+| 담당자 편차 | 1건 이하 | 측정에서 만든 구간만, 측정 허브 담당자 10명(0건 포함)의 최대 - 최소 |
 | 배정 지연 p95 | 1초 이하 | V2부터. 생성(V3는 확정) → 배정 |
 | 측정 뒤 미배정 구간 | 0 | V2부터. 측정 종료 30초 뒤 |
 
 이전 기준(p95 500ms, 실패·못 보냄 1%)보다 엄격하다. 이전 숫자와 섞어 쓰지 않는다.
+
+판정은 `load-test/perf-judge.py`가 회차마다 k6 요약 JSON과 배정 집계로 내고 `-verdict.txt`에 남긴다(종료 코드 0 통과, 1 실패, 2 판정 불가). 합격선 숫자는 이 표와 그 파일 머리의 상수가 같아야 한다.
 
 ## 2. 측정 버전
 
@@ -50,6 +52,7 @@
 | 배송담당자 | **허브마다 10명**, 총 170명. 과거 구간도 이 170명에게 고르게 나눈다 |
 | 측정 허브 | 서울 허브 하나에 생성을 몰고, 조회도 서울 허브 최신순 목록 |
 | 주요 설정 | Hikari 10, Tomcat 200, `delivery.assignment.batch-window-ms` 0 |
+| k6 VU | 생성 시나리오는 미리 만드는 VU = 최대 = 400(`PRE_VUS`, `version-compare.sh` 기본값), 조회는 50 · 최대 400. 측정 중 VU를 늘리는 동안 못 보낸 요청이 서버 실패로 잡히지 않게 한다. 400개를 미리 만들어도 k6 메모리는 109MB(50개 60MB)이고 쉬는 VU는 CPU를 쓰지 않는다(2026-10-22) |
 
 측정마다 실행한 커밋, 이미지 빌드 시각, 위 설정값을 결과 표에 같이 적는다.
 
@@ -82,19 +85,19 @@
 3. 계단 측정. 예열 2회(초당 10+10, 1분)는 스크립트가 먼저 한다.
 
 ```bash
-NAME=v1-load1m RATES="40 80 160 240 320 480 640" READ_FIXED=20 REPEAT=2 CONFIRM=0 \
+NAME=v1-load1m RATES="40 80 160 240 320 480 640" READ_FIXED=20 REPEAT=2 CONFIRM=0 STOP_ON_FAIL=1 \
   load-test/version-compare.sh
 ```
 
-4. 계단 한 칸: 60초 쉼 → 측정이 만든 배송만 삭제 → 1분 측정 → 10초 뒤 배정 집계 → **바로 캡처**(6절). 2회 반복.
-5. 같은 칸에서 두 번 모두 실패하면 그 버전은 거기서 멈춘다(스크립트를 중단한다).
+4. 계단 한 칸: 60초 쉼 → 측정이 만든 배송만 삭제 → 1분 측정 → 30초 뒤 배정 집계(`SETTLE`) → 판정(`-verdict.txt`) → **바로 캡처**(6절). 2회 반복.
+5. 같은 칸에서 두 번 모두 실패하면 그 버전은 거기서 멈춘다(`STOP_ON_FAIL=1`이면 다음 계단으로 가지 않는다). 판정 불가(입력 파일이나 값이 없다)면 바로 멈추고 측정 환경을 본다. 한 번만 실패한 칸은 통과가 아니지만 다음 계단으로 간다. 3회차를 잴지는 7절로 판단한다.
 
 ### V4 (장애 격리)
 
 V3 코드로 생성 160 + 조회 20, 6분, 시작 90초 뒤 user 30초 정지. 같은 조건으로 생성 80에서도 한 번 더 잰다.
 
 ```bash
-LABEL=v4-fault-160 CREATE_RATE=160 READ_RATE=20 DURATION=6m FAULT_MODE=pause CONFIRM=1 \
+LABEL=v4-fault-160 CREATE_RATE=160 READ_RATE=20 DURATION=6m FAULT_MODE=pause CONFIRM=1 PRE_VUS=400 \
   load-test/fault-isolation.sh
 python3 load-test/timeline.py load-test/results/fault-v4-fault-160-<시각>.csv.gz
 ```
@@ -114,6 +117,7 @@ Prometheus에 볼륨이 없어 컨테이너를 다시 만들면 지표가 사라
 | 컨테이너 CPU | `-stats.txt` |
 | 대기 이벤트 | `load-test/diagnose.sh`의 pg_stat_activity 5초 표본 |
 | 배정 집계(편차·지연) | `<NAME>-rate<r>-<n>-assignment.txt` |
+| 판정 | `<NAME>-rate<r>-<n>-verdict.txt`(`perf-judge.py`) |
 
 이름 규칙: `<버전>-<TPS>-<회차>-<항목>.png` (예: `v1-240-2-hikari.png`).
 

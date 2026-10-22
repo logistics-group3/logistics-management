@@ -8,17 +8,20 @@
 - [x] 측정 전용 시드 `load-test/seed/perf-managers.sql`·`perf-load.sql`·`perf-seed.sh` 작성(2026-10-22). Claude 작업 환경의 임시 PostgreSQL 16(최소 스키마)에서 V0·V2·V3 스키마 모두 오류 없음, 담당자 170명, 구간 담당 허브 불일치 0, V3 미확정 0을 확인했다. 맥 실제 DB에서는 아직 실행하지 않았다
 - [x] 기준 커밋 확인: V0 `ef37a49`, V1 `bc3177b`, V2 `fd17db9`, V3 `4ff0b7f`. V0의 부하 테스트 API 요청 본문이 지금 k6 스크립트와 같다(`receiverManagerId` 포함)
 - [x] 브랜치 `feat/delivery-perf-master`를 `feat/delivery-T09`에서 만들었다(사용자). 계획·시드·이 파일·`tasks/T10.md`·`tasks/README.md` T10 줄을 첫 커밋으로 남겼다(2026-10-22)
-- [ ] 도구 보완(다음 단계 1~3)
+- [x] 도구 보완 A: 판정·자동 중단·배정 집계 호환(2026-10-22, 커밋 `test(load-test): 측정 판정·계단 자동 중단과 배정 집계 버전 호환 (T10)`). 검증 내용은 `tasks/T10.md` 작업 기록. 실제 스택에서는 아직 돌리지 않았다
+- [ ] 도구 보완 B, 실행·재개·검증 스크립트(다음 단계 2~3)
 - [ ] 준비(다음 단계 4)
 - [ ] 측정 V0~V3, V4(다음 단계 5)
 - [ ] 결과 기록(다음 단계 6), 포트폴리오 반영은 Cowork 세션에서
 - 면접 포인트: 버전끼리 공정하게 비교하려고 무엇을 고정했나(데이터·계단·절차·측정 도구 버전), 합격선을 왜 대용량 기준으로 잡았나, 무효 측정을 어떻게 걸렀나, 판정을 왜 스크립트로 했나
 
 ## 다음 단계
-1. **도구 보완 A: 판정·중단, 배정 집계 호환** (모두 `load-test/` 안. 바꾸기 전에 사용자 승인)
-   - 판정 스크립트: k6 요약 JSON(`--summary-export`)에서 생성(`I-09 직접`) p95·p99, 실패율, 못 보낸 요청(`dropped_iterations` ÷ 목표 요청 수), 조회(`D-01 허브별`) p95를 계산해 perf-master.md 1절 합격선으로 칸마다 통과/실패를 낸다
-   - `version-compare.sh`에 `STOP_ON_FAIL=1`: 같은 칸 2회 모두 실패하면 그 버전을 멈춘다
-   - `assignment-stats.sh`: `assigned_at`이 없는 스키마(V0·V1)는 담당자별 건수(편차)만 낸다. V3는 배정 지연을 `confirmed_at` 기준으로 잰다
+1. **도구 보완 A: 판정·중단, 배정 집계 호환** (끝, 2026-10-22). 2·3번이 기대는 약속
+   - `python3 load-test/perf-judge.py <k6 JSON> <-assignment.txt>` → 표준 출력이 `-verdict.txt`. 마지막 줄 `판정<TAB>통과|실패|판정 불가`, 종료 코드 0·1·2. 같은 입력이면 같은 출력이라 `perf-verify.sh`는 다시 돌려 파일과 비교하면 된다
+   - `-assignment.txt`의 `== 판정용` 아래 `basis`(none·created_at·confirmed_at), `routes`, `pending`, `assign_p95_ms`, `managers`, `deviation`, `outside`. `managers`가 10이 아니면 시드가 빠진 것이다(무효 조건 후보)
+   - `fault-isolation.sh`는 `OUT_JSON`으로 결과 경로를 받는다(폴더도 만든다). 2번의 칸별 폴더는 이것으로 넘긴다
+   - `version-compare.sh`: `STOP_ON_FAIL=1`이면 한 계단 회차가 모두 실패할 때 멈추고(종료 코드 0), 판정 불가면 바로 종료 코드 2로 멈춘다. `SETTLE` 기본 30초, `PRE_VUS` 기본 400
+   - k6 요약에 `dropped_iterations{scenario:create|read}`가 있어야 판정한다. 예전 JSON은 판정 불가로 나온다
 2. **도구 보완 B: 기록·캡처**
    - 칸마다 측정 구간의 Prometheus 시계열을 JSON으로 덤프(서비스별 p95, Hikari active·pending, Tomcat 바쁜 스레드, 프로세스 CPU)
    - 측정 동안 pg_stat_activity 5초 표본(대기 이벤트별 커넥션 수, advisory 대기 수) → `-pgwait.txt`
@@ -37,7 +40,7 @@
 1. 시드를 작게 넣어 본다: `COUNT=100000 load-test/seed/perf-seed.sh`
 2. 서울 허브 담당자별 과거 구간 수를 본다: `SELECT r.manager_id, count(*) FROM delivery_schema.p_delivery_routes r JOIN user_schema.p_users u ON u.user_id = r.manager_id WHERE u.hub_id = '6f39d519-4947-4a95-a454-58c25728f388' GROUP BY 1;`
 3. 한 칸만 손으로 따라가 본다: `NAME=try RATES="40" REPEAT=1 READ_FIXED=20 CONFIRM=1 load-test/version-compare.sh`
-4. 확인: 요약 JSON의 `I-09 직접` p95와 `-assignment.txt`의 담당자별 건수가 합격선 안인지 직접 판정해 본다
+4. 확인: 요약 JSON의 `I-09 직접` p95와 `-assignment.txt`의 담당자별 건수로 직접 판정해 보고 `-verdict.txt`와 같은지 비교한다
 
 ## 메모
 - 결정(사용자, 2026-10-22)
@@ -51,6 +54,9 @@
   8. 결과 숫자와 캡처를 모두 자동으로 남긴다
   9. 측정·감시는 Claude Code에서 한다. 흐름은 대화가 아니라 파일(perf-master.md, 이 파일, STATUS.md, manifest)에 둔다
   10. 포트폴리오 덱(claude.ai 아티팩트 "물류 MSA 포트폴리오 — 배송 서비스") 반영은 Cowork 세션에서 한다(perf-master.md 9절)
-- 미확인: 구간 294만 건에서 칸마다 `VACUUM ANALYZE`에 걸리는 시간, Grafana 렌더러의 CPU·메모리 영향, k6 `maxVUs` 400(응답이 0.625초를 넘으면 640 TPS에서 VU가 모자라 못 보낸 요청으로 잡힌다. 합격선이 p95 200ms라 판정은 그 전에 실패한다)
+  11. 확정(I-19) 실패는 생성 실패에 넣지 않고 참고로 적는다. 확정이 실패한 배송은 미배정에서 잡힌다(perf-master.md 1절)
+  12. k6 생성 시나리오 VU는 미리 400개(= 최대)를 만든다. TPS 개선이 핵심이라 k6가 먼저 막히면 안 된다. 30개면 640 TPS에서 요청당 47ms를 넘는 순간 못 보낸 요청이 생겨 버전 차이가 묻힌다(perf-master.md 3절)
+  13. 한 번만 실패한 칸은 다음 계단으로 가고, 판정 불가는 바로 멈춘다. 배정 집계는 측정 종료 30초 뒤(perf-master.md 5절)
+- 미확인: 구간 294만 건에서 칸마다 `VACUUM ANALYZE`에 걸리는 시간, Grafana 렌더러의 CPU·메모리 영향, 실제 HTTP를 보내는 VU 400개의 k6 메모리(빈 반복으로는 109MB)
 - T09 메모에 따르면 Docker 앱 스택 두 개(`logistics-management`, `-sync-lock`)가 stop 상태로 남아 있다. 측정 전에 정리할지 확인한다
 - 사용자 규칙: 질문에는 답만 하고, 변경은 무엇을 바꿀지 말한 뒤 "진행할까요?"로 확인한다. 다른 모듈 코드는 승인 없이 바꾸지 않는다. 커밋은 `git -c user.name=jihaneol -c user.email=6531z@naver.com commit`, 제목에 `(T10)`, AI 공동 작성자 줄 금지, 비밀값·`.env` 금지. 문서는 한국어 평서체. 답 끝에 "기록: 경로"
