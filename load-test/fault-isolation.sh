@@ -3,7 +3,8 @@
 # 사용: LABEL=s1-before FAULT_MODE=pause load-test/fault-isolation.sh
 #   FAULT_MODE: pause(응답 없음, 기본) | stop(죽음) | none(기준선)
 #   LEAD: 시작 후 장애까지 초(기본 90, 앞 60초가 before 구간). FAULT_SEC: 장애 시간(기본 30)
-#   그 밖의 환경 변수(TARGET, CREATE_RATE, READ_RATE)는 k6로 그대로 넘어간다.
+#   OUT_JSON: k6 요약 JSON 경로(기본 load-test/results/fault-<LABEL>-<시각>.json). 다른 파일은 이 이름을 따른다
+#   그 밖의 환경 변수(TARGET, CREATE_RATE, READ_RATE, PRE_VUS, CONFIRM, CONFIRM_URL)는 k6로 그대로 넘어간다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -14,8 +15,8 @@ FAULT_SEC=${FAULT_SEC:-30}
 # 멈출 서비스. 기본은 user-service(S1). 주문 경로 재시도 증폭(S2)은 FAULT_SERVICE=delivery-service TARGET=order
 FAULT_SERVICE=${FAULT_SERVICE:-user-service}
 FAULT_AT=$(( $(date +%s) + LEAD ))
-OUT="load-test/results/fault-${LABEL}-$(date +%Y%m%d-%H%M%S).json"
-mkdir -p load-test/results
+OUT="${OUT_JSON:-load-test/results/fault-${LABEL}-$(date +%Y%m%d-%H%M%S).json}"
+mkdir -p "$(dirname "$OUT")"
 
 # 실험용 설정(부하 테스트 API, Gateway 권한 캐시 1시간)이 빠진 채 띄웠으면 결과를 비교에 쓸 수 없다. 기동한 터미널과 같은 설정인지 먼저 확인한다.
 for key in DELIVERY_LOAD_TEST_ENABLED AUTH_USERCACHETTL; do

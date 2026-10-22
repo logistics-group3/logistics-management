@@ -6,6 +6,7 @@ export const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const PASSWORD = 'Sparta!2026';
 
 export const SEED = {
+  master: 'e2e00000-0000-4000-8000-000000000001',
   seoulHub: '6f39d519-4947-4a95-a454-58c25728f388',
   supplierCompany: 'e2e00000-0000-4000-8000-000000000101',
   receiverCompany: 'e2e00000-0000-4000-8000-000000000102',

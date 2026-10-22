@@ -17,6 +17,10 @@ const CREATE_NAME = TARGET === 'delivery' ? 'I-09 직접' : 'O-01';
 const READ_NAME = TARGET === 'delivery' ? 'D-01 허브별' : 'O-02 목록';
 const CONFIRM_NAME = 'I-19 직접';
 const CONFIRM = (__ENV.CONFIRM || '1') !== '0';
+// 확정을 보낼 곳. 비우면 Gateway의 부하 테스트 API, 주면 운영에서 order가 부르는 내부 API I-19를 delivery에 직접 보낸다(perf-master.md V3i).
+// Note: 내부 API는 Gateway를 거치지 않으므로 Gateway가 넣던 사용자 헤더를 order의 헤더 전달(ADR 0009)처럼 직접 붙인다.
+const CONFIRM_URL = __ENV.CONFIRM_URL || '';
+const MASTER_HEADERS = { 'X-User-Id': SEED.master, 'X-Username': 'dmaster', 'X-User-Role': 'MASTER' };
 const PHASES = ['nofault', 'before', 'fault', 'recovery', 'after'];
 
 function phase() {
@@ -37,18 +41,27 @@ for (const name of [CREATE_NAME, READ_NAME, CONFIRM_NAME]) {
     thresholds[`http_req_failed{name:${name},phase:${p}}`] = ['rate>=0'];
   }
 }
+// 못 보낸 요청(dropped_iterations)은 시나리오를 합친 한 값으로만 나온다. 생성 몫을 따로 판정하려고 시나리오별 줄을 낸다(perf-judge.py).
+for (const s of ['create', 'read']) {
+  thresholds[`dropped_iterations{scenario:${s}}`] = ['count>=0'];
+}
 
-function constantRate(exec, rate) {
+// Note: 미리 만든 VU가 모자라면 k6가 측정 중에 VU를 더 만들고, 그동안 도착한 요청은 보내지 못한다(dropped).
+//   서버는 멀쩡한데 못 보낸 요청이 생긴다. 성능 마스터 측정은 생성 VU를 최대치만큼 미리 만든다(PRE_VUS=400, perf-master.md 3절).
+const PRE_VUS = numberEnv('PRE_VUS', 50);
+const MAX_VUS = Math.max(numberEnv('MAX_VUS', 400), PRE_VUS);
+
+function constantRate(exec, rate, preAllocatedVUs) {
   return {
     executor: 'constant-arrival-rate', exec, rate, timeUnit: '1s', duration: DURATION,
-    preAllocatedVUs: 50, maxVUs: numberEnv('MAX_VUS', 400),
+    preAllocatedVUs, maxVUs: MAX_VUS,
   };
 }
 
 export const options = {
   scenarios: {
-    create: constantRate('create', CREATE_RATE),
-    read: constantRate('read', READ_RATE),
+    create: constantRate('create', CREATE_RATE, PRE_VUS),
+    read: constantRate('read', READ_RATE, 50),
   },
   thresholds,
   summaryTrendStats: ['avg', 'med', 'p(95)', 'p(99)', 'max'],
@@ -90,8 +103,11 @@ export function create(data) {
     }), tagged(data.creator, CREATE_NAME));
     // 결정 로그 29: 배정은 주문 확정(I-19) 뒤에 한다. order 대신 확정을 보낸다. CONFIRM=0이면 T08처럼 생성만 잰다(배정 안 됨)
     if (CONFIRM && res.status === 201) {
-      const confirm = http.post(`${BASE_URL}/api/v1/deliveries/load-test/orders/${orderId}/confirm`, null,
-        tagged(data.creator, CONFIRM_NAME));
+      const confirm = CONFIRM_URL
+        ? http.post(`${CONFIRM_URL}/internal/deliveries/orders/${orderId}/confirm`, null,
+          tagged(data.creator, CONFIRM_NAME, MASTER_HEADERS))
+        : http.post(`${BASE_URL}/api/v1/deliveries/load-test/orders/${orderId}/confirm`, null,
+          tagged(data.creator, CONFIRM_NAME));
       check(confirm, { [`${CONFIRM_NAME} 200`]: (r) => r.status === 200 });
     }
   } else {
