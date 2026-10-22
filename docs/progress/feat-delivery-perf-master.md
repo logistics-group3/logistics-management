@@ -15,13 +15,14 @@
 - [x] 결과 기록: perf-master.md 8절(표는 `python3 load-test/perf/perf.py table`), T10.md, 결정 로그 30(28에 → 30 표시)
 - [x] V3i(V3 코드, 확정을 운영처럼 내부 API로 직접) 측정(17:11~17:45, 12칸 검증 통과): 버틴 최대 240(V3 80). V3의 80은 확정까지 Gateway를 거친 측정 방식 탓
 - [x] 이전 측정과 비교(perf-master.md 8절 끝), 포트폴리오 반영표(9절: 쪽, 지금 숫자, 바꿀 숫자, 근거 파일), 결정 로그 30 정정
+- [x] 장애 격리 재측정 F 계열(18:30~19:29, 8칸 검증 통과): F0(2fd2bd2, 장애 대응 전) 장애 중 조회 p95 5,617ms·스레드 200/200 → F1(a8e4b28) 21ms·10~12/200, F1 4배 부하 10ms, 서킷 오탐 0.01%, F2 장애 중 생성 실패 0. 버전마다 그 커밋의 delivery-service.yml을 config-server가 내주게 했고(측정용 폴더, 덧붙임 CONFIG_REPO_LOCATION) 끝난 뒤 HEAD로 되돌렸다(해시 확인). perf-master.md 8절 F 계열 결과, 9절 10장
 - [ ] 포트폴리오 덱 수정은 Cowork 세션에서 9절 표대로 한다
 - 면접 포인트: 버전끼리 공정하게 비교하려고 무엇을 고정했나(데이터·계단·절차·측정 도구 커밋), 합격선을 왜 대용량 기준으로 잡았나, 무효 측정을 어떻게 걸렀나(쉬는 CPU, 예열, 도착률, 커밋 라벨, 부하 없는 서비스의 CPU), 판정을 왜 스크립트로 했나(다시 계산해 비교), V0·V1이 왜 160에서 막혔나(측정 중 쌓이는 진행 중 구간과 담당 건수 쿼리, 허브 잠금 직렬화)
 
 ## 다음 단계
 1. **포트폴리오 반영**(Cowork 세션): perf-master.md 9절 반영표대로 바꾼다. 09쪽은 V3i 값을 쓴다. 이전 640은 각주로만 둔다. V2 240·V3i 320의 1회 실패, V4 160의 상태 수집 영향은 각주로 적는다
 2. **선택(사용자 판단)**: 이전 숫자와의 차이 원인을 하나씩 떼려면 대조 측정(이전 조건 재현 → 데이터만 100만 → 담당자만 10명, perf-master.md 8절 끝 가설)을 한다. V0·V1의 실제 한계를 좁히려면 120 계단을 더한다(모든 버전 다시 측정). V4 160을 상태 수집 없이 다시 재려면 `fault-isolation.sh`에 수집을 끄는 옵션이 필요하다. 담당 건수 부분 인덱스(결정 로그 13)는 앱 변경이라 T10 범위 밖이다
-3. **정리**: 측정 스택은 떠 있다(`source load-test/perf/lib.sh && docker compose ps`). 끄려면 `docker compose stop`. Prometheus 볼륨(`perf-prometheus`)에 지표가 남아 캡처를 다시 뽑을 수 있다(`load-test/perf/capture.sh <버전>`). delivery 이미지는 `perf-current` 태그가 V3(4ff0b7f)이고 V3i 측정 때문에 delivery 포트가 `127.0.0.1:18085`로 열려 있다
+3. **정리**: 측정 스택은 떠 있다(`source load-test/perf/lib.sh && docker compose ps`). 끄려면 `docker compose stop`. Prometheus 볼륨(`perf-prometheus`)에 지표가 남아 캡처를 다시 뽑을 수 있다(`load-test/perf/capture.sh <버전>`). delivery 이미지는 `perf-current` 태그가 V3(4ff0b7f)이고 V3i 측정 때문에 delivery 포트가 `127.0.0.1:18085`로 열려 있다. config-server는 측정용 폴더(`load-test/results/perf/config-repo/`, 지금 HEAD 설정)를 읽는다. 덧붙임 없이 띄우면 jar 안 설정(같은 HEAD)을 읽는다
 
 ## 직접 해보기
 1. 시드를 작게 넣어 본다: `COUNT=100000 load-test/seed/perf-seed.sh`
