@@ -22,6 +22,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -459,8 +460,19 @@ def compute_isolation(cell):
     recovered = [x[0] for x in reqs if x[1] == 'recovery']
     base = out['read']['before']
     out['recovery_sec'] = None
+    # Note: k6의 recovery 구간은 "장애 시작 + 30초"부터다. fault-isolation.sh가 장애 중 상태를 모으느라 실제 복구가 늦어질 수 있어
+    #   복구 시간은 로그에 찍힌 실제 복구 시각부터 센다(S1 정의 "user를 되살린 시점부터").
+    log = (cell / 'k6.txt').read_text(encoding='utf-8', errors='replace')
+    def logged(event):
+        m = re.search(r'\[(\d\d):(\d\d):(\d\d)\] user-service ' + event, log)
+        if not (m and reqs):
+            return None
+        lt = time.localtime(min(x[0] for x in reqs))
+        return int(time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, int(m[1]), int(m[2]), int(m[3]), 0, 0, -1)))
+    paused, resumed = logged('pause'), logged('복구')
+    out['paused_sec'] = resumed - paused if paused and resumed else None
     if recovered and base:
-        start = min(recovered)
+        start = resumed or min(recovered)
         end = max(x[0] for x in reqs)
         for b in range(start, end + 1, 5):
             c = [x for x in create if b <= x[0] < b + 5]
@@ -505,6 +517,7 @@ def render_isolation(cell):
             rows.append(judge.check('복구 30초 뒤 미배정(건)', x.get('pending'), judge.PENDING, '{:.0f}'))
         r = x['read']
         notes += [f'조회 p95 장애 전·중·복구 직후·그 뒤 {num(r["before"])} / {num(r["fault"])} / {num(r["recovery"])} / {num(r["after"])}ms',
+                  f'user 실제 정지 {num(x["paused_sec"], "{:.0f}")}초(계획 30초), 복구 시간은 실제 복구 시각부터 센다',
                   f'장애 중 생성 {x["create_fault_total"]}건 중 실패 {x["create_fault_failed"]}(503 {x["create_fault_503"]}), 생성 p95 {num(x["create_fault_p95"])}ms',
                   f'바쁜 스레드 최대 {num(x["busy_max"], "{:.0f}")}/200, Hikari 대기 최대 {num(x["pending_max"], "{:.0f}")}, '
                   f'서킷 거절 호출 증가 {num(x["cb_rejected"], "{:.0f}")}']
