@@ -1,52 +1,32 @@
 # feat/delivery-perf-master
 
 ## 지금 하는 일
-배송 성능 마스터 측정(T10): V0~V4를 같은 데이터·같은 TPS 계단으로 재는 도구를 보완하고 측정한다. 정본은 `delivery-service/docs/perf-master.md`.
+배송 성능 마스터 측정(T10): 도구 보완, 측정 V0~V4, 결과 기록까지 끝났다(2026-10-22). 남은 일은 포트폴리오 반영(Cowork). 정본은 `delivery-service/docs/perf-master.md`.
 
 ## 진행 상태
-- [x] 측정 계획 `delivery-service/docs/perf-master.md` 작성(2026-10-22, Cowork 세션). 목표·합격선, 버전(V0~V4), 고정 환경, 절차, 캡처, 무효 판정, 결과 표, 포트폴리오 반영표, 에이전트 재개 절차
-- [x] 측정 전용 시드 `load-test/seed/perf-managers.sql`·`perf-load.sql`·`perf-seed.sh` 작성(2026-10-22). Claude 작업 환경의 임시 PostgreSQL 16(최소 스키마)에서 V0·V2·V3 스키마 모두 오류 없음, 담당자 170명, 구간 담당 허브 불일치 0, V3 미확정 0을 확인했다. 맥 실제 DB에서는 아직 실행하지 않았다
-- [x] 기준 커밋 확인: V0 `ef37a49`, V1 `bc3177b`, V2 `fd17db9`, V3 `4ff0b7f`. V0의 부하 테스트 API 요청 본문이 지금 k6 스크립트와 같다(`receiverManagerId` 포함)
-- [x] 브랜치 `feat/delivery-perf-master`를 `feat/delivery-T09`에서 만들었다(사용자). 계획·시드·이 파일·`tasks/T10.md`·`tasks/README.md` T10 줄을 첫 커밋으로 남겼다(2026-10-22)
-- [x] 도구 보완 A: 판정·자동 중단·배정 집계 호환(2026-10-22, 커밋 `test(load-test): 측정 판정·계단 자동 중단과 배정 집계 버전 호환 (T10)`). 검증 내용은 `tasks/T10.md` 작업 기록. 실제 스택에서는 아직 돌리지 않았다
-- [x] 도구 보완 B, 실행·재개·검증 스크립트(다음 단계 2~3) 작성(2026-10-22, 아직 커밋 전. 첫 실제 칸으로 확인한 뒤 커밋한다)
-  - `load-test/docker-compose.perf.yml`(delivery 이미지 `perf-current`, Prometheus 5초·볼륨, Grafana 렌더러 v5.12.5), `load-test/perf/`(lib.sh, cell.sh, perf.py, capture.sh, explain-d01.sh, prometheus.yml, versions.txt), `load-test/grafana/perf-master.json`, `load-test/perf-switch.sh`·`perf-run.sh`·`perf-verify.sh`
-  - 칸 기록: `load-test/results/perf/<버전>/<TPS>-<회차>/`(k6.json·csv.gz·txt, k6-stats, reset, idle, pgwait, docker, assignment, prom.json, verdict, manifest). V4는 `fault-160`, `fault-80`
-  - 사용자 지시(2026-10-22): 묻지 않고 계획대로 끝까지 진행한다. 칸 사이 검증이 STATUS.md와 다를 때만 멈추고 보고한다
-- [x] 준비: `perf/v0`(5a6c79f = ef37a49 + 인덱스), `perf/v1`(c7fb578 = bc3177b + 인덱스) 로컬 브랜치. 스택은 perf 덧붙임 조합으로 기동(2026-10-22)
-- [x] V0 전환(2분 30초), D-01 EXPLAIN(perf-master.md 4절), 시험 칸으로 도구 확인 뒤 버림, 공유 메모리 부족 해결(TS-032, postgres `shm_size` 256m). 도구 커밋 `test(load-test): 성능 마스터 측정 실행·재개·검증과 기록·캡처 자동화 (T10)`
-- [ ] 측정: `load-test/perf-run.sh V0`부터 백그라운드로. 칸 사이마다 `load-test/perf-verify.sh`
-- [ ] 준비(다음 단계 4)
-- [ ] 측정 V0~V3, V4(다음 단계 5)
-- [ ] 결과 기록(다음 단계 6), 포트폴리오 반영은 Cowork 세션에서
-- 면접 포인트: 버전끼리 공정하게 비교하려고 무엇을 고정했나(데이터·계단·절차·측정 도구 버전), 합격선을 왜 대용량 기준으로 잡았나, 무효 측정을 어떻게 걸렀나, 판정을 왜 스크립트로 했나
+- [x] 계획(perf-master.md)·측정 전용 시드·기준 커밋 확인·브랜치(2026-10-22). 첫 커밋 `docs(delivery): 배송 성능 마스터 측정 계획과 측정 전용 시드 (T10)`
+- [x] 도구 보완 A: 판정(`perf-judge.py`)·계단 자동 중단·배정 집계 버전 호환
+- [x] 도구 보완 B·실행 스크립트: `perf-switch.sh`·`perf-run.sh`·`perf-verify.sh`, `load-test/perf/`(cell.sh, perf.py, capture.sh, explain-d01.sh), 측정용 덧붙임 `load-test/docker-compose.perf.yml`(postgres shm 256MB, Prometheus 5초·볼륨, Grafana 렌더러), 측정 대시보드
+- [x] 준비: 로컬 브랜치 `perf/v0`(5a6c79f)·`perf/v1`(c7fb578) = 기준 커밋 + 목록 인덱스, 100만 건 D-01 EXPLAIN(perf-master.md 4절), 공유 메모리 부족 해결(TS-032)
+- [x] 측정 V0~V4(2026-10-22 13:30~16:26). 칸 37개 모두 `perf-verify.sh` 통과, 캡처 185장
+  - 버틴 최대 TPS: V0 80, V1 80, V2 320, V3 80. V4는 생성 80에서 user 30초 정지에도 영향 없음(통과), 160은 실패. 근거는 perf-master.md 8절, 결정 로그 30
+  - 무효 처리(에이전트 판단, 7절): V2 80-1은 측정 40초째부터 부하 없는 서비스까지 CPU가 함께 튀어 Docker VM 정체로 보고 다시 쟀다(같은 시간 에이전트가 분석 명령을 돌려 11절을 어겼다). V4 첫 fault-160은 판정 출력에 칸 폴더 이름이 들어간 도구 버그로 무효가 돼 `e27634c`로 고치고 다시 쟀다. 이유는 각 `*.invalid-*/invalid-reason.txt`(V2)와 T10.md
+  - 원본: `load-test/results/perf/`(STATUS.md, 버전별 칸 폴더, `V*-run.log`, captures, explain-d01.txt). git 제외
+- [x] 결과 기록: perf-master.md 8절(표는 `python3 load-test/perf/perf.py table`), T10.md, 결정 로그 30(28에 → 30 표시)
+- [ ] 포트폴리오 반영(perf-master.md 9절)은 Cowork 세션에서 한다
+- 면접 포인트: 버전끼리 공정하게 비교하려고 무엇을 고정했나(데이터·계단·절차·측정 도구 커밋), 합격선을 왜 대용량 기준으로 잡았나, 무효 측정을 어떻게 걸렀나(쉬는 CPU, 예열, 도착률, 커밋 라벨, 부하 없는 서비스의 CPU), 판정을 왜 스크립트로 했나(다시 계산해 비교), V0·V1이 왜 160에서 막혔나(측정 중 쌓이는 진행 중 구간과 담당 건수 쿼리, 허브 잠금 직렬화)
 
 ## 다음 단계
-1. **도구 보완 A: 판정·중단, 배정 집계 호환** (끝, 2026-10-22). 2·3번이 기대는 약속
-   - `python3 load-test/perf-judge.py <k6 JSON> <-assignment.txt>` → 표준 출력이 `-verdict.txt`. 마지막 줄 `판정<TAB>통과|실패|판정 불가`, 종료 코드 0·1·2. 같은 입력이면 같은 출력이라 `perf-verify.sh`는 다시 돌려 파일과 비교하면 된다
-   - `-assignment.txt`의 `== 판정용` 아래 `basis`(none·created_at·confirmed_at), `routes`, `pending`, `assign_p95_ms`, `managers`, `deviation`, `outside`. `managers`가 10이 아니면 시드가 빠진 것이다(무효 조건 후보)
-   - `fault-isolation.sh`는 `OUT_JSON`으로 결과 경로를 받는다(폴더도 만든다). 2번의 칸별 폴더는 이것으로 넘긴다
-   - `version-compare.sh`: `STOP_ON_FAIL=1`이면 한 계단 회차가 모두 실패할 때 멈추고(종료 코드 0), 판정 불가면 바로 종료 코드 2로 멈춘다. `SETTLE` 기본 30초, `PRE_VUS` 기본 400
-   - k6 요약에 `dropped_iterations{scenario:create|read}`가 있어야 판정한다. 예전 JSON은 판정 불가로 나온다
-2. **도구 보완 B: 기록·캡처**
-   - 칸마다 측정 구간의 Prometheus 시계열을 JSON으로 덤프(서비스별 p95, Hikari active·pending, Tomcat 바쁜 스레드, 프로세스 CPU)
-   - 측정 동안 pg_stat_activity 5초 표본(대기 이벤트별 커넥션 수, advisory 대기 수) → `-pgwait.txt`
-   - k6 터미널 출력 → `-k6.txt`, 칸마다 `manifest.txt`(커밋, 설정값, 시작·끝 시각, 파일 목록과 sha256)
-   - 측정용 덧붙임 `docker-compose.perf.yml`: Grafana 이미지 렌더러, Prometheus 볼륨. 측정용 대시보드는 `load-test/grafana/`. 캡처 PNG는 버전 하나를 다 잰 뒤 칸별 시간 구간으로 한꺼번에 뽑는다(측정 중 렌더러 CPU 간섭을 피한다)
-   - 결과 폴더: `load-test/results/perf/<버전>/<TPS>-<회차>/`
-3. **실행·재개·검증**
-   - `perf-switch.sh <버전>`: 해당 커밋을 worktree로 꺼내 delivery 이미지를 빌드·태그 → delivery 스키마 삭제 → 기동 → E2E 시드 → `perf-seed.sh`
-   - `perf-run.sh <버전>`: 예열 → 계단 측정 → 판정 → 기록 → `STATUS.md` 갱신. 검증을 통과한 칸은 건너뛴다(끊겨도 같은 명령으로 이어 간다). `load-test/results/perf/STOP` 파일이 있으면 다음 칸 전에 멈춘다
-   - `perf-verify.sh [버전]`: 칸마다 필수 파일, 무효 조건(쉬는 CPU, 예열, 실제 도착률, 커밋 일치), 판정 재계산이 기록과 같은지 확인
-4. **준비**: `perf/v0`·`perf/v1`에 `V4__index_deliveries_departure_hub_id_created_at.sql`만 가져와 기동 확인, 100만 건에서 D-01 `EXPLAIN ANALYZE` 인덱스 전후, 캡처 폴더 커밋 여부 결정. `tasks/README.md`의 T10 줄은 첫 커밋에 넣었다
-5. **측정**: V0 → V1 → V2 → V3(`CONFIRM=1`), V4(V3 + user 30초 정지, 생성 160·80). `caffeinate`로 잠자기 방지, 다른 무거운 앱 종료. 칸 사이마다 `perf-verify.sh`를 돌려 `STATUS.md`와 다르면 멈추고 보고한다
-6. **결과**: perf-master.md 8절 표, T10.md 작업 기록. 결과가 이전 판단과 다르면 결정 로그에 정정 표시
+1. **포트폴리오 반영**(Cowork 세션): perf-master.md 9절 표의 쪽을 8절 값으로 바꾼다. V2 240의 1회 실패, V3 확정 요청의 Gateway 경유, V4 160의 상태 수집 영향은 함께 적는다
+2. **선택(사용자 판단)**: V0·V1의 실제 한계를 좁히려면 120 계단을 더한다(모든 버전 다시 측정). V4 160을 상태 수집 없이 다시 재려면 `fault-isolation.sh`에 수집을 끄는 옵션이 필요하다. 담당 건수 부분 인덱스(결정 로그 13)는 앱 변경이라 T10 범위 밖이다
+3. **정리**: 측정 스택은 떠 있다(`source load-test/perf/lib.sh && docker compose ps`). 끄려면 `docker compose stop`. Prometheus 볼륨(`perf-prometheus`)에 지표가 남아 캡처를 다시 뽑을 수 있다(`load-test/perf/capture.sh <버전>`). delivery 이미지는 `perf-current` 태그가 V3(4ff0b7f)다
 
 ## 직접 해보기
 1. 시드를 작게 넣어 본다: `COUNT=100000 load-test/seed/perf-seed.sh`
 2. 서울 허브 담당자별 과거 구간 수를 본다: `SELECT r.manager_id, count(*) FROM delivery_schema.p_delivery_routes r JOIN user_schema.p_users u ON u.user_id = r.manager_id WHERE u.hub_id = '6f39d519-4947-4a95-a454-58c25728f388' GROUP BY 1;`
 3. 한 칸만 손으로 따라가 본다: `NAME=try RATES="40" REPEAT=1 READ_FIXED=20 CONFIRM=1 load-test/version-compare.sh`
 4. 확인: 요약 JSON의 `I-09 직접` p95와 `-assignment.txt`의 담당자별 건수로 직접 판정해 보고 `-verdict.txt`와 같은지 비교한다
+5. 결과를 직접 본다: `python3 load-test/perf/perf.py table`로 8절 표를 다시 만들고, `load-test/results/perf/V1/160-1/pgwait.txt`의 `advisory_wait` 열과 `V0/240-1/docker.txt`의 postgres CPU가 1분 동안 어떻게 변하는지 본다
 
 ## 메모
 - 결정(사용자, 2026-10-22)
