@@ -11,7 +11,7 @@ source load-test/perf/lib.sh
 
 ver=${1:?버전(V0~V4)}
 perf_require_version "$ver"
-img_ver=$ver; [ "$ver" = V4 ] && img_ver=V3
+img_ver=$(perf_image_version "$ver")
 commit=$(perf_expected_commit "$ver")
 tag="$PERF_IMAGE:perf-$img_ver"
 mkdir -p "$PERF_RESULTS/$ver"

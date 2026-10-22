@@ -12,6 +12,9 @@ services:
     # 버전마다 perf-switch.sh가 그 커밋으로 빌드한 이미지를 이 태그에 붙인다. 이 덧붙임으로 script/run.sh를 쓰면
     # 지금 코드로 이 태그를 덮으므로, 측정 중 delivery는 perf-switch.sh로만 바꾼다.
     image: logistics-management-delivery-service:perf-current
+    # V3i 측정: 운영에서 order가 하듯 확정(I-19)을 Gateway 없이 직접 보낸다. 이 맥에서만 열린다(perf-master.md 2절)
+    ports:
+      - "127.0.0.1:18085:8085"
 
   prometheus:
     # 수집 5초(기본 15초)와 볼륨. 1분 측정에 점이 4개뿐이면 그래프가 안 되고, 컨테이너를 다시 만들면 지표가 사라진다.

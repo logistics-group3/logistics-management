@@ -18,12 +18,15 @@ else
   tps=${BASH_REMATCH[1]}; duration=1m; duration_sec=60; fault_mode=none
 fi
 confirm=$(perf_confirm "$ver")
+confirm_path=$(perf_confirm_path "$ver")
+confirm_url=
+[ "$confirm_path" = direct ] && confirm_url="http://localhost:$PERF_DELIVERY_PORT"
 dir="$PERF_RESULTS/$ver/$cell"
 tmp="$dir.tmp"
 [ ! -e "$dir" ] || { echo "이미 있는 칸이다: $dir" >&2; exit 2; }
 rm -rf "$tmp"; mkdir -p "$tmp"
 
-echo "--- $ver $cell: 생성 $tps + 조회 $PERF_READ, $duration, CONFIRM=$confirm. ${PERF_REST}초 쉼"
+echo "--- $ver $cell: 생성 $tps + 조회 $PERF_READ, $duration, CONFIRM=$confirm(${confirm_path}). ${PERF_REST}초 쉼"
 sleep "$PERF_REST"
 KEEP_LOAD=1 load-test/reset-delivery-data.sh > "$tmp/reset.txt" 2>&1
 
@@ -81,7 +84,8 @@ started_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 started_at=$(date +%s)
 set +e
 LABEL="perf-$ver-$cell" OUT_JSON="$tmp/k6.json" CREATE_RATE="$tps" READ_RATE="$PERF_READ" DURATION="$duration" \
-  FAULT_MODE="$fault_mode" CONFIRM="$confirm" PRE_VUS="$PERF_PRE_VUS" load-test/fault-isolation.sh 2>&1 | tee "$tmp/k6.txt"
+  FAULT_MODE="$fault_mode" CONFIRM="$confirm" CONFIRM_URL="$confirm_url" PRE_VUS="$PERF_PRE_VUS" \
+  load-test/fault-isolation.sh 2>&1 | tee "$tmp/k6.txt"
 k6_exit=${PIPESTATUS[0]}
 set -e
 ended_at=$(date +%s)
@@ -109,6 +113,7 @@ warm_at=$(awk -F= '/^warm_at=/ {v = $2} END {print v}' "$PERF_RESULTS/$ver/warm.
   echo "read_rate=$PERF_READ"
   echo "duration=$duration"
   echo "confirm=$confirm"
+  echo "confirm_path=$confirm_path"
   echo "fault_mode=$fault_mode"
   echo "pre_vus=$PERF_PRE_VUS"
   echo "rest=$PERF_REST"

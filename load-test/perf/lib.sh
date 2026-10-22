@@ -21,6 +21,10 @@ perf_line() {
 }
 perf_ref() { perf_line "$1" | awk '{print $2}'; }
 perf_confirm() { perf_line "$1" | awk '{print $4}'; }
+perf_confirm_path() { perf_line "$1" | awk '{print ($5 == "" ? "gateway" : $5)}'; }
+# 같은 코드를 쓰는 변형은 이미지를 다시 빌드하지 않는다(V4·V3i는 V3 이미지)
+perf_image_version() { case "$1" in V4|V3i) echo V3 ;; *) echo "$1" ;; esac; }
+PERF_DELIVERY_PORT=18085   # 확정 경로 direct일 때 k6가 delivery를 직접 부르는 포트(docker-compose.perf.yml)
 perf_expected_commit() { git rev-parse "$(perf_ref "$1")^{commit}"; }
 perf_require_version() {
   [ -n "$(perf_line "$1")" ] || { echo "버전은 V0~V4 중 하나다: $1" >&2; exit 2; }

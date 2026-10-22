@@ -25,17 +25,19 @@ trap 'rm -rf "$lock"' EXIT
 caffeinate -i -w $$ &
 
 # 셸에 남은 측정 변수가 k6로 넘어가지 않게 지운다(7절). 칸마다 cell.sh가 필요한 값만 다시 넣는다
-unset CREATE_RATE READ_RATE DURATION FAULT_MODE LABEL TARGET MAX_VUS CLIENT_TIMEOUT LEAD FAULT_SEC FAULT_SERVICE OUT_JSON CONFIRM PRE_VUS
+unset CREATE_RATE READ_RATE DURATION FAULT_MODE LABEL TARGET MAX_VUS CLIENT_TIMEOUT LEAD FAULT_SEC FAULT_SERVICE OUT_JSON CONFIRM CONFIRM_URL PRE_VUS
 rm -rf "$PERF_RESULTS/$ver"/*.tmp
 perf_stop_zipkin
 
 # 예열 2회(초당 10+10, 1분). 실행할 때마다 다시 한다. 칸은 마지막 예열 시각이 delivery 기동 뒤인지로 예열 여부를 검증한다
 confirm=$(perf_confirm "$ver")
+confirm_url=
+[ "$(perf_confirm_path "$ver")" = direct ] && confirm_url="http://localhost:$PERF_DELIVERY_PORT"
 mkdir -p "$PERF_RESULTS/$ver/warm"
 for i in 1 2; do
   stamp=$(date +%Y%m%d-%H%M%S)
   LABEL="perf-warm-$ver-$i" OUT_JSON="$PERF_RESULTS/$ver/warm/$stamp-$i.json" CREATE_RATE=10 READ_RATE=10 DURATION=1m \
-    FAULT_MODE=none CONFIRM="$confirm" PRE_VUS="$PERF_PRE_VUS" load-test/fault-isolation.sh > "$PERF_RESULTS/$ver/warm/$stamp-$i-k6.txt" 2>&1
+    FAULT_MODE=none CONFIRM="$confirm" CONFIRM_URL="$confirm_url" PRE_VUS="$PERF_PRE_VUS" load-test/fault-isolation.sh > "$PERF_RESULTS/$ver/warm/$stamp-$i-k6.txt" 2>&1
 done
 echo "warm_at=$(date +%s)" >> "$PERF_RESULTS/$ver/warm.txt"
 

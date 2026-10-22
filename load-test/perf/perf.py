@@ -31,7 +31,7 @@ os.chdir(ROOT)
 RESULTS = Path(os.environ.get('PERF_RESULTS_DIR', 'load-test/results/perf'))
 STATUS = RESULTS / 'STATUS.md'
 CAPTURES = RESULTS / 'captures'
-VERSIONS = ['V0', 'V1', 'V2', 'V3', 'V4']
+VERSIONS = ['V0', 'V1', 'V2', 'V3', 'V3i', 'V4']   # V3i: V3 코드, 확정을 내부 API로 직접(versions.txt)
 RATES = [40, 80, 160, 240, 320, 480, 640]   # 1절 생성 TPS 계단
 V4_CELLS = ['fault-160', 'fault-80']         # 5절 V4
 SPIKE_SKIP_SEC = 30                          # 7절 "1회차 첫 30초만 튐"
@@ -418,7 +418,7 @@ def pg_max(cell, column):
 def render_table():
     out = ['| 버전 | TPS | 회차 | 생성 p95 | 생성 p99 | 실패+못 보냄 | 조회 p95 | 편차 | 배정 지연 p95 | 미배정 | Hikari 대기 | advisory 대기 '
            '| postgres CPU 평균/최대 | 판정 | 캡처 |', '|' + '---|' * 15]
-    for ver in VERSIONS[:4]:
+    for ver in [v for v in VERSIONS if v != 'V4']:
         for rate in RATES:
             for n in (1, 2, 3):
                 cell = RESULTS / ver / f'{rate}-{n}'

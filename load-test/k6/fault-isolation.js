@@ -17,6 +17,10 @@ const CREATE_NAME = TARGET === 'delivery' ? 'I-09 직접' : 'O-01';
 const READ_NAME = TARGET === 'delivery' ? 'D-01 허브별' : 'O-02 목록';
 const CONFIRM_NAME = 'I-19 직접';
 const CONFIRM = (__ENV.CONFIRM || '1') !== '0';
+// 확정을 보낼 곳. 비우면 Gateway의 부하 테스트 API, 주면 운영에서 order가 부르는 내부 API I-19를 delivery에 직접 보낸다(perf-master.md V3i).
+// Note: 내부 API는 Gateway를 거치지 않으므로 Gateway가 넣던 사용자 헤더를 order의 헤더 전달(ADR 0009)처럼 직접 붙인다.
+const CONFIRM_URL = __ENV.CONFIRM_URL || '';
+const MASTER_HEADERS = { 'X-User-Id': SEED.master, 'X-Username': 'dmaster', 'X-User-Role': 'MASTER' };
 const PHASES = ['nofault', 'before', 'fault', 'recovery', 'after'];
 
 function phase() {
@@ -99,8 +103,11 @@ export function create(data) {
     }), tagged(data.creator, CREATE_NAME));
     // 결정 로그 29: 배정은 주문 확정(I-19) 뒤에 한다. order 대신 확정을 보낸다. CONFIRM=0이면 T08처럼 생성만 잰다(배정 안 됨)
     if (CONFIRM && res.status === 201) {
-      const confirm = http.post(`${BASE_URL}/api/v1/deliveries/load-test/orders/${orderId}/confirm`, null,
-        tagged(data.creator, CONFIRM_NAME));
+      const confirm = CONFIRM_URL
+        ? http.post(`${CONFIRM_URL}/internal/deliveries/orders/${orderId}/confirm`, null,
+          tagged(data.creator, CONFIRM_NAME, MASTER_HEADERS))
+        : http.post(`${BASE_URL}/api/v1/deliveries/load-test/orders/${orderId}/confirm`, null,
+          tagged(data.creator, CONFIRM_NAME));
       check(confirm, { [`${CONFIRM_NAME} 200`]: (r) => r.status === 200 });
     }
   } else {

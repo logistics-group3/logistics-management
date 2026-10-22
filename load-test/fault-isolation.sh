@@ -4,7 +4,7 @@
 #   FAULT_MODE: pause(응답 없음, 기본) | stop(죽음) | none(기준선)
 #   LEAD: 시작 후 장애까지 초(기본 90, 앞 60초가 before 구간). FAULT_SEC: 장애 시간(기본 30)
 #   OUT_JSON: k6 요약 JSON 경로(기본 load-test/results/fault-<LABEL>-<시각>.json). 다른 파일은 이 이름을 따른다
-#   그 밖의 환경 변수(TARGET, CREATE_RATE, READ_RATE, PRE_VUS)는 k6로 그대로 넘어간다.
+#   그 밖의 환경 변수(TARGET, CREATE_RATE, READ_RATE, PRE_VUS, CONFIRM, CONFIRM_URL)는 k6로 그대로 넘어간다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

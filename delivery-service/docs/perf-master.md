@@ -36,6 +36,7 @@
 | V1 | 고도화 1: 허브 advisory lock | `bc3177b` (같은 브랜치, 잠금 커밋) | `CONFIRM=0` |
 | V2 | 고도화 2: 생성과 배정 분리 | `fd17db9` (`feat/delivery-T08`, 인덱스 포함) | `CONFIRM=0` |
 | V3 | 고도화 3: 주문 확정 뒤 배정 | `4ff0b7f` (`feat/delivery-T09`) | `CONFIRM=1`. 확정 요청이 추가된 비용이 TPS로 드러난다 |
+| V3i | 고도화 3, 운영 경로 확정 | V3와 같은 코드 | `CONFIRM=1`이지만 확정(I-19)을 Gateway가 아니라 운영에서 order가 하듯 delivery 내부 API로 직접 보낸다(k6 `CONFIRM_URL`, 사용자 헤더 전달). V3은 생성 1건 = Gateway 요청 2건이라 Gateway 비용이 확정 단계 비용에 섞였다(8절). 2026-10-22 추가 |
 | V4 | 장애 격리 | V3와 같은 코드 | 5절 V4 절차. user 30초 정지 |
 
 - **목록 인덱스는 공통 바닥이다.** V0·V1은 인덱스 전 코드라 `V4__index_deliveries_departure_hub_id_created_at.sql`만 가져와 측정 브랜치(`perf/v0`, `perf/v1`)를 만든다. 인덱스 효과(D-01 요청당 33ms → 4.4ms, 30만 건)는 "사전 정비"로 따로 적는다. 100만 건에서는 count와 목록을 합쳐 약 404ms → 7.7ms다(4절).
