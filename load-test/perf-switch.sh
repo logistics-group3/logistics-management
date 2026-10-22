@@ -16,6 +16,8 @@ commit=$(perf_expected_commit "$ver")
 tag="$PERF_IMAGE:perf-$img_ver"
 mkdir -p "$PERF_RESULTS/$ver"
 log="$PERF_RESULTS/$ver/switch.txt"
+# 같은 버전으로 다시 전환하면(예: F 계열 뒤 V3로 복원) 이전 기록을 덮지 않고 그 시각 이름으로 남긴다
+[ -f "$log" ] && mv "$log" "$PERF_RESULTS/$ver/switch-$(date -r "$log" +%Y%m%d-%H%M%S).txt"
 started=$(date +%s)
 
 built=0
