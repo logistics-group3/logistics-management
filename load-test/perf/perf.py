@@ -376,7 +376,8 @@ def render_fault(cell):
 
     results = [r[3] for r in rows]
     v = judge.UNKNOWN if (not rows or judge.UNKNOWN in results) else judge.FAIL if judge.FAIL in results else judge.PASS
-    lines = ['판정 기준: delivery-service/docs/perf-master.md 5절 V4', f'입력: {cell.name}',
+    # 입력 줄에 칸 폴더 이름을 쓰지 않는다. 판정은 <칸>.tmp에서 만들고 검증은 옮긴 뒤 다시 계산하므로 이름이 달라진다
+    lines = ['판정 기준: delivery-service/docs/perf-master.md 5절 V4', '입력: k6.json, k6.csv.gz, recovery.txt',
              '\t'.join(['지표', '값', '합격선', '결과'])] + ['\t'.join(r) for r in rows] + [f'참고\t{n}' for n in notes]
     bad = [r[0] for r in rows if r[3] in (judge.FAIL, judge.UNKNOWN)]
     lines.append('\t'.join(['판정', v] + ([', '.join(bad)] if bad else [])))
