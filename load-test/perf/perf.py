@@ -8,6 +8,7 @@
   check-cell <칸 폴더>          칸 하나만 확인한다(perf-run.sh가 칸이 끝날 때 부른다. 문제가 있으면 1)
   prom-dump <시작> <끝> <파일>  Prometheus 시계열을 JSON으로 남긴다(epoch 초)
   judge-fault <칸 폴더>         V4 장애 격리 칸을 판정한다(5절 V4 합격선)
+  judge-isolation <칸 폴더>     F 계열 장애 격리 칸을 판정한다(5절 F 계열)
   table                         perf-master.md 8절 칸별 표(V0~V3)와 V4 표를 칸 기록으로 만든다
 상태는 대화나 별도 파일이 아니라 칸 폴더에서만 나온다. 그래서 끊긴 뒤 같은 명령으로 이어 가고, 검증은 다시 계산해 비교한다.
 """
@@ -31,9 +32,18 @@ os.chdir(ROOT)
 RESULTS = Path(os.environ.get('PERF_RESULTS_DIR', 'load-test/results/perf'))
 STATUS = RESULTS / 'STATUS.md'
 CAPTURES = RESULTS / 'captures'
-VERSIONS = ['V0', 'V1', 'V2', 'V3', 'V3i', 'V4']   # V3i: V3 코드, 확정을 내부 API로 직접(versions.txt)
+VERSIONS = ['V0', 'V1', 'V2', 'V3', 'V3i', 'V4', 'F0', 'F1', 'F2']   # V3i: 확정을 내부 API로 직접, F: 장애 격리 재측정(versions.txt)
 RATES = [40, 80, 160, 240, 320, 480, 640]   # 1절 생성 TPS 계단
-V4_CELLS = ['fault-160', 'fault-80']         # 5절 V4
+# 장애 격리 칸(5절). fault-<TPS>: V4, f<생성>x<조회>-<회차>: user 30초 정지, n<생성>x<조회>-<회차>: 장애 없음(서킷 오탐)
+FAULT_CELLS = {
+    'V4': ['fault-160', 'fault-80'],
+    'F0': ['f10x10-1', 'f10x10-2'],
+    'F1': ['f10x10-1', 'f10x10-2', 'f40x40-1', 'n40x40-1'],
+    'F2': ['f10x10-1', 'f10x10-2'],
+}
+V4_CELLS = FAULT_CELLS['V4']
+RECOVERY_VERSIONS = {'V4', 'F2'}   # 확정 컬럼이 있어 복구 30초 뒤 미배정을 재는 버전(CONFIRM=1)
+ISOLATION_RECOVERY_SEC = 30       # F 합격선: 복구 시간
 SPIKE_SKIP_SEC = 30                          # 7절 "1회차 첫 30초만 튐"
 FILES = ['k6.json', 'k6.csv.gz', 'k6.txt', 'k6-stats.txt', 'reset.txt', 'idle.txt', 'pgwait.txt', 'docker.txt',
          'assignment.txt', 'prom.json', 'verdict.txt', 'manifest.txt']
@@ -79,7 +89,7 @@ def failing(cell):
 
 def cells(ver):
     d = RESULTS / ver
-    return sorted(p for p in d.iterdir() if p.is_dir() and re.fullmatch(r'\d+-\d|fault-\d+', p.name)) if d.exists() else []
+    return sorted(p for p in d.iterdir() if p.is_dir() and re.fullmatch(r'\d+-\d|fault-\d+|[fn]\d+x\d+-\d', p.name)) if d.exists() else []
 
 
 # ---------- 7절: 1회차 첫 30초만 튐 ----------
@@ -154,11 +164,11 @@ def rate_result(ver, rate):
 
 
 def next_cell(ver):
-    if ver == 'V4':
-        for c in V4_CELLS:
+    if ver in FAULT_CELLS:
+        for c in FAULT_CELLS[ver]:
             if verdict(RESULTS / ver / c) in (None, judge.UNKNOWN):
                 return f'cell {c}'
-        return 'done V4 끝'
+        return f'done {ver} 끝'
     for rate in RATES:
         res = rate_result(ver, rate)
         if res['need']:
@@ -185,10 +195,10 @@ def render_status():
         out.append(f'- 상태: {state}')
         invalid = sorted(p.name for p in d.iterdir() if '.invalid-' in p.name)
         shots = len(list(CAPTURES.glob(f'{ver}-*.png'))) if CAPTURES.exists() else 0
-        if ver == 'V4':
+        if ver in FAULT_CELLS:
             out += [f'- 무효로 버린 칸: {", ".join(invalid) or "없음"}', f'- 캡처: {shots}장', '',
                     '| 칸 | 판정 | 실패한 지표 |', '|---|---|---|']
-            for c in V4_CELLS:
+            for c in FAULT_CELLS[ver]:
                 out.append(f'| {c} | {verdict(d / c) or ""} | {", ".join(failing(d / c))} |')
             out.append('')
             continue
@@ -229,6 +239,8 @@ def sha256(path):
 def rejudge(cell):
     if cell.parent.name == 'V4':
         return render_fault(cell)
+    if cell.parent.name.startswith('F'):
+        return render_isolation(cell)
     out = subprocess.run([sys.executable, 'load-test/perf-judge.py', str(cell / 'k6.json'), str(cell / 'assignment.txt')],
                          capture_output=True, text=True)
     return out.stdout
@@ -236,10 +248,10 @@ def rejudge(cell):
 
 def arrival(cell, m):
     """k6가 실제로 보낸(+못 보낸) 요청이 목표 도착률의 99~101%인가. 셸에 남은 환경 변수로 다른 부하를 보냈는지 잡는다."""
-    if cell.parent.name == 'V4':
+    if re.fullmatch(r'fault-\d+|f\d+x\d+-\d', cell.name):
         return []   # 장애 칸은 phase 태그 밖(warmup) 요청이 있어 요약으로 셀 수 없다. timeline.txt로 본다
     metrics = json.loads((cell / 'k6.json').read_text(encoding='utf-8'))['metrics']
-    secs = 60
+    secs = {'1m': 60, '4m': 240, '6m': 360}.get(m.get('duration'), 60)
     problems = []
     for name, scenario, rate in ((judge.CREATE, 'create', int(m['tps'])), (judge.READ, 'read', int(m['read_rate']))):
         sent, _ = judge.requests(metrics, name)
@@ -252,7 +264,9 @@ def arrival(cell, m):
 
 def check_cell(cell):
     problems = []
-    required = FILES + (V4_FILES if cell.parent.name == 'V4' else [])
+    ver = cell.parent.name
+    is_fault = bool(re.fullmatch(r'fault-\d+|f\d+x\d+-\d', cell.name))
+    required = FILES + (['timeline.txt'] if is_fault else []) + (['recovery.txt'] if is_fault and ver in RECOVERY_VERSIONS else [])
     missing = [f for f in required if not (cell / f).exists()]
     if missing:
         return [f'필수 파일 없음: {", ".join(missing)}']
@@ -265,9 +279,16 @@ def check_cell(cell):
         problems.append(f'판정이 {v}')
     if rejudge(cell) != (cell / 'verdict.txt').read_text(encoding='utf-8'):
         problems.append('판정을 다시 계산한 결과가 verdict.txt와 다르다')
-    ver = cell.parent.name
     ref = subprocess.run(['bash', '-c', f'source load-test/perf/lib.sh && perf_expected_commit {ver}'],
                          capture_output=True, text=True).stdout.strip()
+    if 'config_ref' in m:   # 버전별 설정을 넣은 뒤(F 계열 도입)의 칸만 기록이 있다
+        cfg_ref = subprocess.run(['bash', '-c', f'source load-test/perf/lib.sh && perf_config_ref {ver}'],
+                                 capture_output=True, text=True).stdout.strip()
+        sw = dict(l.split('=', 1) for l in (cell.parent / 'switch.txt').read_text(encoding='utf-8').splitlines()
+                  if '=' in l and not l.startswith(' '))
+        if m['config_ref'] != cfg_ref or m.get('config_sha') != sw.get('config_sha'):
+            problems.append(f'delivery 설정이 버전과 다르다: 칸 {m["config_ref"]} {m.get("config_sha", "")[:12]}, '
+                            f'버전 {cfg_ref} {sw.get("config_sha", "")[:12]}')
     warm = m.get('warm_at', '')
     warmed = warm.isdigit() and int(m.get('delivery_started_at') or 0) < int(warm) <= int(m.get('started_at') or 0)
     checks = [
@@ -322,6 +343,10 @@ PROM_QUERIES = {
     'tomcat_busy': 'sum by (application) (tomcat_threads_busy_threads)',
     'process_cpu': 'process_cpu_usage{job="logistics-services"}',
     'gc_pause_rate': 'sum by (application) (rate(jvm_gc_pause_seconds_sum[20s]))',
+    # 장애 격리(F 계열). 누적 값이라 처음과 끝의 차이로 본다. 장애 대응 전 코드(F0)에는 없다
+    'cb_not_permitted': 'sum by (application) (resilience4j_circuitbreaker_not_permitted_calls_total)',
+    'cb_open': 'max by (application) (resilience4j_circuitbreaker_state{state="open"})',
+    'bulkhead_available': 'min by (application) (resilience4j_bulkhead_available_concurrent_calls)',
 }
 
 
@@ -385,6 +410,113 @@ def render_fault(cell):
     return '\n'.join(lines) + '\n'
 
 
+# ---------- F 계열 판정(장애 격리 재측정) ----------
+
+def _phase(row):
+    for kv in (row['extra_tags'] or '').split('&'):
+        if kv.startswith('phase='):
+            return kv[6:]
+    return ''
+
+
+def _prom_series(cell, name, app='delivery-service'):
+    try:
+        data = json.loads((cell / 'prom.json').read_text(encoding='utf-8'))['queries'].get(name, {}).get('result', [])
+    except (OSError, ValueError):
+        return []
+    return [float(v) for x in data if isinstance(x, dict) and x['metric'].get('application') == app for _, v in x['values']]
+
+
+def compute_isolation(cell):
+    """F 칸의 지표. 장애 칸은 S1(fault-isolation.md 8절)과 같은 정의로 계산한다.
+    복구 시간: user를 되살린 시점부터 5초 구간마다 생성 성공률 99% 이상 그리고 조회 p95가 장애 전 p95의 2배 이하가 되는 첫 구간까지의 초."""
+    name = cell.name.removesuffix('.tmp')
+    out = {'nofault': name.startswith('n')}
+    metrics = json.loads((cell / 'k6.json').read_text(encoding='utf-8'))['metrics']
+    def p95(n, ph):
+        return metrics.get(f'http_req_duration{{name:{n},phase:{ph}}}', {}).get('p(95)')
+    reqs = []   # (초, phase, 이름, 시간ms, 응답 코드, 실패 여부)
+    for r in k6_rows(cell):
+        if r['metric_name'] == 'http_req_duration' and r['name'] in (judge.CREATE, judge.READ):
+            reqs.append((int(r['timestamp']), _phase(r), r['name'], float(r['metric_value']), r['status'],
+                         r['expected_response'] != 'true'))
+    create = [x for x in reqs if x[2] == judge.CREATE]
+    busy, pend, rejected = _prom_series(cell, 'tomcat_busy'), _prom_series(cell, 'hikari_pending'), _prom_series(cell, 'cb_not_permitted')
+    out.update(busy_max=max(busy) if busy else None, pending_max=max(pend) if pend else None,
+               cb_rejected=(rejected[-1] - rejected[0]) if rejected else None,
+               cb_opened=max(_prom_series(cell, 'cb_open') or [0]) > 0 if rejected else None)
+    if out['nofault']:
+        sent, errors = judge.requests(metrics, judge.CREATE)
+        dropped = metrics.get('dropped_iterations{scenario:create}', {}).get('count', 0)
+        out.update(loss=(errors + dropped) / (sent + dropped) * 100 if sent else None,
+                   create_503=sum(1 for x in create if x[4] == '503'), create_total=len(create),
+                   create_p95=p95(judge.CREATE, 'nofault'), read_p95=p95(judge.READ, 'nofault'))
+        return out
+    out['read'] = {ph: p95(judge.READ, ph) for ph in ('before', 'fault', 'recovery', 'after')}
+    fault = [x for x in create if x[1] == 'fault']
+    out.update(create_fault_total=len(fault), create_fault_failed=sum(1 for x in fault if x[5]),
+               create_fault_503=sum(1 for x in fault if x[4] == '503'), create_fault_p95=p95(judge.CREATE, 'fault'))
+    recovered = [x[0] for x in reqs if x[1] == 'recovery']
+    base = out['read']['before']
+    out['recovery_sec'] = None
+    if recovered and base:
+        start = min(recovered)
+        end = max(x[0] for x in reqs)
+        for b in range(start, end + 1, 5):
+            c = [x for x in create if b <= x[0] < b + 5]
+            r = [x[3] for x in reqs if x[2] == judge.READ and b <= x[0] < b + 5]
+            if c and r and sum(1 for x in c if not x[5]) / len(c) >= 0.99 and percentile(r, 0.95) <= 2 * base:
+                out['recovery_sec'] = b - start
+                break
+        out['recovery_window'] = end - start
+    if cell.parent.name in RECOVERY_VERSIONS:
+        try:
+            values = dict(l.split('=', 1) for l in (cell / 'recovery.txt').read_text(encoding='utf-8').splitlines() if '=' in l)
+            out['pending'] = judge.to_number(values.get('pending_confirmed_before_recovery'))
+        except OSError:
+            out['pending'] = None
+    return out
+
+
+def render_isolation(cell):
+    """F 계열 합격선(perf-master.md 5절): 장애 칸은 장애 중 조회 p95 100ms 이하, 복구 시간 30초 이하(F2는 복구 30초 뒤 미배정 0도).
+    장애 없는 칸은 생성 실패+못 보냄 0.1% 이하(1절). 장애 중 생성 실패는 지표로만 적는다(F1은 user가 멈추면 빨리 실패하는 설계다)."""
+    rows, notes = [], []
+    try:
+        x = compute_isolation(cell)
+    except (OSError, ValueError, KeyError) as e:
+        x = None
+        notes.append(f'기록을 읽지 못했다: {type(e).__name__}')
+    def num(v, f='{:.1f}'):
+        return '-' if v is None else f.format(v)
+    if x and x['nofault']:
+        rows.append(judge.check('생성 실패+못 보냄(%)', x['loss'], judge.LOSS_PCT, '{:.3f}'))
+        rate = x['create_503'] / x['create_total'] * 100 if x['create_total'] else 0
+        notes += [f'생성 503 {x["create_503"]}건 / {x["create_total"]}건({rate:.2f}%, 서킷 오탐)',
+                  f'서킷 거절 호출 증가 {num(x["cb_rejected"], "{:.0f}")}, 서킷 열림 {x["cb_opened"]}',
+                  f'생성 p95 {num(x["create_p95"])}ms, 조회 p95 {num(x["read_p95"])}ms']
+    elif x:
+        rows.append(judge.check('장애 중 조회 p95(ms)', x['read']['fault'], judge.READ_P95_MS, '{:.1f}'))
+        if x['recovery_sec'] is None:
+            rows.append(['복구 시간(초)', f'회복 안 됨(>{x.get("recovery_window", 0)})', str(ISOLATION_RECOVERY_SEC), judge.FAIL])
+        else:
+            rows.append(judge.check('복구 시간(초)', x['recovery_sec'], ISOLATION_RECOVERY_SEC, '{:.0f}'))
+        if cell.parent.name in RECOVERY_VERSIONS:
+            rows.append(judge.check('복구 30초 뒤 미배정(건)', x.get('pending'), judge.PENDING, '{:.0f}'))
+        r = x['read']
+        notes += [f'조회 p95 장애 전·중·복구 직후·그 뒤 {num(r["before"])} / {num(r["fault"])} / {num(r["recovery"])} / {num(r["after"])}ms',
+                  f'장애 중 생성 {x["create_fault_total"]}건 중 실패 {x["create_fault_failed"]}(503 {x["create_fault_503"]}), 생성 p95 {num(x["create_fault_p95"])}ms',
+                  f'바쁜 스레드 최대 {num(x["busy_max"], "{:.0f}")}/200, Hikari 대기 최대 {num(x["pending_max"], "{:.0f}")}, '
+                  f'서킷 거절 호출 증가 {num(x["cb_rejected"], "{:.0f}")}']
+    results = [r[3] for r in rows]
+    v = judge.UNKNOWN if (not rows or judge.UNKNOWN in results) else judge.FAIL if judge.FAIL in results else judge.PASS
+    lines = ['판정 기준: delivery-service/docs/perf-master.md 5절 F 계열', '입력: k6.json, k6.csv.gz, prom.json',
+             '\t'.join(['지표', '값', '합격선', '결과'])] + ['\t'.join(r) for r in rows] + [f'참고\t{n}' for n in notes]
+    bad = [r[0] for r in rows if r[3] in (judge.FAIL, judge.UNKNOWN)]
+    lines.append('\t'.join(['판정', v] + ([', '.join(bad)] if bad else [])))
+    return '\n'.join(lines) + '\n'
+
+
 # ---------- 8절 표 ----------
 
 def verdict_values(cell):
@@ -440,6 +572,32 @@ def render_table():
                  if line.startswith('참고\t생성 p95 ')}
         out.append(f"| {c} | {v.get('장애 중 생성 실패+못 보냄(%)')}% | {v.get('장애 중 조회 p95(ms)')}ms "
                    f"| {v.get('복구 30초 뒤 미배정(건)')} | {notes.get('before')} / {notes.get('fault')} / {notes.get('after')} | {verdict(cell)} |")
+    out += ['', '| 버전 | 칸 | 조회 p95 장애 전 / 중 / 복구 직후 / 그 뒤 | 장애 중 생성 실패(503) | 바쁜 스레드 최대 | 복구 시간 | 판정 |',
+            '|---|---|---|---|---|---|---|']
+    nofault = []
+    for ver in [v for v in VERSIONS if v.startswith('F')]:
+        for c in FAULT_CELLS[ver]:
+            cell = RESULTS / ver / c
+            if not cell.exists():
+                continue
+            x = compute_isolation(cell)
+            if x['nofault']:
+                nofault.append((ver, c, x))
+                continue
+            r = x['read']
+            fmt = lambda v: '-' if v is None else f'{v:.0f}'
+            rec = '회복 안 됨' if x['recovery_sec'] is None else f"{x['recovery_sec']}초"
+            out.append(f"| {ver} | {c} | {' / '.join(fmt(r[p]) for p in ('before', 'fault', 'recovery', 'after'))} "
+                       f"| {x['create_fault_failed']}/{x['create_fault_total']}({x['create_fault_503']}) | {fmt(x['busy_max'])}/200 "
+                       f"| {rec} | {verdict(cell)} |")
+    if nofault:
+        out += ['', '| 버전 | 칸(장애 없음) | 생성 실패+못 보냄 | 생성 503(서킷 오탐) | 서킷 거절 증가 | 생성 p95 | 조회 p95 | 판정 |',
+                '|---|---|---|---|---|---|---|---|']
+        for ver, c, x in nofault:
+            rate = x['create_503'] / x['create_total'] * 100 if x['create_total'] else 0
+            rejected = '-' if x['cb_rejected'] is None else f"{x['cb_rejected']:.0f}"
+            out.append(f"| {ver} | {c} | {x['loss']:.3f}% | {x['create_503']}건({rate:.2f}%) | {rejected} "
+                       f"| {x['create_p95']:.1f}ms | {x['read_p95']:.1f}ms | {verdict(RESULTS / ver / c)} |")
     return '\n'.join(out)
 
 
@@ -462,6 +620,8 @@ def main(argv):
         prom_dump(*args)
     elif cmd == 'judge-fault' and len(args) == 1:
         sys.stdout.write(render_fault(Path(args[0])))
+    elif cmd == 'judge-isolation' and len(args) == 1:
+        sys.stdout.write(render_isolation(Path(args[0])))
     elif cmd == 'table':
         print(render_table())
     else:

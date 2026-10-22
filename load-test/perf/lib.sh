@@ -22,12 +22,28 @@ perf_line() {
 perf_ref() { perf_line "$1" | awk '{print $2}'; }
 perf_confirm() { perf_line "$1" | awk '{print $4}'; }
 perf_confirm_path() { perf_line "$1" | awk '{print ($5 == "" ? "gateway" : $5)}'; }
-# 같은 코드를 쓰는 변형은 이미지를 다시 빌드하지 않는다(V4·V3i는 V3 이미지)
-perf_image_version() { case "$1" in V4|V3i) echo V3 ;; *) echo "$1" ;; esac; }
+# 같은 코드를 쓰는 변형은 이미지를 다시 빌드하지 않는다(V4·V3i·F2는 V3 이미지)
+perf_image_version() { case "$1" in V4|V3i|F2) echo V3 ;; *) echo "$1" ;; esac; }
+perf_config_ref() { perf_line "$1" | awk '{print ($6 == "" ? "HEAD" : $6)}'; }
+
+# 측정용 설정 폴더. config-server가 jar 안 설정 대신 이 폴더를 읽는다(docker-compose.perf.yml의 CONFIG_REPO_LOCATION).
+# HEAD의 config-repo를 그대로 두고, 설정 ref가 HEAD가 아니면 delivery-service.yml만 그 커밋 것으로 바꾼다.
+PERF_CONFIG_DIR=$PERF_RESULTS/config-repo
+perf_config_build() {
+  local ref=$1 out=$2
+  rm -rf "$out"; mkdir -p "$out"
+  git archive HEAD config-repo | tar -x -C "$out" --strip-components=1
+  [ "$ref" = HEAD ] || git show "$ref:config-repo/delivery-service.yml" > "$out/delivery-service.yml"
+}
+# config-server가 실제로 내주는 delivery 설정의 해시. 파일 위치(classpath/file)와 무관하게 값만 본다
+perf_served_config_sha() {
+  curl -sf "http://localhost:${CONFIG_SERVER_PORT:-8888}/delivery-service/default" \
+    | python3 -c 'import hashlib, json, sys; d = json.load(sys.stdin); print(hashlib.sha256(json.dumps([p["source"] for p in d["propertySources"]], sort_keys=True).encode()).hexdigest())'
+}
 PERF_DELIVERY_PORT=18085   # 확정 경로 direct일 때 k6가 delivery를 직접 부르는 포트(docker-compose.perf.yml)
 perf_expected_commit() { git rev-parse "$(perf_ref "$1")^{commit}"; }
 perf_require_version() {
-  [ -n "$(perf_line "$1")" ] || { echo "버전은 V0~V4 중 하나다: $1" >&2; exit 2; }
+  [ -n "$(perf_line "$1")" ] || { echo "versions.txt에 없는 버전이다: $1" >&2; exit 2; }
 }
 
 perf_psql() {

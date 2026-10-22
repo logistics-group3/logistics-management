@@ -8,6 +8,14 @@ services:
     # "could not resize shared memory segment ... No space left on device"로 실패한다(2026-10-22). 병렬 쿼리도 같은 영역을 쓴다.
     shm_size: 256m
 
+  config-server:
+    # 버전마다 delivery 설정을 그 커밋의 것으로 바꿔 내준다(F 계열, perf-master.md 2·3절). jar를 다시 빌드하지 않고 폴더만 바꾼다.
+    # 폴더는 perf-switch.sh가 HEAD config-repo로 만든다(load-test/perf/lib.sh perf_config_build). 폴더 없이 띄우면 설정이 비어 서비스가 뜨지 않는다.
+    environment:
+      CONFIG_REPO_LOCATION: file:/perf-config-repo/
+    volumes:
+      - ./load-test/results/perf/config-repo:/perf-config-repo:ro
+
   delivery-service:
     # 버전마다 perf-switch.sh가 그 커밋으로 빌드한 이미지를 이 태그에 붙인다. 이 덧붙임으로 script/run.sh를 쓰면
     # 지금 코드로 이 태그를 덮으므로, 측정 중 delivery는 perf-switch.sh로만 바꾼다.

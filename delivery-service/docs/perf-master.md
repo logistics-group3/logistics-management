@@ -38,6 +38,9 @@
 | V3 | 고도화 3: 주문 확정 뒤 배정 | `4ff0b7f` (`feat/delivery-T09`) | `CONFIRM=1`. 확정 요청이 추가된 비용이 TPS로 드러난다 |
 | V3i | 고도화 3, 운영 경로 확정 | V3와 같은 코드 | `CONFIRM=1`이지만 확정(I-19)을 Gateway가 아니라 운영에서 order가 하듯 delivery 내부 API로 직접 보낸다(k6 `CONFIRM_URL`, 사용자 헤더 전달). V3은 생성 1건 = Gateway 요청 2건이라 Gateway 비용이 확정 단계 비용에 섞였다(8절). 2026-10-22 추가 |
 | V4 | 장애 격리 | V3와 같은 코드 | 5절 V4 절차. user 30초 정지 |
+| F0 | 장애 격리 재측정: 장애 대응 전 | `2fd2bd2` + 목록 인덱스(`perf/f0`) | 설정도 그 커밋의 `delivery-service.yml`(user 호출 기본 타임아웃 connect 5초·read 20초, 벌크헤드·서킷 없음). `CONFIRM=0` |
+| F1 | 장애 격리 재측정: 장애 대응 적용 | `a8e4b28` + 목록 인덱스(`perf/f1`) | 그 커밋 설정(user 호출 connect 1초·read 2초, 벌크헤드 10, 서킷 최근 10초). `CONFIRM=0` |
+| F2 | 장애 격리 재측정: 배정 분리 뒤 | V3와 같은 코드 | HEAD 설정, 확정은 V3i처럼 내부 API 직접. 생성이 user를 부르지 않는 구조의 효과 |
 
 - **목록 인덱스는 공통 바닥이다.** V0·V1은 인덱스 전 코드라 `V4__index_deliveries_departure_hub_id_created_at.sql`만 가져와 측정 브랜치(`perf/v0`, `perf/v1`)를 만든다. 인덱스 효과(D-01 요청당 33ms → 4.4ms, 30만 건)는 "사전 정비"로 따로 적는다. 100만 건에서는 count와 목록을 합쳐 약 404ms → 7.7ms다(4절).
 - V0~V3 모두 user 호출 장애 대응(타임아웃·재시도·벌크헤드·서킷)이 이미 들어 있다(T06이 먼저 들어감). 장애 격리 개선 전후 비교는 fault-isolation.md 8절 기록(S1)을 그대로 쓰고, V4는 "배정 분리 뒤 user가 멈추면 무엇이 영향을 받나"를 잰다.
@@ -53,6 +56,7 @@
 | 배송담당자 | **허브마다 10명**, 총 170명. 과거 구간도 이 170명에게 고르게 나눈다 |
 | 측정 허브 | 서울 허브 하나에 생성을 몰고, 조회도 서울 허브 최신순 목록 |
 | 주요 설정 | Hikari 10, Tomcat 200, `delivery.assignment.batch-window-ms` 0 |
+| 설정(config-repo) | V0~V4·V3i는 측정 당시 HEAD 설정으로 쟀다(V3 커밋 설정과 같다). 커밋별 설정과의 차이: V0·V1은 company-service Feign 타임아웃 줄이 없다(측정 경로에서 company를 부르지 않는다), V2는 order·확정 설정이 더해졌다(V2 코드는 읽지 않는다). user 장애 대응 값(타임아웃·벌크헤드·서킷)은 V0~V3 커밋과 HEAD가 같다. F0·F1은 `delivery-service.yml`만 그 커밋의 것으로 바꿔 넣는다(`perf-switch.sh`, versions.txt 설정 ref). config-server는 jar를 다시 빌드하지 않고 측정용 폴더(`load-test/results/perf/config-repo/`)를 읽고, 내주는 설정의 해시를 `switch.txt`·manifest에 남긴다 |
 | 측정용 덧붙임 | `load-test/docker-compose.perf.yml`: postgres `shm_size` 256MB(구간 294만 건 VACUUM, TS-032), Prometheus 수집 5초·볼륨, Grafana 렌더러. delivery 이미지는 버전마다 `perf-switch.sh`가 바꾼다 |
 | k6 VU | 생성 시나리오는 미리 만드는 VU = 최대 = 400(`PRE_VUS`, `version-compare.sh` 기본값), 조회는 50 · 최대 400. 측정 중 VU를 늘리는 동안 못 보낸 요청이 서버 실패로 잡히지 않게 한다. 400개를 미리 만들어도 k6 메모리는 109MB(50개 60MB)이고 쉬는 VU는 CPU를 쓰지 않는다(2026-10-22) |
 
@@ -115,6 +119,21 @@ load-test/perf-switch.sh V4 && load-test/perf-run.sh V4   # 칸 fault-160, fault
 
 V4 합격선: 장애 중 생성 실패 0.1% 이하(생성은 user를 부르지 않는다), 장애 중 조회 p95 100ms 이하, user 복구 뒤 30초 안에 미배정 구간 0.
 판정은 `perf.py judge-fault`가 한다. 장애 구간 지표는 k6 요약의 `phase:fault` 줄과 CSV(못 보낸 요청), 미배정은 `recovery.txt`(복구 30초 뒤, 복구 전에 확정된 배송의 담당자 없는 구간 수), 10초 단위 흐름은 `timeline.txt`에 남는다.
+
+### F 계열 (장애 격리 재측정)
+
+포트폴리오 10장(장애 격리)을 T10 조건(100만 건, 담당자 10명)으로 다시 잰다. 조건은 이전 S1([fault-isolation.md](fault-isolation.md) 8절)과 같다: 생성 10 + 조회 10, 4분, 시작 90초 뒤 user 30초 정지, 구간 before(30~90초)·fault(90~120초)·recovery(120~150초)·after(150초~).
+
+```bash
+load-test/perf-switch.sh F0 && load-test/perf-run.sh F0   # 칸 f10x10-1·2
+load-test/perf-switch.sh F1 && load-test/perf-run.sh F1   # 칸 f10x10-1·2, f40x40-1(4배 부하), n40x40-1(장애 없음, 서킷 오탐)
+load-test/perf-switch.sh F2 && load-test/perf-run.sh F2   # 칸 f10x10-1·2
+load-test/perf-switch.sh V3                               # 끝나면 HEAD 설정·V3 코드로 되돌린다(내주는 설정 해시가 jar 안 설정과 같은지 본다)
+```
+
+- 지표(`perf.py judge-isolation`): 조회 p95 장애 전·중·복구 직후·그 뒤(k6 구간 태그, `timeline.txt`), 바쁜 스레드 최대(Prometheus 5초), 장애 중 생성 실패·503 건수(CSV), 복구 시간(user를 되살린 시점부터 5초 구간마다 생성 성공률 99% 이상 그리고 조회 p95가 장애 전 p95의 2배 이하가 되는 첫 구간까지, S1과 같은 정의), 장애 없는 칸의 생성 503 비율(서킷 오탐)과 서킷 거절 호출 증가.
+- 합격선: 장애 칸은 장애 중 조회 p95 100ms 이하 그리고 복구 시간 30초 이하(F2는 복구 30초 뒤 미배정 0도). 장애 없는 칸은 생성 실패+못 보냄 0.1% 이하(1절). 장애 중 생성 실패는 판정에 넣지 않고 지표로 적는다. F1은 user가 멈추면 생성을 빨리 실패시키는 설계라서다.
+- 서킷 오탐 19%(튜닝 전 최근 20건 기준)는 다시 재지 않는다. F1 커밋 설정이 이미 튜닝 뒤(최근 10초)다.
 
 ## 6. 캡처 (칸마다 같은 것)
 

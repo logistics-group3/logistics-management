@@ -29,6 +29,26 @@ if [ "$(docker image inspect -f '{{index .Config.Labels "perf.commit"}}' "$tag" 
 fi
 docker tag "$tag" "$PERF_IMAGE:perf-current"
 
+# 설정: HEAD config-repo에 이 버전의 delivery 설정을 넣는다(versions.txt 설정 ref). 바뀌었을 때만 config-server를 다시 읽게 한다.
+# Note: 폴더를 지우고 새로 만들면 실행 중인 컨테이너는 지워진 폴더를 붙잡고 있다. 폴더는 두고 안의 파일만 바꾼다.
+cfg_ref=$(perf_config_ref "$ver")
+cfg_new=$(mktemp -d)
+perf_config_build "$cfg_ref" "$cfg_new"
+mkdir -p "$PERF_CONFIG_DIR"
+cfg_changed=0
+if ! diff -rq "$cfg_new" "$PERF_CONFIG_DIR" >/dev/null 2>&1; then
+  rm -f "$PERF_CONFIG_DIR"/*.yml
+  cp "$cfg_new"/*.yml "$PERF_CONFIG_DIR"/
+  cfg_changed=1
+fi
+rm -rf "$cfg_new"
+docker compose up -d --no-deps --no-build config-server >/dev/null   # 덧붙임(폴더·환경 변수)이 없던 컨테이너면 다시 만든다
+[ "$cfg_changed" = 1 ] && docker compose restart config-server >/dev/null
+for _ in $(seq 1 60); do curl -sf "http://localhost:${CONFIG_SERVER_PORT:-8888}/actuator/health" >/dev/null && break; sleep 2; done
+cfg_sha=$(perf_served_config_sha)
+[ -n "$cfg_sha" ] || { echo "config-server가 delivery 설정을 내주지 않는다" >&2; exit 1; }
+echo "설정: delivery-service.yml = $cfg_ref, 내주는 설정 해시 ${cfg_sha:0:12}"
+
 # 계정·업체 시드는 delivery 스키마를 쓰지 않는다. 기동 확인에 dmaster 로그인이 필요해 먼저 넣는다(이미 있으면 건너뛴다)
 perf_psql < infra/postgres/seed/delivery-e2e.sql > /dev/null
 
@@ -52,6 +72,8 @@ echo "$seed" | tail -3
   echo "commit=$commit"
   echo "image=$(docker image inspect -f '{{.Id}}' "$tag")"
   echo "built=$built"
+  echo "config_ref=$cfg_ref"
+  echo "config_sha=$cfg_sha"
   echo "delivery_started_at=$(perf_delivery_started_at)"
   echo "switched_at=$(date +%s)"
   echo "took_sec=$(( $(date +%s) - started ))"
