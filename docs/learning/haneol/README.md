@@ -6,6 +6,7 @@
 
 | 날짜 | 제목 | 난이도 | 태그 | 질문자 |
 |---|---|---|---|---|
+| 2026-10-22 | [성능 측정에서 V0·V1이 초당 80건에서 막혔다. TPS가 왜 이렇게 안 나오나](qna/2026-10-22-perf-master-low-tps.md) | 고급 | load-test, tps, advisory-lock, postgresql, hikari | jihaneol |
 | 2026-10-19 | [배정에 잠금을 걸었더니 서비스가 멈췄다. 비동기로 바꾸면 같은 잠금인데 왜 괜찮나](qna/2026-10-19-sync-lock-vs-async-assignment.md) | 고급 | concurrency, advisory-lock, async, batch, message-queue | jihaneol |
 | 2026-10-19 | [맥 한 대에서 부하 테스트를 할 때 무엇을 통제하고, 성능 개선을 어떤 숫자로 말해야 하나](qna/2026-10-19-local-load-test-methodology.md) | 중급 | load-test, jvm, jit, tps | jihaneol |
 | 2026-10-16 | [회원가입 소속과 업체 관리자·배송담당자는 어떻게 정해지고, 배송 조회 권한은 어디서 판단하나](qna/2026-10-16-signup-affiliation-and-delivery-read-scope.md) | 중급 | auth, gateway, authorization, msa | jihaneol |
