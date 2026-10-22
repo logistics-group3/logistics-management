@@ -38,7 +38,7 @@
 | V3 | 고도화 3: 주문 확정 뒤 배정 | `4ff0b7f` (`feat/delivery-T09`) | `CONFIRM=1`. 확정 요청이 추가된 비용이 TPS로 드러난다 |
 | V4 | 장애 격리 | V3와 같은 코드 | 5절 V4 절차. user 30초 정지 |
 
-- **목록 인덱스는 공통 바닥이다.** V0·V1은 인덱스 전 코드라 `V4__index_deliveries_departure_hub_id_created_at.sql`만 가져와 측정 브랜치(`perf/v0`, `perf/v1`)를 만든다. 인덱스 효과(D-01 요청당 33ms → 4.4ms, 30만 건)는 "사전 정비"로 따로 적는다.
+- **목록 인덱스는 공통 바닥이다.** V0·V1은 인덱스 전 코드라 `V4__index_deliveries_departure_hub_id_created_at.sql`만 가져와 측정 브랜치(`perf/v0`, `perf/v1`)를 만든다. 인덱스 효과(D-01 요청당 33ms → 4.4ms, 30만 건)는 "사전 정비"로 따로 적는다. 100만 건에서는 count와 목록을 합쳐 약 404ms → 7.7ms다(4절).
 - V0~V3 모두 user 호출 장애 대응(타임아웃·재시도·벌크헤드·서킷)이 이미 들어 있다(T06이 먼저 들어감). 장애 격리 개선 전후 비교는 fault-isolation.md 8절 기록(S1)을 그대로 쓰고, V4는 "배정 분리 뒤 user가 멈추면 무엇이 영향을 받나"를 잰다.
 - V0·V1은 마이그레이션이 V1 하나라 V2~V5 컬럼(`managing_hub_id` 이후, `confirmed_at` 등)이 없다. 시드 호환을 4절에서 확인한다.
 
@@ -52,6 +52,7 @@
 | 배송담당자 | **허브마다 10명**, 총 170명. 과거 구간도 이 170명에게 고르게 나눈다 |
 | 측정 허브 | 서울 허브 하나에 생성을 몰고, 조회도 서울 허브 최신순 목록 |
 | 주요 설정 | Hikari 10, Tomcat 200, `delivery.assignment.batch-window-ms` 0 |
+| 측정용 덧붙임 | `load-test/docker-compose.perf.yml`: postgres `shm_size` 256MB(구간 294만 건 VACUUM, TS-032), Prometheus 수집 5초·볼륨, Grafana 렌더러. delivery 이미지는 버전마다 `perf-switch.sh`가 바꾼다 |
 | k6 VU | 생성 시나리오는 미리 만드는 VU = 최대 = 400(`PRE_VUS`, `version-compare.sh` 기본값), 조회는 50 · 최대 400. 측정 중 VU를 늘리는 동안 못 보낸 요청이 서버 실패로 잡히지 않게 한다. 400개를 미리 만들어도 k6 메모리는 109MB(50개 60MB)이고 쉬는 VU는 CPU를 쓰지 않는다(2026-10-22) |
 
 측정마다 실행한 커밋, 이미지 빌드 시각, 위 설정값을 결과 표에 같이 적는다.
@@ -72,54 +73,65 @@
 
 남은 준비
 
-- [ ] `perf/v0`, `perf/v1` 브랜치에 인덱스 마이그레이션만 가져와 기동 확인.
-- [ ] 100만 건에서 D-01 `EXPLAIN ANALYZE` 인덱스 전후를 다시 잰다(사전 정비 기록).
-- [ ] 캡처 폴더 `load-test/results/captures/`와 커밋 여부를 정한다(`load-test/results`는 지금 .gitignore에 없다).
+- [x] `perf/v0`(ef37a49 + 인덱스), `perf/v1`(bc3177b + 인덱스) 로컬 브랜치를 만들었다(2026-10-22). 기동 확인은 `perf-switch.sh`가 한다.
+- [x] 100만 건에서 D-01 `EXPLAIN ANALYZE` 인덱스 전후를 다시 쟀다(사전 정비 기록, `load-test/perf/explain-d01.sh`, 2026-10-22, V0 코드, 서울 허브 58,824건, 세 번째 실행).
+
+| D-01 쿼리 | 인덱스 없음 | 인덱스 있음 |
+|---|---|---|
+| 전체 건수(count) | 181ms, Bitmap Heap Scan으로 힙 33,134블록을 읽는다 | 7.7ms, Index Only Scan 2,149버퍼, Heap Fetches 0 |
+| 최신순 10건 | 223ms, 같은 힙 읽기 + top-N 정렬 | 0.015ms, 인덱스 순서로 10건만 읽고 끝난다 |
+
+테이블(259MB)이 `shared_buffers`(128MB)보다 커서 인덱스가 없으면 요청마다 힙을 다시 읽는다. 30만 건 때(요청당 33ms → 4.4ms)보다 차이가 커졌다. 원본은 `load-test/results/perf/explain-d01.txt`.
+- [x] 캡처 폴더는 `load-test/results/perf/captures/`이고 커밋하지 않는다(`load-test/.gitignore`의 `results/`). 원본은 로컬에 두고 숫자만 8절에 옮긴다(2026-10-22).
 
 ## 5. 표준 절차
 
 ### 버전 하나 (V0~V3)
 
-1. 해당 버전으로 delivery를 다시 빌드·기동하고 시드를 넣는다(`delivery-e2e.sql` → `COUNT=1000000 load-test/seed/perf-seed.sh`).
-2. 쉬는 상태 확인: 모든 컨테이너 CPU 2% 미만, 셸에 남은 `CREATE_RATE` 같은 환경 변수 삭제.
-3. 계단 측정. 예열 2회(초당 10+10, 1분)는 스크립트가 먼저 한다.
-
 ```bash
-NAME=v1-load1m RATES="40 80 160 240 320 480 640" READ_FIXED=20 REPEAT=2 CONFIRM=0 STOP_ON_FAIL=1 \
-  load-test/version-compare.sh
+# 스택은 측정용 덧붙임 조합으로 한 번 띄운다(source load-test/perf/lib.sh가 COMPOSE_FILE을 정한다)
+source load-test/perf/lib.sh && docker compose up -d --no-build && docker compose stop zipkin
+load-test/perf-switch.sh V1   # 그 커밋으로 delivery 이미지 빌드(커밋 라벨) → delivery 스키마 재생성 → 기동 → 시드(100만)
+load-test/perf-run.sh V1      # 예열 2회 → 계단 → 판정 → 기록 → STATUS.md → 버전 끝에 캡처
+load-test/perf-verify.sh V1   # 칸 사이마다. STATUS.md와 다르면 멈추고 보고한다
 ```
 
-4. 계단 한 칸: 60초 쉼 → 측정이 만든 배송만 삭제 → 1분 측정 → 30초 뒤 배정 집계(`SETTLE`) → 판정(`-verdict.txt`) → **바로 캡처**(6절). 2회 반복.
-5. 같은 칸에서 두 번 모두 실패하면 그 버전은 거기서 멈춘다(`STOP_ON_FAIL=1`이면 다음 계단으로 가지 않는다). 판정 불가(입력 파일이나 값이 없다)면 바로 멈추고 측정 환경을 본다. 한 번만 실패한 칸은 통과가 아니지만 다음 계단으로 간다. 3회차를 잴지는 7절로 판단한다.
+1. `perf-switch.sh`가 버전을 바꾼다. 커밋은 `load-test/perf/versions.txt`에 있고, 이미지 라벨 `perf.commit`으로 칸마다 확인한다.
+2. `perf-run.sh`가 셸에 남은 측정 변수를 지우고 예열 2회(초당 10+10, 1분)를 한 뒤, 칸 기록으로 다음 칸을 정해 잰다(`load-test/perf/perf.py next`).
+3. 계단 한 칸(`load-test/perf/cell.sh`): 60초 쉼 → 측정이 만든 배송만 삭제 → 쉬는 상태 확인(모든 컨테이너 CPU 2% 미만, 최대 180초 기다림) → 1분 측정(pg_stat_activity·docker stats 5초 표본) → 30초 뒤 배정 집계 → Prometheus 덤프 → 판정 → manifest. 2회 반복.
+4. 같은 칸에서 두 번 모두 실패하면 그 버전은 거기서 멈춘다. 한 번만 실패한 칸은 통과가 아니지만 다음 계단으로 간다. 1회차의 실패가 k6 지표뿐이고 첫 30초를 빼면 합격선 안이면 3회차를 재서 2·3회차로 판정한다(7절, `perf.py`가 k6 CSV로 판단).
+5. 칸이 무효면(7절, `perf.py check-cell`) `<칸>.invalid-<시각>`으로 옮기고 다시 잰다. 3번 연속이면 멈춘다.
+
+계단 하나만 손으로 볼 때는 `version-compare.sh`(같은 판정, `STOP_ON_FAIL=1`)를 쓴다. 측정 기록에는 쓰지 않는다.
 
 ### V4 (장애 격리)
 
 V3 코드로 생성 160 + 조회 20, 6분, 시작 90초 뒤 user 30초 정지. 같은 조건으로 생성 80에서도 한 번 더 잰다.
 
 ```bash
-LABEL=v4-fault-160 CREATE_RATE=160 READ_RATE=20 DURATION=6m FAULT_MODE=pause CONFIRM=1 PRE_VUS=400 \
-  load-test/fault-isolation.sh
-python3 load-test/timeline.py load-test/results/fault-v4-fault-160-<시각>.csv.gz
+load-test/perf-switch.sh V4 && load-test/perf-run.sh V4   # 칸 fault-160, fault-80 (FAULT_MODE=pause, DURATION=6m, CONFIRM=1)
 ```
 
 V4 합격선: 장애 중 생성 실패 0.1% 이하(생성은 user를 부르지 않는다), 장애 중 조회 p95 100ms 이하, user 복구 뒤 30초 안에 미배정 구간 0.
+판정은 `perf.py judge-fault`가 한다. 장애 구간 지표는 k6 요약의 `phase:fault` 줄과 CSV(못 보낸 요청), 미배정은 `recovery.txt`(복구 30초 뒤, 복구 전에 확정된 배송의 담당자 없는 구간 수), 10초 단위 흐름은 `timeline.txt`에 남는다.
 
 ## 6. 캡처 (칸마다 같은 것)
 
-Prometheus에 볼륨이 없어 컨테이너를 다시 만들면 지표가 사라진다. 칸이 끝나자마자 캡처한다.
+숫자는 칸마다 `load-test/results/perf/<버전>/<TPS>-<회차>/`에 자동으로 남고, 그림은 버전 하나를 다 잰 뒤 한꺼번에 뽑는다(렌더러가 Chromium을 띄워 측정 중 CPU를 쓰므로). 측정용 덧붙임이 Prometheus에 볼륨을 붙이고 수집을 5초로 줄여, 나중에 다시 뽑아도 같은 지표가 나온다.
 
-| 항목 | 출처 |
-|---|---|
-| k6 요약 | 터미널 출력 |
-| 생성·조회 p95 | Grafana 패널 |
-| Hikari active · pending | Grafana 패널 |
-| Tomcat 바쁜 스레드 | Grafana 패널 |
-| 컨테이너 CPU | `-stats.txt` |
-| 대기 이벤트 | `load-test/diagnose.sh`의 pg_stat_activity 5초 표본 |
-| 배정 집계(편차·지연) | `<NAME>-rate<r>-<n>-assignment.txt` |
-| 판정 | `<NAME>-rate<r>-<n>-verdict.txt`(`perf-judge.py`) |
+| 항목 | 칸 폴더 파일 | 그림(`captures/<버전>-<칸>-<항목>.png`) |
+|---|---|---|
+| k6 요약 | `k6.txt`, `k6.json`, 요청별 `k6.csv.gz` | |
+| 생성·조회 p95 | `prom.json` | `p95`, `rps` |
+| Hikari active · pending | `prom.json` | `hikari` |
+| Tomcat 바쁜 스레드 | `prom.json` | `tomcat` |
+| 프로세스·컨테이너 CPU | `prom.json`, `docker.txt`(약 5초), `k6-stats.txt` | `cpu` |
+| 대기 이벤트(advisory 대기 포함) | `pgwait.txt`(pg_stat_activity 5초) | |
+| 배정 집계(편차·지연) | `assignment.txt` | |
+| 판정 | `verdict.txt`(`perf-judge.py`, V4는 `perf.py judge-fault`) | |
+| 실행 조건 | `manifest.txt`(커밋, 설정값, 쉬는 CPU, 예열·시작·끝 시각, 파일 해시) | |
 
-이름 규칙: `<버전>-<TPS>-<회차>-<항목>.png` (예: `v1-240-2-hikari.png`).
+그림은 `load-test/perf/capture.sh <버전>`이 측정용 대시보드(`load-test/grafana/perf-master.json`)를 올리고 칸의 시간 구간(시작 10초 전 ~ 끝 30초 뒤)으로 뽑는다. 원본 기록과 그림은 커밋하지 않는다(`load-test/results/`는 git 제외). 문서에는 8절 표의 숫자를 옮긴다.
 
 ## 7. 무효 판정
 

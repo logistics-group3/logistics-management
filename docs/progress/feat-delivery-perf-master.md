@@ -9,7 +9,13 @@
 - [x] 기준 커밋 확인: V0 `ef37a49`, V1 `bc3177b`, V2 `fd17db9`, V3 `4ff0b7f`. V0의 부하 테스트 API 요청 본문이 지금 k6 스크립트와 같다(`receiverManagerId` 포함)
 - [x] 브랜치 `feat/delivery-perf-master`를 `feat/delivery-T09`에서 만들었다(사용자). 계획·시드·이 파일·`tasks/T10.md`·`tasks/README.md` T10 줄을 첫 커밋으로 남겼다(2026-10-22)
 - [x] 도구 보완 A: 판정·자동 중단·배정 집계 호환(2026-10-22, 커밋 `test(load-test): 측정 판정·계단 자동 중단과 배정 집계 버전 호환 (T10)`). 검증 내용은 `tasks/T10.md` 작업 기록. 실제 스택에서는 아직 돌리지 않았다
-- [ ] 도구 보완 B, 실행·재개·검증 스크립트(다음 단계 2~3)
+- [x] 도구 보완 B, 실행·재개·검증 스크립트(다음 단계 2~3) 작성(2026-10-22, 아직 커밋 전. 첫 실제 칸으로 확인한 뒤 커밋한다)
+  - `load-test/docker-compose.perf.yml`(delivery 이미지 `perf-current`, Prometheus 5초·볼륨, Grafana 렌더러 v5.12.5), `load-test/perf/`(lib.sh, cell.sh, perf.py, capture.sh, explain-d01.sh, prometheus.yml, versions.txt), `load-test/grafana/perf-master.json`, `load-test/perf-switch.sh`·`perf-run.sh`·`perf-verify.sh`
+  - 칸 기록: `load-test/results/perf/<버전>/<TPS>-<회차>/`(k6.json·csv.gz·txt, k6-stats, reset, idle, pgwait, docker, assignment, prom.json, verdict, manifest). V4는 `fault-160`, `fault-80`
+  - 사용자 지시(2026-10-22): 묻지 않고 계획대로 끝까지 진행한다. 칸 사이 검증이 STATUS.md와 다를 때만 멈추고 보고한다
+- [x] 준비: `perf/v0`(5a6c79f = ef37a49 + 인덱스), `perf/v1`(c7fb578 = bc3177b + 인덱스) 로컬 브랜치. 스택은 perf 덧붙임 조합으로 기동(2026-10-22)
+- [x] V0 전환(2분 30초), D-01 EXPLAIN(perf-master.md 4절), 시험 칸으로 도구 확인 뒤 버림, 공유 메모리 부족 해결(TS-032, postgres `shm_size` 256m). 도구 커밋 `test(load-test): 성능 마스터 측정 실행·재개·검증과 기록·캡처 자동화 (T10)`
+- [ ] 측정: `load-test/perf-run.sh V0`부터 백그라운드로. 칸 사이마다 `load-test/perf-verify.sh`
 - [ ] 준비(다음 단계 4)
 - [ ] 측정 V0~V3, V4(다음 단계 5)
 - [ ] 결과 기록(다음 단계 6), 포트폴리오 반영은 Cowork 세션에서

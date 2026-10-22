@@ -280,3 +280,10 @@
 - 확인: 새 runId의 C0-F1-02·C0-F2-02와 AFTER-F1-02·AFTER-F2-02를 다시 실행해 정상 대조군과 실제 종료·복구를 확인했다. 두 의도한 종료는 OOMKilled=false·exit 137이었다. 기존 컨테이너 12개 ID·현재 실행 상태와 전용 볼륨 보존을 확인했다. 기존 환경에 영향이 없었다고 주장하지 않는다.
 - 배운 점: Compose 프로젝트·볼륨·포트를 나눠도 VM 메모리는 공유된다. 환경 조정 전후를 구분하고, 이번 비교는 데이터 상태와 안전한 복구의 비교로 한정한다. 처리 시간·처리량의 성능 비교로 사용하지 않는다.
 - 근거: [복구 전후 결과](reviews/order-creation-recovery/2026-10-20-implementation-results.md), `.local/recovery-experiments/implementation-F2-interruption-audit/`와 `implementation-memory-containment/`의 명령·inspect·Docker 이벤트.
+
+### TS-032 과거 배송 100만 건에서 측정 사이 배송 삭제가 공유 메모리 부족으로 실패
+- 서비스·작성: delivery 성능 측정(T10) / 한얼 / 2026-10-22
+- 문제: 성능 마스터 측정의 첫 칸에서 `load-test/reset-delivery-data.sh`가 `ERROR: could not resize shared memory segment "/PostgreSQL.…" to 67145312 bytes: No space left on device`로 끝났다. 과거 배송 30만 건으로 잴 때는 없던 오류다.
+- 원인: 측정 사이에 구간 테이블(294만 건)을 `VACUUM ANALYZE`한다. PostgreSQL 16은 인덱스 정리를 병렬 작업자로 나누고, 그 작업 공간(약 64MB)을 동적 공유 메모리(`/dev/shm`)에 잡는다. Docker 컨테이너의 `/dev/shm` 기본값이 64MB라 모자랐다. 병렬 쿼리도 같은 영역을 쓰므로 측정 중에 실패할 수도 있었다.
+- 해결: 측정용 덧붙임(`load-test/docker-compose.perf.yml`)에서 postgres에 `shm_size: 256m`을 주고 컨테이너를 다시 만들었다(데이터는 볼륨에 남는다). 팀 공유 `docker-compose.yml`은 바꾸지 않았다. 다시 실행한 삭제·VACUUM은 1.6초에 끝났다.
+- 배운 점: 데이터를 키우면 쿼리 계획만이 아니라 DB 프로세스의 자원 한계(여기서는 공유 메모리)도 바뀐다. 컨테이너 안 PostgreSQL은 `docker compose exec postgres df -h /dev/shm`으로 크기를 먼저 본다.
